@@ -11,9 +11,9 @@ the Target (T) and the Surrogate (S).
 Typically, Target is something of primary interest but also noisy and costly to evaluate,
 such as a physical measurement, or a Monte Carlo simulation. The Target runs are
 characterized by a set of parameters {p}, and so the evaluation of the Target cost-function
-:math:`X_T({p})` returns a scalar value with a finite stochastic errorbar. The cause of
-optimization is to find the particular set of parameters :math:`{p}^*` that minimizes the
-cost-function :math:`X_T`.
+:math:`X_T({\mathbf{p}})` returns a scalar value with a finite stochastic errorbar. The
+cause of optimization is to find the particular set of parameters :math:`{\mathbf{p}}^*`
+that minimizes the cost-function :math:`X_T`.
 
 For instance, we could seek the optimal O-H distance and H-O-H bond angle, two parameters,
 to find the energy-minimizing geometry of the water molecule, H_2O, where
@@ -21,12 +21,12 @@ to find the energy-minimizing geometry of the water molecule, H_2O, where
 
 Many algorithms exist that use parameter gradients of :math:`X_T` to perform optimization,
 however, due to the noisy nature of :math:`X_T` this is problematic. Instead, a robust
-approach is the direct sampling of :math:`X_T({p})` in an informed manner, to narrow down
-:math:`{p}^*` with high efficiency and high confidence. In this implementation, the informed
-manner means a sequence of line-searches along the conjugate directions of the cost-function
-Hessian :math:`H_T`. At the same, it means mindful requests for statistical precision during
-the evaluations of :math:`X_T`. Both of these concepts are vital for performance and better
-laid out in :ref:`theory`.
+approach is the direct sampling of :math:`X_T({\mathbf{p}})` in an informed manner, to
+narrow down :math:`{\mathbf{p}}^*` with high efficiency and high confidence. In this
+implementation, the informed manner means a sequence of line-searches along the conjugate
+directions of the cost-function Hessian :math:`H_T`. At the same, it means mindful requests
+for statistical precision during the evaluations of :math:`X_T`. Both of these concepts are
+vital for performance and better laid out in :ref:`theory`.
 
 Remarkably, the information about the Hessian and the statistical outlook is not derived
 from :math:`X_T` but from the surrogate cost-function, :math:`X_S`. Typically, the Surrogate
