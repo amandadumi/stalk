@@ -1,4 +1,4 @@
-from numpy import array
+from numpy import array, isscalar
 from scipy.optimize import minimize
 from copy import deepcopy
 
@@ -8,29 +8,36 @@ from .PesFunction import PesFunction
 
 class ParameterSet():
     """Base class for representing a set of parameters to optimize"""
-    p_list = []  # list of Parameter objects
+    _param_list = []  # list of Parameter objects
     value = None  # energy value
-    error = None  # errorbar
+    error = 0.0  # errorbar
     label = None  # label for identification
 
     def __init__(
         self,
-        params=None,
+        params=None,  # List of scalars or Parameter objects
+        params_err=None,
+        units=None,
         value=None,
-        error=None,
+        error=0.0,
         label=None,
-        **kwargs,  # params_err, units, kinds
+        labels=None
     ):
         self.label = label
         if params is not None:
-            self.init_params(params, **kwargs)
+            self.init_params(
+                params,
+                params_err=params_err,
+                units=units,
+                labels=labels
+            )
         # end if
         if value is not None:
             self.set_value(value, error)
         # end if
     # end def
 
-    def init_params(self, params, params_err=None, units=None, labels=None, kinds=None, **kwargs):
+    def init_params(self, params, params_err=None, units=None, labels=None):
         if params_err is None:
             params_err = len(params) * [params_err]
         else:
@@ -41,44 +48,45 @@ class ParameterSet():
         else:
             assert len(units) == len(params)
         # end if
-        if kinds is None or isinstance(kinds, str):
-            kinds = len(params) * [kinds]
-        else:
-            assert len(kinds) == len(params)
-        # end if
         if labels is None:
             labels = len(params) * [labels]
         else:
             assert len(labels) == len(labels)
         # end if
         p_list = []
-        for p, (param, param_err, unit, label, kind) in enumerate(zip(params, params_err, units, labels, kinds)):
-            lab = label if label is not None else 'p{}'.format(p)
-            parameter = Parameter(
-                param, param_err, unit=unit, label=lab, kind=kind)
+        for p, (param, param_err, unit, label) in enumerate(zip(params, params_err, units, labels)):
+            if isinstance(param, Parameter):
+                parameter = param
+            elif isscalar(param):
+                lab = label if label is not None else 'p{}'.format(p)
+                parameter = Parameter(param, param_err, unit=unit, label=lab)    
+            else:
+                raise ValueError('Parameter is unsupported type: ' + str(param))
+            # end if
             p_list.append(parameter)
         # end for
-        self.p_list = p_list
+        self._param_list = p_list
     # end def
 
     def set_params(self, params, params_err=None):
-        if params is None:
-            return
-        # end if
-        if self.params is None:
+        # If params have not been initiated yet, do it now without extra info
+        if self.num_params > 0:
+            assert len(params) == self.num_params
+        else:
             self.init_params(params, params_err)
         # end if
         if params_err is None:
             params_err = len(params) * [0.0]
         # end if
-        for sparam, param, param_err in zip(self.p_list, params, params_err):
+        for sparam, param, param_err in zip(self.params_list, params, params_err):
+            assert isinstance(sparam, Parameter)
             sparam.value = param
             sparam.error = param_err
         # end for
         self.unset_value()
     # end def
 
-    def set_value(self, value, error=None):
+    def set_value(self, value, error=0.0):
         assert self.params is not None, 'Cannot assign value to abstract structure, set params first'
         self.value = value
         self.error = error
@@ -90,27 +98,36 @@ class ParameterSet():
     # end def
 
     @property
+    def params_list(self):
+        return [p for p in self._param_list]
+    # end def
+
+    @property
     def params(self):
-        if self.p_list == []:
-            return None
-        else:
-            return array([p.value for p in self.p_list])
+        if self.num_params > 0:
+            return array([p.value for p in self.params_list])
         # end if
     # end def
 
     @property
     def params_err(self):
-        if self.p_list == []:
-            return None
-        else:
-            return array([p.param_err for p in self.p_list])
+        if self.num_params > 0:
+            return array([p.param_err for p in self.params_list])
         # end if
     # end def
 
-    def shift_params(self, dparams):
-        assert not self.p_list == [], 'params has not been set'
-        for p, d in zip(self.p_list, dparams):
-            p.value += d
+    @property
+    def num_params(self):
+        return len(self.params_list)
+    # end def
+
+    def shift_params(self, shifts):
+        if len(shifts) != self.num_params:
+            raise ValueError('Shifts has wrong dimensions!')
+        # end if
+        for param, shift in zip(self.params_list, shifts):
+            assert isinstance(param, Parameter)
+            param.shift(shift)
         # end for
         self.unset_value()
     # end def
@@ -119,17 +136,16 @@ class ParameterSet():
         self,
         params=None,
         params_err=None,
-        label=None,
-        **kwargs,
+        label=None
     ):
-        structure = deepcopy(self)
+        paramset = deepcopy(self)
         if params is not None:
-            structure.set_params(params, params_err)
+            paramset.set_params(params, params_err)
         # end if
         if label is not None:
-            structure.label = label
+            paramset.label = label
         # end if
-        return structure
+        return paramset
     # end def
 
     def check_consistency(self):

@@ -1,7 +1,6 @@
 
 class Parameter():
     """Base class for representing an optimizable parameter"""
-    kind = None
     value = None
     error = None
     label = None
@@ -11,13 +10,11 @@ class Parameter():
         self,
         value,
         error=0.0,
-        kind='',
         label='p',
         unit='',
     ):
         self.value = value
         self.error = error
-        self.kind = kind
         self.label = label
         self.unit = unit
     # end def
@@ -25,6 +22,10 @@ class Parameter():
     @property
     def param_err(self):
         return 0.0 if self.error is None else self.error
+    # end def
+
+    def shift(self, shift):
+        self.value += shift
     # end def
 
     def print_value(self):
@@ -36,6 +37,6 @@ class Parameter():
     # end def
 
     def __str__(self):
-        return '{:>10s}: {:<10f} {:6s} ({})'.format(self.label, self.value, self.unit, self.kind)
+        return '{:>10s}: {:<10f} {:6s}'.format(self.label, self.value, self.unit)
     # end def
 # end class

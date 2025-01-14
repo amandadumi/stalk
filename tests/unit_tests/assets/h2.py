@@ -10,19 +10,19 @@ pos_H2 = array('''
 elem_H2 = 'H H'.split()
 
 
-def forward_H2(pos):
+def forward_H2(pos, **kwargs):
     r = distance(pos[0], pos[1])
     return [r]
 # end def
 
 
-def backward_H2(params):
+def backward_H2(params, **kwargs):
     H1 = params[0] * array([0.0, 0.0, 0.5])
     H2 = params[0] * array([0.0, 0.0, -0.5])
     return array([H1, H2])
-
-
 # end def
+
+
 hessian_H2 = array([[1.0]])
 
 

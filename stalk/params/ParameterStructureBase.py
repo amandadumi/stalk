@@ -156,8 +156,7 @@ class ParameterStructureBase(ParameterSet):
     # end def
 
     def set_value(self, value, error=None):
-        assert not self.p_list == [
-        ] or self.pos is not None, 'Cannot assign value to abstract structure, set params or pos first'
+        assert self.num_params > 0 or self.pos is not None, 'Cannot assign value to abstract structure, set params or pos first'
         self.value = value
         self.error = error
     # end def
@@ -330,7 +329,7 @@ class ParameterStructureBase(ParameterSet):
     # end def
 
     def get_params_distribution(self, N=100):
-        return [self.params + self.params_err * g for g in random.randn(N, len(self.p_list))]
+        return [self.params + self.params_err * g for g in random.randn(N, self.num_params)]
     # end def
 
     def remap_forward(self, forward, N=None, fraction=0.159, **kwargs):
