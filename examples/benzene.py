@@ -213,8 +213,6 @@ loader = PwscfPes({'suffix': 'scf.in'})
 
 # Finally, use a macro to read the phonon data and convert to parameter
 # Hessian based on the structural mappings
-
-
 hessian = ParameterHessian(structure=structure_relax)
 hessian.compute_fdiff(
     path=base_dir + 'fdiff',
@@ -227,8 +225,6 @@ print(hessian)
 
 
 # 3) Surrogate: Optimize line-search
-
-
 # Use a macro to generate a parallel line-search object that samples the
 # surrogate PES around the minimum along the search directions
 surrogate = TargetParallelLineSearch(
@@ -282,7 +278,7 @@ srg_ls = LineSearchIteration(
 #   add_sigma = True means that target errorbars are used to simulate random noise
 for i in range(4):
     srg_ls.pls(i).run_jobs(interactive=interactive)
-    srg_ls.pls(i).load_results()
+    srg_ls.pls(i).load_results(add_sigma=True)
     srg_ls.propagate(i)
 # end for
 srg_ls.pls(4).run_jobs(interactive=interactive, eqm_only=True)
@@ -293,8 +289,6 @@ if __name__ == '__main__':
 # end if
 
 # 4-5) Stochastic: Line-search
-
-
 # return a simple 4-item DMC workflow for Nexus:
 #   1: run SCF with norm-conserving ECPs to get orbitals
 #   2: convert for QMCPACK
@@ -396,6 +390,9 @@ def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs)
 # end def
 
 
+# Configure a loader for the DMC PES
+# -the suffix points to the correct nexus analyzer
+# -the qmc_idx points to the correct QMC series (0: VMC; 1: DMC)
 qmcloader = QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
 
 # Run a macro that runs a DMC test job and returns effective variance w.r.t the number of steps/block

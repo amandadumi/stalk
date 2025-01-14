@@ -71,8 +71,8 @@ print(hessian)
 srg_file = 'surrogate.p'
 surrogate = TargetParallelLineSearch(
     mode='pes',
-    path='surrogate',
-    load='surrogate/' + srg_file,
+    path=base_dir + 'surrogate',
+    load=base_dir + 'surrogate/' + srg_file,
     structure=p_relax,
     hessian=hessian,
     pes=pes_surrogate,

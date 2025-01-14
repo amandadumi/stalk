@@ -1,4 +1,4 @@
-from numpy import nan, random
+from numpy import nan, isnan, random
 
 
 class PesResult:
@@ -35,9 +35,13 @@ class PesResult:
 
     def add_sigma(self, sigma):
         '''Add artificial white noise to the result for error resampling purposes.'''
-        if sigma is not None and sigma > 0.0:
+        if isinstance(sigma, float) and sigma >= 0.0:
             self.error = (self.error**2 + sigma**2)**0.5
-            self.value = sigma * random.randn(1)[0]
+            if not isnan(self.value):
+                self.value += sigma * random.randn(1)[0]
+            # end if
+        else:
+            raise ValueError('Tried to add poor sigma: ' + str(sigma))
         # end if
     # end def
 

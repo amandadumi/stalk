@@ -152,18 +152,21 @@ class LineSearch(LineSearchBase):
 
     def evaluate_pes(
         self,
-        pes_eval
+        pes_eval,
+        add_sigma=False
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
         assert isinstance(
             pes_eval, PesFunction), 'The evaluation function must be inherited from PesFunction class.'
         grid, values, errors = [], [], []
         for shift, structure in zip(self.grid, self.structure_list):
-            value, error = pes_eval.evaluate(
-                structure, sigma=self.sigma).get_result()
+            res = pes_eval.evaluate(structure, sigma=self.sigma)
+            if add_sigma:
+                res.add_sigma(self.sigma)
+            # end if
             grid.append(shift)
-            values.append(value)
-            errors.append(error)
+            values.append(res.get_value())
+            errors.append(res.get_error())
         # end for
         return array(grid), array(values), array(errors)
     # end def
@@ -217,20 +220,24 @@ class LineSearch(LineSearchBase):
         return '{}{}'.format(directorize(path), label)
     # end def
 
-    def analyze_job(self, structure, loader, path, sigma=None):
+    def analyze_job(self, structure, loader, path, add_sigma=False):
         assert isinstance(
             loader, PesLoader), 'The loader function must be inherited from PesLoader class.'
-        value, error = loader.load(path=self._make_job_path(
-            path, structure.label), sigma=sigma).get_result()
-        return value, error
+        res = loader.load(path=self._make_job_path(path, structure.label))
+        if add_sigma:
+            res.add_sigma(self.sigma)
+        # end if
+        return res.get_result()
     # end def
 
     # Loader function
-    def analyze_jobs(self, loader, path, sigma=None, prune0=True):
-        # TODO: remove sigma argument
+    def analyze_jobs(self, loader, path, prune0=True, add_sigma=False):
         grid, values, errors = [], [], []
         for shift, structure in zip(self.grid, self.structure_list):
-            value, error = self.analyze_job(structure, loader, path, sigma=sigma)
+            assert isinstance(
+                structure, ParameterSet), 'The structure must be inherited from ParameterSet class.'
+            value, error = self.analyze_job(
+                structure, loader, path, add_sigma=add_sigma)
             structure.set_value(value, error)
             # FIXME: skipping values messes up the grid <-> list consistency
             if prune0 and value == 0:
@@ -246,21 +253,22 @@ class LineSearch(LineSearchBase):
     # end def
 
     # Load results directly from 'grid', 'values' and 'errors' args, or else using 'loader'.
-    def load_results(self, loader=None, path=None, grid=None, values=None, errors=None):
+    def load_results(self, loader=None, path=None, grid=None, values=None, errors=None, add_sigma=False):
         grid = grid if grid is not None else self.grid
         if grid is not None and values is not None:
             self.loaded = self.set_results(grid, values, errors)
         else:
-            self.loaded = self.set_results(*self.analyze_jobs(loader, path))
+            self.loaded = self.set_results(
+                *self.analyze_jobs(loader, path, add_sigma=add_sigma))
         # end if
         return self.loaded
     # end def
 
-    def load_eqm_results(self, loader=None, path=None, values=None, errors=None):
+    def load_eqm_results(self, loader=None, path=None, values=None, errors=None, add_sigma=False):
         if values is not None:
             value, error = values, errors
         else:
-            value, error = self.analyze_job(self.structure, loader, path)
+            value, error = self.analyze_job(self.structure, loader, path, add_sigma=False)
         # end if
         return value, error
     # end def

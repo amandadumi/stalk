@@ -378,7 +378,7 @@ class ParallelLineSearch(PesSampler):
     # end def
 
     # can either load based on analyze_func or by providing values/errors
-    def load_results(self, loader=None, values=None, errors=None, **kwargs):
+    def load_results(self, loader=None, values=None, errors=None, add_sigma=False, **kwargs):
         if self.status.protected:
             return
         # end if
@@ -386,7 +386,7 @@ class ParallelLineSearch(PesSampler):
         if self.mode == 'pes':
             values_ls, errors_ls = [], []
             for ls in self.ls_list:
-                res = ls.evaluate_pes(pes_eval=self.pes)
+                res = ls.evaluate_pes(pes_eval=self.pes, add_sigma=add_sigma)
                 values_ls.append(res[1])
                 errors_ls.append(res[2])
             # end for
@@ -399,11 +399,15 @@ class ParallelLineSearch(PesSampler):
         loaded = True
         loader = loader if loader is not None else self.loader
         for ls, values, errors in zip(self.ls_list, values_ls, errors_ls):
+            if not isinstance(ls, LineSearch):
+                continue
+            # end if
             loaded_this = ls.load_results(
                 values=values,
                 errors=errors,
                 loader=loader,
                 path=self.path,
+                add_sigma=add_sigma,
                 **kwargs)
             loaded = loaded and loaded_this
         # end for
@@ -416,12 +420,16 @@ class ParallelLineSearch(PesSampler):
         self.cascade()
     # end def
 
-    def load_eqm_results(self, **kwargs):
+    def load_eqm_results(self, add_sigma=False, **kwargs):
         if self.status.protected:
             return
         # end if
         E, err = self.ls_list[0].load_eqm_results(
-            self.loader, path=self.path, **kwargs)
+            self.loader,
+            path=self.path,
+            add_sigma=add_sigma,
+            **kwargs
+        )
         self.structure.value = E
         self.structure.error = err
     # end def
