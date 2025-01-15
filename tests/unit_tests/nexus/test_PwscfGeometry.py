@@ -1,4 +1,4 @@
-from stalk.io.PwscfGeometry import PwscfGeometry
+from stalk.nexus.PwscfGeometry import PwscfGeometry
 from stalk.io.XyzGeometry import XyzGeometry
 from stalk.params import GeometryResult
 from stalk.util.util import match_to_tol

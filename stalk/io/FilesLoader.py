@@ -1,4 +1,4 @@
-from ..params.PesResult import PesResult
+from stalk.params.PesResult import PesResult
 
 
 class FilesLoader():

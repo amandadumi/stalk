@@ -3,7 +3,7 @@
 from numpy import array
 from pytest import raises
 from stalk.params import PesFunction
-from stalk.io import NexusGenerator
+from stalk.nexus import NexusGenerator
 from stalk.util import match_to_tol
 
 from ..assets.h2o import hessian_H2O, pes_H2O, get_structure_H2O, get_hessian_H2O, job_H2O_pes
@@ -14,7 +14,7 @@ __license__ = "BSD-3-Clause"
 
 
 def test_parallellinesearch_class():
-    from stalk import ParallelLineSearch, ParameterSet
+    from stalk import ParallelLineSearch
 
     # nexus mode
     pls = ParallelLineSearch(mode='nexus', pes=NexusGenerator(job_H2O_pes))
@@ -67,9 +67,15 @@ def test_parallellinesearch_class():
     '''.split(), dtype=float)
     assert match_to_tol(params0, params0_ref)
     assert match_to_tol(params1, params1_ref)
+
     # test PES
-    values0 = [pes_H2O(ParameterSet(params))[0] for params in params0]
-    values1 = [pes_H2O(ParameterSet(params))[0] for params in params1]
+    def eval_pes_H2O(params):
+        s_ref = get_structure_H2O()
+        s_ref.set_params(params)
+        return pes_H2O(s_ref)[0]
+    # end def
+    values0 = [eval_pes_H2O(params) for params in params0]
+    values1 = [eval_pes_H2O(params) for params in params1]
     values0_ref = array('''-0.35429145 -0.4647814  -0.49167476 -0.47112498 -0.42546898 -0.36820753
    -0.30724027 -0.24695829 -0.18959033'''.split(), dtype=float)
     values1_ref = array('''-0.3056267  -0.3616872  -0.40068042 -0.42214136 -0.42546898 -0.40989479

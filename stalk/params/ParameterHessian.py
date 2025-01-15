@@ -4,9 +4,7 @@
 
 from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
 
-from stalk.util import Ry, Hartree, Bohr, directorize, bipolyfit
-from stalk.io.PesLoader import PesLoader
-from stalk.io.NexusGenerator import NexusGenerator
+from stalk.util import Ry, Hartree, Bohr, bipolyfit
 from .ParameterSet import ParameterSet
 
 __author__ = "Juha Tiihonen"
@@ -23,8 +21,6 @@ class ParameterHessian():
     U = None
     P = None
     D = None
-    # flag whether hessian is set (True) or just initialized (False)
-    hessian_set = False
 
     def __init__(
         self,
@@ -61,7 +57,6 @@ class ParameterHessian():
         ), 'Provided ParameterStructure is incomplete or inconsistent'
         hessian = diag(len(structure.params) * [1.0])
         self._set_hessian(hessian)
-        self.hessian_set = False  # this is not an appropriate hessian
     # end def
 
     def init_hessian_real(self, hessian_real, structure=None):
@@ -105,7 +100,6 @@ class ParameterHessian():
         self.hessian = array(hessian)
         self.P, self.D = P, D
         self.Lambda, self.U = Lambda, U
-        self.hessian_set = True
     # end def
 
     def get_directions(self, d=None):
@@ -153,6 +147,11 @@ class ParameterHessian():
         return self._convert_hessian(self.hessian, **kwargs)
     # end def
 
+    @property
+    def hessian_set(self):
+        return self.hessian is not None
+    # end def
+
     def __str__(self):
         string = self.__class__.__name__
         if self.hessian_set:
@@ -175,53 +174,14 @@ class ParameterHessian():
         self,
         structure=None,
         dp=0.01,
-        mode=None,
-        path='fdiff',
         pes=None,
-        pes_func=None,
-        pes_args={},
-        loader=None,
-        load_func=None,
-        load_args={},
         **kwargs,
     ):
         eqm = structure if structure is not None else self.structure
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
         dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps)
-        if mode == 'pes':
-            Es = [pes.evaluate(s).get_value() for s in structure_list]
-        elif mode == 'nexus':
-            # Generate jobs
-            if not isinstance(pes, NexusGenerator):
-                # Checks are made in the wrapper class
-                pes = NexusGenerator(pes_func, pes_args)
-            # end if
-            jobs = []
-            for s, label in zip(structure_list, label_list):
-                dir = '{}{}'.format(directorize(path), label)
-                # Make a copy structure for job generation
-                jobs += pes.generate(s.copy(), dir)
-            # end for
-            from nexus import run_project
-            run_project(jobs)
-
-            # Load jobs
-            if not isinstance(loader, PesLoader):
-                # Try to instantiate PesLoader class in the hopes that load_func conforms
-                loader = PesLoader(load_args)
-                loader.__load__ = load_func
-            # end if
-            Es = []
-            for label in label_list:
-                dir = '{}{}'.format(directorize(path), label)
-                E = loader.load(path=dir).get_value()
-                Es.append(E)
-            # end for
-        else:
-            raise (AssertionError, 'Mode {} not supported'.format(mode))
-        # end if
-        Es = array(Es)
+        Es = self._evaluate_energies(pes, structure_list, label_list=label_list, **kwargs)
         params = eqm.params
         pdiffs = array(dp_list)
         if P == 1:  # for 1-dimensional problems
@@ -259,6 +219,10 @@ class ParameterHessian():
             # end for
         # end if
         self.init_hessian_array(hessian)
+    # end def
+
+    def _evaluate_energies(self, pes, structure_list, **kwargs):
+        return array([pes.evaluate(s).get_value() for s in structure_list])
     # end def
 
     def _get_fdiff_data(self, structure, dps):

@@ -11,7 +11,6 @@ from .GeometryResult import GeometryResult
 from .PesFunction import PesFunction
 from .ParameterSet import ParameterSet
 from .ParameterStructure import ParameterStructure
-from .ParameterStructureBase import ParameterStructureBase
 
 __all__ = [
     'bond_angle',
@@ -22,7 +21,6 @@ __all__ = [
     'ParameterSet',
     'ParameterStructure',
     'GeometryResult',
-    'ParameterStructureBase',
     'PesFunction',
     'ParameterHessian'
 ]

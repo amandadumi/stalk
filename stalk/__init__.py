@@ -15,6 +15,15 @@ from .params import ParameterSet, ParameterStructure, ParameterHessian
 from .lsi import LineSearchIteration
 from .ls import LineSearch, TargetLineSearch
 from .pls import ParallelLineSearch, TargetParallelLineSearch
+try:
+    from . import nexus
+    from .nexus import NexusStructure
+    from .nexus import NexusGenerator
+except ModuleNotFoundError:
+    # Nexus not found
+    pass
+# end try
+
 
 __all__ = [
     'util',
@@ -30,5 +39,8 @@ __all__ = [
     'LineSearch',
     'TargetLineSearch',
     'ParallelLineSearch',
-    'TargetParallelLineSearch'
+    'TargetParallelLineSearch',
+    'nexus',
+    'NexusGenerator',
+    'NexusStructure',
 ]

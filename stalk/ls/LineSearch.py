@@ -4,15 +4,14 @@ from matplotlib import pyplot as plt
 from stalk.io.PesLoader import PesLoader
 from stalk.util import directorize
 
-from stalk.io import FilesFunction, NexusGenerator
+from stalk.io import FilesFunction
+from stalk.nexus import NexusGenerator
 from stalk.params import ParameterSet, PesFunction
-from .LineSearchBase import LineSearchBase
+from stalk.ls.LineSearchBase import LineSearchBase
 
 
 # Class for PES line-search in structure context
 class LineSearch(LineSearchBase):
-    structure = None  # eqm structure
-    structure_list = None  # list of LineSearchStructure objects
     jobs_list = None  # boolean list for bookkeeping of jobs
     d = None  # direction count
     W = None
@@ -193,7 +192,7 @@ class LineSearch(LineSearchBase):
             if exclude_eqm and structure.label == 'eqm':
                 continue
             # end if
-            jobs += pes_gen.generate(structure, self._make_job_path(
+            jobs += pes_gen.generate(structure.get_nexus_structure(), self._make_job_path(
                 path, structure.label), sigma=self.sigma, eqm_jobs=eqm_jobs)
         # end for
         self.generated = True
@@ -213,7 +212,7 @@ class LineSearch(LineSearchBase):
         # end if
         sigma = sigma if sigma is not None else self.sigma
         path = self._make_job_path(path, self.structure.label)
-        return pes_gen.generate(self.structure, path, sigma=sigma)
+        return pes_gen.generate(self.structure.get_nexus_structure(), path, sigma=sigma)
     # end def
 
     def _make_job_path(self, path, label):

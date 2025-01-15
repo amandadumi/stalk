@@ -53,8 +53,13 @@ def test_targetparallellinesearch_class():
     assert match_to_tol(params0, params0_ref)
     assert match_to_tol(params1, params1_ref)
 
-    values0 = [pes_H2O(ParameterSet(p))[0] for p in params0]
-    values1 = [pes_H2O(ParameterSet(p))[0] for p in params1]
+    def eval_pes_H2O(params):
+        s_ref = get_structure_H2O()
+        s_ref.set_params(params)
+        return pes_H2O(s_ref)[0]
+    # end def
+    values0 = [eval_pes_H2O(params) for params in params0]
+    values1 = [eval_pes_H2O(params) for params in params1]
     values0_ref = [0.34626073187519557, -0.3652007349305562, -
                    0.49999956687591435, -0.4396197672411492, -0.33029670717647247]
     values1_ref = [-0.31777610098060916, -0.4523302132096337, -

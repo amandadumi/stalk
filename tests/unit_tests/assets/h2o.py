@@ -57,7 +57,9 @@ hessian_real_H2O = array('''
 
 
 def pes_H2O(structure, sigma=0.0):
-    r, a = tuple(structure.params)
+    pos = structure.pos
+    a = bond_angle(pos[1], pos[0], pos[2])
+    r = mean_distances([(pos[0], pos[1]), (pos[0], pos[1])])
     V = sigma * randn(1)[0]
     V += morse([0.95789707, 0.5, 0.5, 0.0], r)
     V += harmonic_a([104.119, 0.5], a)
@@ -66,8 +68,8 @@ def pes_H2O(structure, sigma=0.0):
 
 
 def get_structure_H2O():
-    from stalk import ParameterStructure
-    return ParameterStructure(forward=forward_H2O, backward=backward_H2O, pos=pos_H2O, elem=elem_H2O)
+    from stalk import NexusStructure
+    return NexusStructure(forward=forward_H2O, backward=backward_H2O, pos=pos_H2O, elem=elem_H2O)
 # end def
 
 

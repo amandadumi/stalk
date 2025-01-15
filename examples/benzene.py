@@ -12,12 +12,12 @@
 # Computing task: Suitable for institutional clusters
 
 # First, the user must set up Nexus according to their computing environment.
-from stalk.io.NexusGenerator import NexusGenerator
-from stalk.io.PwscfGeometry import PwscfGeometry
-from stalk.io.PwscfPes import PwscfPes
-from stalk.io.QmcPes import QmcPes
+from stalk.nexus.NexusGenerator import NexusGenerator
+from stalk.nexus.PwscfGeometry import PwscfGeometry
+from stalk.nexus.PwscfPes import PwscfPes
+from stalk.nexus.QmcPes import QmcPes
 from stalk.lsi import LineSearchIteration
-from stalk.params import ParameterHessian, ParameterStructure
+from stalk.nexus import NexusHessian, NexusStructure
 from stalk.pls import TargetParallelLineSearch
 from matplotlib import pyplot as plt
 from numpy import mean, array, sin, pi, cos
@@ -105,7 +105,7 @@ def backward(params, **kwargs):
 axes = array([20, 20, 10])
 params_init = array([2.651, 2.055])
 elem = 6 * ['C'] + 6 * ['H']
-structure_init = ParameterStructure(
+structure_init = NexusStructure(
     forward=forward,
     backward=backward,
     params=params_init,
@@ -156,7 +156,6 @@ def scf_relax_job(structure, path, **kwargs):
 # Let us run a macro that computes and returns the relaxed structure
 structure_relax = structure_init.copy()
 structure_relax.relax(
-    mode='nexus',
     pes=NexusGenerator(scf_relax_job),
     path=base_dir + 'relax/',
     loader=PwscfGeometry(),
@@ -213,10 +212,9 @@ loader = PwscfPes({'suffix': 'scf.in'})
 
 # Finally, use a macro to read the phonon data and convert to parameter
 # Hessian based on the structural mappings
-hessian = ParameterHessian(structure=structure_relax)
+hessian = NexusHessian(structure=structure_relax)
 hessian.compute_fdiff(
     path=base_dir + 'fdiff',
-    mode='nexus',
     pes=pes,
     loader=loader,
 )

@@ -14,6 +14,8 @@ __license__ = "BSD-3-Clause"
 # Class for line-search along direction in abstract context
 class LineSearchBase():
 
+    structure = None  # eqm structure
+    structure_list = None  # list of ParameterSet objects
     fraction = None
     fit_kind = None
     func = None

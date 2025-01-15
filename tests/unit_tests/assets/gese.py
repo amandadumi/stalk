@@ -1,12 +1,7 @@
 from numpy import array, mean, diag
 
-# test GeSe monolayer
-#                    a     b     x       z1       z2
-params_GeSe = array([4.26, 3.95, 0.4140, 0.55600, 0.56000])
-elem_GeSe = 'Ge Ge Se Se'.split()
 
-
-def forward_GeSe(pos, axes):
+def forward_GeSe(pos, axes, **kwargs):
     Ge1, Ge2, Se1, Se2 = tuple(pos)
     a = axes[0, 0]
     b = axes[1, 1]
@@ -17,7 +12,7 @@ def forward_GeSe(pos, axes):
 # end def
 
 
-def backward_GeSe(params):
+def backward_GeSe(params, **kwargs):
     a, b, x, z1, z2 = tuple(params)
     Ge1 = [x,       0.25, z1]
     Ge2 = [x + 0.5, 0.75, 1 - z1]
@@ -26,12 +21,22 @@ def backward_GeSe(params):
     axes = diag([a, b, 20.0])
     pos = array([Ge1, Ge2, Se1, Se2])
     return pos, axes
-
-
 # end def
+
+
+# test GeSe monolayer
+#                    a     b     x       z1       z2
+params_GeSe = array([4.26, 3.95, 0.4140, 0.55600, 0.56000])
+pos_GeSe = backward_GeSe(params_GeSe)
+elem_GeSe = 'Ge Ge Se Se'.split()
+axes_GeSe = array([[4.26],
+                   [3.95],
+                   [20.0]])
+
+
 # random guess for testing purposes
-hessian_GeSe = array([[1.0,  0.5,  40.0,  50.0,  60.0],
-                      [0.5,  2.5,  20.0,  30.0,  10.0],
-                      [40.0, 20.0, 70.0,  30.0,  10.0],
-                      [50.0, 30.0, 30.0, 130.0,  90.0],
-                      [60.0, 10.0, 10.0,  90.0, 210.0]])
+hessian_GeSe = array([[1.00, 0.50, 40.0, 50.00, 60.0],
+                      [0.50, 2.50, 20.0, 30.00, 10.0],
+                      [40.0, 20.0, 70.0, 30.00, 10.0],
+                      [50.0, 30.0, 30.0, 130.0, 90.0],
+                      [60.0, 10.0, 10.0, 90.00, 210.0]])

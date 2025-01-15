@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-from stalk.io import NexusGenerator
+from stalk.nexus import NexusGenerator
 from stalk.util import match_to_tol
 
 from ..assets.h2o import get_structure_H2O, get_hessian_H2O, get_surrogate_H2O, job_H2O_pes, H2oLoader

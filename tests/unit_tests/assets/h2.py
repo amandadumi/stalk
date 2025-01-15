@@ -23,6 +23,19 @@ def backward_H2(params, **kwargs):
 # end def
 
 
+def forward_H2_alt(pos, factor=2.0, **kwargs):
+    r = distance(pos[0], pos[1]) / factor
+    return [r]
+# end def
+
+
+def backward_H2_alt(params, factor=2.0, **kwargs):
+    H1 = params[0] * array([0.0, 0.0, 0.5 * factor])
+    H2 = params[0] * array([0.0, 0.0, -0.5 * factor])
+    return array([H1, H2])
+# end def
+
+
 hessian_H2 = array([[1.0]])
 
 

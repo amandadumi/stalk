@@ -3,7 +3,8 @@
 '''
 
 from stalk.params import PesFunction
-from stalk.io import FilesFunction, FilesLoader, NexusGenerator, PesLoader
+from stalk.io import FilesFunction, FilesLoader, PesLoader
+from stalk.nexus import NexusGenerator
 from .CascadeStatus import CascadeStatus
 
 __author__ = "Juha Tiihonen"
