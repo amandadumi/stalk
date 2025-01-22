@@ -14,10 +14,10 @@ def forward_GeSe(pos, axes, **kwargs):
 
 def backward_GeSe(params, **kwargs):
     a, b, x, z1, z2 = tuple(params)
-    Ge1 = [x,       0.25, z1]
+    Ge1 = [x, 0.25, z1]
     Ge2 = [x + 0.5, 0.75, 1 - z1]
-    Se1 = [0.5,     0.25, 1 - z2]
-    Se2 = [0.0,     0.75, z2]
+    Se1 = [0.5, 0.25, 1 - z2]
+    Se2 = [0.0, 0.75, z2]
     axes = diag([a, b, 20.0])
     pos = array([Ge1, Ge2, Se1, Se2])
     return pos, axes
@@ -27,11 +27,11 @@ def backward_GeSe(params, **kwargs):
 # test GeSe monolayer
 #                    a     b     x       z1       z2
 params_GeSe = array([4.26, 3.95, 0.4140, 0.55600, 0.56000])
-pos_GeSe = backward_GeSe(params_GeSe)
+axes_GeSe_in = array([[4.26],
+                      [3.95],
+                      [20.0]])
+pos_GeSe, axes_GeSe = backward_GeSe(params_GeSe)
 elem_GeSe = 'Ge Ge Se Se'.split()
-axes_GeSe = array([[4.26],
-                   [3.95],
-                   [20.0]])
 
 
 # random guess for testing purposes

@@ -40,7 +40,7 @@ class NexusHessian(ParameterHessian):
         for s, label in zip(structure_list, label_list):
             dir = '{}{}'.format(directorize(path), label)
             # Make a copy structure for job generation
-            jobs += pes.generate(s.copy(), dir)
+            jobs += pes.generate(s.get_nexus_structure(), dir)
         # end for
         from nexus import run_project
         run_project(jobs)

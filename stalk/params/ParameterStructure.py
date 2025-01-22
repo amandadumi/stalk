@@ -171,7 +171,7 @@ class ParameterStructure(ParameterSet):
         # end if
         if self.periodic:
             axes = axes if axes is not None else self.axes
-            return array(self.forward_func(array(pos), axes), **self.forward_args)
+            return array(self.forward_func(array(pos), axes, **self.forward_args))
         else:
             return array(self.forward_func(array(pos), **self.forward_args))
         # end if
@@ -242,15 +242,6 @@ class ParameterStructure(ParameterSet):
         pos, axes = self.map_backward(params)
         params_new = self.map_forward(pos, axes)
         return match_to_tol(params, params_new, tol)
-    # end def
-
-    def _shift_pos(self, dpos):
-        if isscalar(dpos):
-            return self.pos + dpos
-        # end if
-        dpos = array(dpos)
-        assert self.pos.size == dpos.size
-        return (self.pos.flatten() + dpos.flatten()).reshape(-1, self.dim)
     # end def
 
     def shift_pos(self, dpos):

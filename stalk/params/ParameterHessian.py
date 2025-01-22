@@ -181,7 +181,7 @@ class ParameterHessian():
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
         dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps)
-        Es = self._evaluate_energies(pes, structure_list, label_list=label_list, **kwargs)
+        Es = self._evaluate_energies(pes=pes, structure_list=structure_list, label_list=label_list, **kwargs)
         params = eqm.params
         pdiffs = array(dp_list)
         if P == 1:  # for 1-dimensional problems

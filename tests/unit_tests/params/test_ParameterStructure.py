@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from numpy import array
 from pytest import raises
+from stalk.params.util import distance
 from stalk.util import match_to_tol
 from stalk.params import ParameterStructure
 
@@ -108,6 +108,40 @@ def test_ParameterStructure_open():
     match_to_tol(s_H2.pos, pos_H2, tol)
     assert s_H2.consistent
 
+    # test shifting of position and pos difference
+    shift_scalar = 0.2
+    shift_array = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    shift_array_bad = [0.1, 0.2]
+    # If pos is not set
+    with raises(AssertionError):
+        s_H2_shift = s_H2.copy()
+        s_H2_shift.pos = None
+        s_H2_shift.shift_pos(shift_scalar)
+    # end with
+    s_H2_shift = s_H2.copy()
+    s_H2_shift.shift_pos(shift_scalar)
+    match_to_tol(s_H2_shift.pos_difference(pos_H2), 6 * [shift_scalar], tol)
+    # maintain parameter consistency
+    match_to_tol(s_H2_shift.params, [1.4], tol)
+    s_H2_shift = s_H2.copy()
+    s_H2_shift.shift_pos(shift_array)
+    match_to_tol(s_H2_shift.pos_difference(pos_H2), shift_array, tol)
+    # maintain parameter consistency
+    new_param = [distance(s_H2_shift.pos[0], s_H2_shift.pos[1])]
+    match_to_tol(s_H2_shift.params, new_param, tol)
+    with raises(AssertionError):
+        s_H2_shift.shift_pos(shift_array_bad)
+    # end with
+
+    # testing shifting of parameters
+    pshift = 2.0
+    s_H2_pshift = s_H2.copy()
+    s_H2_pshift.shift_params([pshift])
+    match_to_tol(s_H2_pshift.params, [1.4 + pshift], tol)
+    new_pos = s_H2.pos.copy()
+    new_pos[0, 2] += pshift / 2
+    new_pos[0, 2] -= pshift / 2
+    match_to_tol(s_H2_pshift.pos, new_pos, tol)
 
 # end def
 
@@ -127,12 +161,31 @@ def test_ParameterStructure_periodic():
         forward_args=fwd_args,
         backward_args=bck_args,
         params=params_GeSe,
+        elem=elem_GeSe,
         value=value,
         error=error,
         label=label,
         tol=tol,
         unit=unit
     )
+    assert s_GeSe.forward_func == forward_GeSe
+    assert s_GeSe.forward_args == fwd_args
+    assert s_GeSe.backward_func == backward_GeSe
+    assert s_GeSe.backward_args == bck_args
+    match_to_tol(s_GeSe.pos, pos_GeSe, tol)
+    match_to_tol(s_GeSe.axes, axes_GeSe, tol)
+    for el, el_ref in zip(s_GeSe.elem, elem_GeSe):
+        assert el == el_ref
+    # end for
+    assert s_GeSe.dim == 3
+    match_to_tol(s_GeSe.params, params_GeSe, tol)
+    match_to_tol(s_GeSe.params_err, 5 * [0.0], tol)
+    assert s_GeSe.value == value
+    assert s_GeSe.error == error
+    assert s_GeSe.label == label
+    assert s_GeSe.unit == unit
+    assert s_GeSe.consistent
     assert s_GeSe.periodic
+    assert s_GeSe.tol == tol
 
 # end def
