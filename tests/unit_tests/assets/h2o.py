@@ -5,6 +5,8 @@ from numpy import array, sin, cos, pi
 from numpy.random import randn
 
 from stalk.io.PesLoader import PesLoader
+from stalk import ParameterHessian
+from stalk import ParameterStructure
 from stalk.params import PesFunction
 from stalk.params.PesResult import PesResult
 from .helper import harmonic_a, morse, mean_distances, bond_angle
@@ -68,13 +70,11 @@ def pes_H2O(structure, sigma=0.0):
 
 
 def get_structure_H2O():
-    from stalk import NexusStructure
-    return NexusStructure(forward=forward_H2O, backward=backward_H2O, pos=pos_H2O, elem=elem_H2O)
+    return ParameterStructure(forward=forward_H2O, backward=backward_H2O, pos=pos_H2O, elem=elem_H2O)
 # end def
 
 
 def get_hessian_H2O():
-    from stalk import ParameterHessian
     return ParameterHessian(hessian=hessian_H2O)
 # end def
 

@@ -3,10 +3,9 @@
 from numpy import array
 from pytest import raises
 from stalk.params import PesFunction
-from stalk.nexus import NexusGenerator
 from stalk.util import match_to_tol
 
-from ..assets.h2o import hessian_H2O, pes_H2O, get_structure_H2O, get_hessian_H2O, job_H2O_pes
+from ..assets.h2o import hessian_H2O, pes_H2O, get_structure_H2O, get_hessian_H2O
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -16,8 +15,7 @@ __license__ = "BSD-3-Clause"
 def test_parallellinesearch_class():
     from stalk import ParallelLineSearch
 
-    # nexus mode
-    pls = ParallelLineSearch(mode='nexus', pes=NexusGenerator(job_H2O_pes))
+    pls = ParallelLineSearch(mode='pes', pes_func=pes_H2O)
     assert pls.get_status() == '000000'
     s = get_structure_H2O()
     s.shift_params([0.2, 0.2])
@@ -83,9 +81,6 @@ def test_parallellinesearch_class():
     assert match_to_tol(values0, values0_ref)
     assert match_to_tol(values1, values1_ref)
 
-    pls.status.generated = True
-    with raises(AssertionError):
-        pls.load_results()  # loading with empty data does not work
     # manually enter values
     pls.load_results(values=[values0, values1])
     assert pls.get_status() == '111110'

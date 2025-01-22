@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-
-from stalk.nexus import NexusGenerator
 from stalk.util import match_to_tol
 
-from ..assets.h2o import get_structure_H2O, get_hessian_H2O, get_surrogate_H2O, job_H2O_pes, H2oLoader
+from ..assets.h2o import get_structure_H2O, get_hessian_H2O, get_surrogate_H2O, pes_H2O
 from ..assets.helper import Gs_N200_M7
 
 __author__ = "Juha Tiihonen"
@@ -29,24 +27,18 @@ def test_linesearchiteration_class():
         path=test_dir,
         hessian=h,
         structure=s,
-        mode='nexus',
-        pes=NexusGenerator(job_H2O_pes),
+        mode='pes',
+        pes_func=pes_H2O,
         windows=[0.05, 1.0],
         load=False)
-    job_data = lsi.generate_jobs()
-    lsi.load_results(loader=H2oLoader({'job_data': job_data}))
     lsi.propagate(write=True)
     assert match_to_tol(
         lsi.pls_list[-1].structure.params, [0.89725537, 104.12804938])
     # second iteration
-    job_data = lsi.generate_jobs()
-    lsi.load_results(loader=H2oLoader({'job_data': job_data}))
     lsi.propagate(write=True)
     assert match_to_tol(
         lsi.pls_list[-1].structure.params, [0.93244294, 104.1720672])
     # third iteration
-    job_data = lsi.generate_jobs()
-    lsi.load_results(loader=H2oLoader({'job_data': job_data}))
     lsi.propagate(write=False)
     assert match_to_tol(
         lsi.pls_list[-1].structure.params, [0.93703957, 104.20617541])
@@ -55,7 +47,7 @@ def test_linesearchiteration_class():
     assert len(lsi.pls_list) == 2
     lsi.propagate(write=False)
     lsi.generate_jobs()
-    lsi.load_results(loader=H2oLoader({'job_data': job_data}))
+    # lsi.load_results(loader=H2oLoader({'job_data': job_data}))
     lsi.propagate(write=False)
     assert match_to_tol(
         lsi.pls_list[-1].structure.params, [0.93703957, 104.20617541])
@@ -70,10 +62,8 @@ def test_linesearchiteration_class():
     lsi = LineSearchIteration(
         path=test_dir,
         surrogate=srg,
-        pes=NexusGenerator(job_H2O_pes),
-        mode='nexus')
-    job_data = lsi.generate_jobs()
-    lsi.load_results(loader=H2oLoader({'job_data': job_data}))
+        pes_func=pes_H2O,
+        mode='pes')
     lsi.propagate(write=True)
     grid0_ref = [-0.432306, -0.216153, 0., 0.216153, 0.432306]
     grid1_ref = [-0.482330, -0.241165, 0., 0.241165, 0.482330]
