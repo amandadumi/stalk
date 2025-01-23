@@ -2,10 +2,12 @@ from numpy import loadtxt, array
 from pytest import raises
 from stalk.io.XyzGeometry import XyzGeometry
 from stalk.params import GeometryResult
+from stalk.params.ParameterStructure import ParameterStructure
 from stalk.util.util import match_to_tol
+from ..assets.h2o import pos_H2O, elem_H2O
 
 
-def test_XyzGeometry():
+def test_XyzGeometry_load():
 
     # default args: (suffix: relax.xyz)
     loader = XyzGeometry()
@@ -40,4 +42,26 @@ def test_XyzGeometry():
     # end for
     assert res.get_axes() is None
     assert res_dbl.get_axes() is None
+# end def
+
+
+def test_XyzGeometry_write(tmp_path):
+    # default args: (suffix: relax.xyz)
+    writer = XyzGeometry()
+    s = ParameterStructure(
+        pos=pos_H2O,
+        elem=elem_H2O
+    )
+    writer.write(s, tmp_path)
+
+    # To test out, load the file and compare
+    loader = XyzGeometry({'suffix': 'structure.xyz'})
+    res = loader.load(tmp_path)
+    for el_ref, el in zip(elem_H2O, res.get_elem()):
+        assert el_ref == el
+    # end for
+    for pos_ref, pos in zip(pos_H2O, res.get_pos()):
+        match_to_tol(pos_ref, pos)
+    # end for
+
 # end def
