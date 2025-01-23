@@ -7,6 +7,7 @@ from numpy.random import randn
 from stalk.io.PesLoader import PesLoader
 from stalk import ParameterHessian
 from stalk import ParameterStructure
+from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params import PesFunction
 from stalk.params.PesResult import PesResult
 from .helper import harmonic_a, morse, mean_distances, bond_angle
@@ -59,7 +60,12 @@ hessian_real_H2O = array('''
 
 
 def pes_H2O(structure, sigma=0.0):
-    pos = structure.pos
+    if isinstance(structure, (ParameterStructure, NexusStructure)):
+        pos = structure.pos
+    else:
+        # In testing, pos may be passed directly
+        pos = structure
+    # end if
     a = bond_angle(pos[1], pos[0], pos[2])
     r = mean_distances([(pos[0], pos[1]), (pos[0], pos[1])])
     V = sigma * randn(1)[0]

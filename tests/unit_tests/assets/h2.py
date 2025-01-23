@@ -1,4 +1,6 @@
 from numpy import array
+from stalk import ParameterStructure
+from stalk import ParameterHessian
 
 from .helper import distance, morse
 
@@ -56,12 +58,10 @@ def alt_pes_H2(params):  # inaccurate; for testing
 
 
 def get_structure_H2():
-    from stalk import ParameterStructure
     return ParameterStructure(forward=forward_H2, backward=backward_H2, pos=pos_H2, elem=elem_H2)
 # end def
 
 
 def get_hessian_H2():
-    from stalk import ParameterHessian
     return ParameterHessian(hessian=hessian_H2)
 # end def
