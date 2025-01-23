@@ -31,7 +31,7 @@ def test_ParameterStructure_open():
     assert s_empty.value is None
     assert s_empty.error == 0.0
     assert s_empty.label is None
-    assert s_empty.unit is None
+    assert s_empty.units == 'B'
     assert not s_empty.consistent
     assert not s_empty.periodic
     assert s_empty.tol == 1e-7
@@ -43,7 +43,7 @@ def test_ParameterStructure_open():
     fwd_args = {'fwd': 1}
     bck_args = {'bck': 2}
     label = 'H2'
-    unit = 'unit'
+    units = 'units'
     s_H2 = ParameterStructure(
         forward=forward_H2,
         backward=backward_H2,
@@ -55,7 +55,7 @@ def test_ParameterStructure_open():
         error=error,
         label=label,
         tol=tol,
-        unit=unit
+        units=units
     )
     assert s_H2.forward_func == forward_H2
     assert s_H2.forward_args == fwd_args
@@ -72,7 +72,7 @@ def test_ParameterStructure_open():
     assert s_H2.value == value
     assert s_H2.error == error
     assert s_H2.label == label
-    assert s_H2.unit == unit
+    assert s_H2.units == units
     assert s_H2.consistent
     assert not s_H2.periodic
     assert s_H2.tol == tol
@@ -154,7 +154,7 @@ def test_ParameterStructure_periodic():
     fwd_args = {'fwd': 1}
     bck_args = {'bck': 2}
     label = 'GeSe'
-    unit = 'unit'
+    units = 'units'
     s_GeSe = ParameterStructure(
         forward=forward_GeSe,
         backward=backward_GeSe,
@@ -166,7 +166,7 @@ def test_ParameterStructure_periodic():
         error=error,
         label=label,
         tol=tol,
-        unit=unit
+        units=units
     )
     assert s_GeSe.forward_func == forward_GeSe
     assert s_GeSe.forward_args == fwd_args
@@ -183,7 +183,7 @@ def test_ParameterStructure_periodic():
     assert s_GeSe.value == value
     assert s_GeSe.error == error
     assert s_GeSe.label == label
-    assert s_GeSe.unit == unit
+    assert s_GeSe.units == units
     assert s_GeSe.consistent
     assert s_GeSe.periodic
     assert s_GeSe.tol == tol

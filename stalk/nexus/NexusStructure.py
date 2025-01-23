@@ -1,4 +1,5 @@
 
+from stalk.util import EffectiveVariance
 from structure import Structure
 from nexus import run_project
 
@@ -13,6 +14,7 @@ class NexusStructure(ParameterStructure):
 
     def relax(
         self,
+        pes=None,
         pes_func=None,
         pes_args={},
         path='relax',
@@ -20,10 +22,12 @@ class NexusStructure(ParameterStructure):
         loader_args={},
         **kwargs,
     ):
-        # Generate jobs
-        relax = NexusGenerator(pes_func, pes_args)
+        if not isinstance(pes, NexusGenerator):
+            # Generate jobs
+            pes = NexusGenerator(pes_func, pes_args)
+        # end if
         # Make a copy structure for job generation
-        relax_jobs = relax.generate(self.get_nexus_structure(), directorize(path))
+        relax_jobs = pes.generate(self.get_nexus_structure(), directorize(path))
         # Run project
         run_project(relax_jobs)
 
@@ -39,13 +43,12 @@ class NexusStructure(ParameterStructure):
         self,
         kshift=(0, 0, 0),
         kgrid=(1, 1, 1),
-        units='A',
         **kwargs
     ):
         kwargs.update({
             'elem': self.elem,
             'pos': self.pos,
-            'units': units,
+            'units': self.units,
         })
         if self.axes is not None:
             kwargs.update({
@@ -55,6 +58,27 @@ class NexusStructure(ParameterStructure):
             })
         # end if
         return Structure(**kwargs)
+    # end def
+
+    def get_var_eff(
+        self,
+        pes=None,
+        pes_func=None,
+        pes_args={},
+        loader=None,
+        loader_args={},
+        samples=10,
+        path='path'
+    ):
+        if not isinstance(pes, NexusGenerator):
+            pes = NexusGenerator(pes_func, pes_args)
+        # end if
+        jobs = pes.generate(self.get_nexus_structure(), path, sigma=None, samples=samples)
+        run_project(jobs)
+
+        Err = loader.load(path, **loader_args).get_error()
+        var_eff = EffectiveVariance(samples, Err)
+        return var_eff
     # end def
 
 # end class

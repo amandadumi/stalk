@@ -16,7 +16,7 @@ class ParameterStructure(ParameterSet):
     axes = None  # cell axes
     dim = None  # dimensionality
     elem = None  # list of elements
-    unit = None  # position units
+    units = None  # position units
     tol = None  # consistency tolerance
 
     def __init__(
@@ -33,7 +33,7 @@ class ParameterStructure(ParameterSet):
         value=None,
         error=None,
         label=None,
-        unit=None,
+        units='B',
         dim=3,
         translate=True,  # attempt to translate pos
         tol=1e-7,
@@ -42,7 +42,7 @@ class ParameterStructure(ParameterSet):
         self.dim = dim
         self.label = label
         self.tol = tol
-        self.unit = unit
+        self.units = units
         self.set_forward_func(forward, forward_args)
         self.set_backward_func(backward, backward_args)
         if params is not None:

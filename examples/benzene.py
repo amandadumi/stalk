@@ -20,11 +20,11 @@ from stalk.lsi import LineSearchIteration
 from stalk.nexus import NexusHessian, NexusStructure
 from stalk.pls import TargetParallelLineSearch
 from matplotlib import pyplot as plt
-from numpy import mean, array, sin, pi, cos
+from numpy import diag, mean, array, sin, pi, cos
 from nexus import generate_pwscf, generate_qmcpack, job
 from nexus import generate_pw2qmcpack, generate_physical_system
 from nxs import scfjob, p2qjob, optjob, dmcjob
-from stalk.util.util import get_var_eff
+from stalk.util import EffectiveVariance
 
 # Pseudos (execute download_pseudos.sh in the working directory)
 base_dir = 'benzene/'
@@ -102,7 +102,7 @@ def backward(params, **kwargs):
 
 
 # Let us initiate a ParameterStructure object that conforms to the above mappings
-axes = array([20, 20, 10])
+axes = array([20., 20., 10.])
 params_init = array([2.651, 2.055])
 elem = 6 * ['C'] + 6 * ['H']
 structure_init = NexusStructure(
@@ -116,7 +116,7 @@ structure_init = NexusStructure(
 
 # return a 1-item list of Nexus jobs: SCF relaxation
 def scf_relax_job(structure, path, **kwargs):
-    structure.set_axes(axes, check=False)  # simulate in vacuum
+    structure.set_axes(diag(axes))  # periodic box required for PW calculation
     system = generate_physical_system(
         structure=structure,
         C=4,
@@ -176,7 +176,7 @@ structure_relax.relax(
 
 
 def scf_pes_job(structure, path, **kwargs):
-    structure.set_axes(axes, check=False)  # simulate in vacuum
+    structure.set_axes(diag(axes))  # periodic box required for PW calculation
     system = generate_physical_system(
         structure=structure,
         C=4,
@@ -297,13 +297,13 @@ if __name__ == '__main__':
 
 def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs):
     # Estimate the relative number of samples needed
-    if var_eff is None:
-        dmcsteps = samples
-    else:
+    if isinstance(var_eff, EffectiveVariance):
         dmcsteps = var_eff.get_samples(sigma)
+    else:
+        dmcsteps = samples
     # end if
 
-    structure.set_axes(axes, check=False)
+    structure.set_axes(diag(axes))
     # Center the structure for QMCPACK
     structure.pos += axes / 2
     system = generate_physical_system(
@@ -394,11 +394,11 @@ def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs)
 qmcloader = QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
 
 # Run a macro that runs a DMC test job and returns effective variance w.r.t the number of steps/block
-var_eff = get_var_eff(
-    structure_relax,
+var_eff = structure_relax.get_var_eff(
     pes=NexusGenerator(dmc_pes_job),
     loader=qmcloader,
-    path=base_dir + 'dmc_var_eff'
+    path=base_dir + 'dmc_var_eff',
+    samples=10
 )
 
 # Finally, use a macro to generate a parallel line-seach iteration object based on the DMC PES

@@ -7,7 +7,7 @@ __license__ = "BSD-3-Clause"
 from .util import Bohr, Ry, Hartree
 from .util import get_min_params, get_fraction_error, match_to_tol
 from .util import bipolynomials, bipolyfit, bipolyval
-from .util import directorize, get_var_eff
+from .util import directorize
 from .EffectiveVariance import EffectiveVariance
 
 __all__ = [
@@ -17,7 +17,6 @@ __all__ = [
     'get_min_params',
     'get_fraction_error',
     'match_to_tol',
-    'get_var_eff',
     'bipolyfit',
     'bipolynomials',
     'bipolyval',

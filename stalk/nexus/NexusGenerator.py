@@ -8,6 +8,9 @@ class NexusGenerator():
 
     def __init__(self, func, args={}):
         '''A Nexus PES function is constructed from the job-generating function and arguments.'''
+        if not callable(func):
+            raise TypeError("The PES function must be callable.")
+        # end if
         self.func = func
         self.args = args
     # end def
