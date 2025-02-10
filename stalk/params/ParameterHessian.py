@@ -4,6 +4,7 @@
 
 from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
 
+from stalk.params.PesFunction import PesFunction
 from stalk.util import Ry, Hartree, Bohr, bipolyfit
 from .ParameterSet import ParameterSet
 
@@ -175,17 +176,29 @@ class ParameterHessian():
         structure=None,
         dp=0.01,
         pes=None,
+        dpos_mode=False,
         **kwargs,
     ):
         eqm = structure if structure is not None else self.structure
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
-        dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps)
-        Es = self._evaluate_energies(pes=pes, structure_list=structure_list, label_list=label_list, **kwargs)
+        dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
+        self._evaluate_energies(pes=pes, structure_list=structure_list, label_list=label_list, **kwargs)
+        # Pick those displacements and energies that were successfully computed
+        energies = []
+        pdiffs = []
+        for dp, s in zip(dp_list, structure_list):
+            if s.value is not None:
+                pdiffs.append(dp)
+                energies.append(s.value)
+            # end if
+        # end for
+        pdiffs = array(pdiffs)
+        energies = array(energies)
+
         params = eqm.params
-        pdiffs = array(dp_list)
         if P == 1:  # for 1-dimensional problems
-            pf = polyfit(pdiffs[:, 0], Es, 2)
+            pf = polyfit(pdiffs[:, 0], energies, 2)
             hessian = array([[pf[0]]])
         else:
             hessian = zeros((P, P))
@@ -204,7 +217,7 @@ class ParameterHessian():
                         ids = ids & (abs(pdiffs[:, p]) < 1e-10)
                     # end for
                     XY = pdiffs[where(ids)]
-                    E = array(Es)[where(ids)]
+                    E = energies[where(ids)]
                     X = XY[:, p0]
                     Y = XY[:, p1]
                     pf = bipolyfit(X, Y, E, 2, 2)
@@ -222,10 +235,17 @@ class ParameterHessian():
     # end def
 
     def _evaluate_energies(self, pes, structure_list, **kwargs):
-        return array([pes.evaluate(s).get_value() for s in structure_list])
+        assert isinstance(pes, PesFunction), 'The PES must be inherited from PesFunction class'
+        for s in structure_list:
+            if isinstance(s, ParameterSet):
+                # Set value, error
+                s.set_value(*pes.evaluate(s))
+            # end if
+        # end for
     # end def
 
-    def _get_fdiff_data(self, structure, dps):
+    def _get_fdiff_data(self, structure, dps, dpos_mode=False):
+        assert isinstance(structure, ParameterSet)
         dp_list = [0.0 * dps]
         structure_list = [structure.copy()]
         label_list = ['eqm']
@@ -242,11 +262,12 @@ class ParameterHessian():
                 label += '{}'.format(dp)
             # end for
             structure_new = structure.copy()
-            structure_new.shift_params(dparams)
+            structure_new.shift_params(dparams, dpos_mode=dpos_mode)
             structure_list.append(structure_new)
             dp_list.append(dparams)
             label_list.append(label)
         # end def
+
         for p0, dp0 in enumerate(dps):
             shift_params([p0], [+dp0])
             shift_params([p0], [-dp0])

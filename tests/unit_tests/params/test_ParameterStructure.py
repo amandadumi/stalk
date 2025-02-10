@@ -133,7 +133,7 @@ def test_ParameterStructure_open():
         s_H2_shift.shift_pos(shift_array_bad)
     # end with
 
-    # testing shifting of parameters
+    # test shifting of parameters
     pshift = 2.0
     s_H2_pshift = s_H2.copy()
     s_H2_pshift.shift_params([pshift])
@@ -142,6 +142,19 @@ def test_ParameterStructure_open():
     new_pos[0, 2] += pshift / 2
     new_pos[0, 2] -= pshift / 2
     match_to_tol(s_H2_pshift.pos, new_pos, tol)
+
+    # test shifting in dpos mode
+    s_H2_dpos = s_H2.copy()
+    dpos = 1.23
+    pshift = 2.0
+    s_H2_dpos.pos += 1.23
+    s_H2_dpos.shift_params([pshift], dpos_mode=True)
+    match_to_tol(s_H2_pshift.params, [1.4 + pshift], tol)
+    new_pos = s_H2.pos.copy() + dpos
+    new_pos[0, 2] += pshift / 2
+    new_pos[0, 2] -= pshift / 2
+    match_to_tol(s_H2_pshift.pos, new_pos, tol)
+
 
 # end def
 

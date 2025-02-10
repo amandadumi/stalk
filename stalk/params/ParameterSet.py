@@ -59,7 +59,7 @@ class ParameterSet():
                 parameter = param
             elif isscalar(param):
                 lab = label if label is not None else 'p{}'.format(p)
-                parameter = Parameter(param, param_err, unit=unit, label=lab)    
+                parameter = Parameter(param, param_err, unit=unit, label=lab)
             else:
                 raise ValueError('Parameter is unsupported type: ' + str(param))
             # end if

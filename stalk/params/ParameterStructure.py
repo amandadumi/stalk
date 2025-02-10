@@ -144,11 +144,17 @@ class ParameterStructure(ParameterSet):
         self.elem = array(elem)
     # end def
 
-    def set_params(self, params, params_err=None):
+    def set_params(self, params, params_err=None, dpos_mode=False):
+        params_old = self.params
         ParameterSet.set_params(self, params, params_err)
         # After params have been set, attempt to update pos+axes
         if self.backward_func is not None:
-            self.pos, self.axes = self.map_backward()
+            pos_new, self.axes = self.map_backward()
+            if dpos_mode:
+                self.pos += pos_new - self.map_backward(params_old)[0]
+            else:
+                self.pos = pos_new
+            # end if
         # end if
     # end def
 
@@ -256,9 +262,9 @@ class ParameterStructure(ParameterSet):
         self.set_position(new_pos)
     # end def
 
-    def shift_params(self, dparams):
+    def shift_params(self, dparams, dpos_mode=False):
         ParameterSet.shift_params(self, dparams)
-        self.set_params(self.params)
+        self.set_params(self.params, dpos_mode=dpos_mode)
     # end def
 
     def copy(
