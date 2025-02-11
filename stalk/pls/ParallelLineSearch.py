@@ -22,7 +22,7 @@ class ParallelLineSearch(PesSampler):
 
     skip_init = False
     ls_type = LineSearch
-    ls_list = []  # list of line-search objects
+    ls_list: list[LineSearch] = []  # list of line-search objects
     hessian = None  # hessian object
     Lambdas = None
     directions = None
@@ -386,9 +386,9 @@ class ParallelLineSearch(PesSampler):
         if self.mode == 'pes':
             values_ls, errors_ls = [], []
             for ls in self.ls_list:
-                res = ls.evaluate_pes(pes_eval=self.pes, add_sigma=add_sigma)
-                values_ls.append(res[1])
-                errors_ls.append(res[2])
+                ls.evaluate_pes(pes_eval=self.pes, add_sigma=add_sigma)
+                values_ls.append(ls.valid_values)
+                errors_ls.append(ls.valid_errors)
             # end for
         else:
             # Unless a list/array of per-direction values/errors is provided, init to None
@@ -402,11 +402,10 @@ class ParallelLineSearch(PesSampler):
             if not isinstance(ls, LineSearch):
                 continue
             # end if
-            loaded_this = ls.load_results(
+            loaded_this = ls.set_results(
+                ls.grid,
                 values=values,
                 errors=errors,
-                loader=loader,
-                path=self.path,
                 add_sigma=add_sigma,
                 **kwargs)
             loaded = loaded and loaded_this
@@ -437,12 +436,8 @@ class ParallelLineSearch(PesSampler):
     def find_eqm_value(self):
         E, err = None, None
         for ls in filter(lambda x: not isinstance(x, LineSearchDummy), self.ls_list):
-            for s in ls.structure_list:
-                if sum((self.structure.params - s.params)**2) < 1e-10:
-                    E, err = s.value, s.error
-                    break
-                # end if
-            # end for
+            eqm = ls.find_point(0.0)
+            E, err = eqm.value, eqm.error
         # end for
         self.structure.value = E
         self.structure.error = err
@@ -457,13 +452,8 @@ class ParallelLineSearch(PesSampler):
         self.cascade()
     # end def
 
-    def ls(self, i):
+    def ls(self, i) -> LineSearch:
         return self.ls_list[i]
-    # end def
-
-    def check_integrity(self):
-        # TODO
-        return True
     # end def
 
     def get_next_params(self):
@@ -553,12 +543,6 @@ class ParallelLineSearch(PesSampler):
         with open(self.path + fname, mode='wb') as f:
             f.write(dumps(self, byref=True))
         # end with
-    # end def
-
-    def plot_error_surfaces(self, **kwargs):
-        for ls in self.ls_list:
-            ls.plot_error_surface(**kwargs)
-        # end for
     # end def
 
     def __str__(self):

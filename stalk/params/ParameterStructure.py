@@ -113,7 +113,7 @@ class ParameterStructure(ParameterSet):
         # end if
 
         # setting pos will unset value
-        self.unset_value()
+        self.reset_value()
 
         # If set up to translate, take another move backward.
         if translate and self.backward_func is not None:
@@ -136,7 +136,7 @@ class ParameterStructure(ParameterSet):
         if check:
             # If forward_func has been given, update params; if not, return None
             self.set_params(self.map_forward(self.pos, self.axes))
-            self.unset_value()  # setting axes will unset value
+            self.reset_value()  # setting axes will reset value
         # end if
     # end def
 
@@ -162,11 +162,6 @@ class ParameterStructure(ParameterSet):
         assert self.num_params > 0 or self.pos is not None, 'Cannot assign value to abstract structure, set params or pos first'
         self.value = value
         self.error = error
-    # end def
-
-    def unset_value(self):
-        self.value = None
-        self.error = None
     # end def
 
     # Perform forward mapping: if mapping function provided, return new params; else, return None
@@ -274,9 +269,13 @@ class ParameterStructure(ParameterSet):
         label=None,
         pos=None,
         axes=None,
+        offset=None,
         **kwargs,
     ):
         structure = deepcopy(self)
+        if offset is not None:
+            structure.offset = offset
+        # end if
         if params is not None:
             structure.set_params(params, params_err)
         # end if

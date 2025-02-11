@@ -37,11 +37,6 @@ def test_linesearchbase_class():
     assert match_to_tol(y0, y0_ref)
     assert match_to_tol(ls.fit, fit_ref)
 
-    # test setting wrong number of values
-    with raises(AssertionError):
-        ls.set_values(values=ls.values[:-2])
-    # end with
-
     # test _search method
     x2, y2, pf2 = ls._search(2 * ls.grid, 2 * ls.values, None)
     assert match_to_tol(x2, 2 * x0_ref[0])

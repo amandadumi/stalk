@@ -16,7 +16,7 @@ __license__ = "BSD-3-Clause"
 
 
 def test_targetparallellinesearch_class():
-    from stalk import TargetParallelLineSearch, ParameterSet
+    from stalk import TargetParallelLineSearch
     s = get_structure_H2O()
     h = get_hessian_H2O()
     srg = TargetParallelLineSearch(
@@ -31,9 +31,8 @@ def test_targetparallellinesearch_class():
     params0 = srg.get_shifted_params(0)
     params1 = srg.get_shifted_params(1)
 
-    grid0_ref = [-0.4396967, -0.21984835,  0.,          0.21984835,  0.4396967]
-    grid1_ref = [-0.55231563, -0.27615782,
-                 0.,          0.27615782,  0.55231563]
+    grid0_ref = [-0.4396967, -0.21984835, 0., 0.21984835, 0.4396967]
+    grid1_ref = [-0.55231563, -0.27615782, 0., 0.27615782, 0.55231563]
     params0_ref = array('''
     0.54298682 103.97438807
     0.75044195 104.0471594 

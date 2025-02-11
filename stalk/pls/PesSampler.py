@@ -5,7 +5,7 @@
 from stalk.params import PesFunction
 from stalk.io import FilesFunction, FilesLoader, PesLoader
 from stalk.nexus import NexusGenerator
-from .CascadeStatus import CascadeStatus
+from .CascadeStatus import CascadeError, CascadeStatus
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -21,7 +21,6 @@ class PesSampler():
     status = None
     jobs = None
     # error messages / instructions
-    msg_setup = 'Setup: required but not done'
     msg_shifted = 'Shifted: required but not done'
     msg_generated = 'Generated: required but not done'
     msg_loaded = 'Loaded: required but not done'
@@ -202,13 +201,15 @@ class PesSampler():
         return True
     # end def
 
-    # Do not protected by default
+    # Not protected by default
     def _protected(self):
         return False
     # end def
 
     def _require_setup(self):
-        assert self.status.setup, self.msg_setup
+        if not self.status.setup:
+            raise CascadeError('Setup: required but not done')
+        # end if
     # end def
 
     def _require_shifted(self):

@@ -38,7 +38,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         R=None,  # max displacement
         grid=None,  # manual set of shifts
         values=None,
-        mode='jobs',
         pes=None,
         **kwargs,  # some redundancy in submitting kwargs
     ):
@@ -54,7 +53,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             R=R,
             grid=grid,
             values=values,
-            mode=mode,
             pes=pes,
             **kwargs,
         )
@@ -109,19 +107,28 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         return array(biases_x), array(biases_y), array(biases_tot)
     # end def
 
+    def compute_error(
+        self,
+        grid=None,
+        errors=None,
+        W=None,
+        R=None,
+        **kwargs
+    ):
+        grid = self._figure_out_grid(R=R, W=W, grid=grid)
+        bias_x, bias_y, bias_tot = self.compute_bias(grid, **kwargs)
+        errorbar_x, errorbar_y = self.compute_errorbar(grid, errors, **kwargs)
+        error = bias_tot + errorbar_x
+        return error
+    # end def
+
     # override TargetLineSearchBase class
     def set_target(self, grid, values, **kwargs):
         if values is None or all(equal(array(values), None)):
             return
         # end if
         TargetLineSearchBase.set_target(self, grid, values, **kwargs)
-        if self.structure_list is None:
-            return
-        # end if
-        for s, v in zip(self.structure_list, values):
-            s.value = v
-            s.error = 0.0
-        # end for
+        self.values = values
     # end def
 
     def evaluate_target(self, grid):
@@ -142,11 +149,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     @property
     def W_max(self):
         return self._R_to_W(self.R_max)
-    # end def
-
-    def _W_sigma_of_epsilon(self, epsilon, **kwargs):
-        W, sigma = self._contour_max_sigma(epsilon)
-        return W, sigma
     # end def
 
     # X: grid of W values; Y: grid of sigma values; E: grid of total errors
@@ -185,7 +187,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         # starting window array: sigma = 0, so only bias
         Ws = linspace(0.0, W_max, W_num)
         sigmas = linspace(0.0, sigma_max, sigma_num)
-        errors = array(self.M * sigmas[0])
+        errors = array(self.M * [sigmas[0]])
         E_this = [self._compute_error(self._make_grid_W(
             W, self.M), errors, Gs=self.Gs, fit_kind=fit_kind, **kwargs) for W in Ws]
         self.fit_kind = fit_kind

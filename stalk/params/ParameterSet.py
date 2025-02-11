@@ -2,15 +2,18 @@ from numpy import array, isscalar
 from scipy.optimize import minimize
 from copy import deepcopy
 
-from .Parameter import Parameter
-from .PesFunction import PesFunction
+from stalk.params.LineSearchPoint import LineSearchPoint
+from stalk.params.PesFunction import PesFunction
+from stalk.params.Parameter import Parameter
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 
-class ParameterSet():
+class ParameterSet(LineSearchPoint):
     """Base class for representing a set of parameters to optimize"""
     _param_list = []  # list of Parameter objects
-    value = None  # energy value
-    error = 0.0  # errorbar
     label = None  # label for identification
 
     def __init__(
@@ -83,18 +86,13 @@ class ParameterSet():
             sparam.value = param
             sparam.error = param_err
         # end for
-        self.unset_value()
+        self.reset_value()
     # end def
 
     def set_value(self, value, error=0.0):
         assert self.params is not None, 'Cannot assign value to abstract structure, set params first'
         self.value = value
         self.error = error
-    # end def
-
-    def unset_value(self):
-        self.value = None
-        self.error = None
     # end def
 
     @property
@@ -129,16 +127,20 @@ class ParameterSet():
             assert isinstance(param, Parameter)
             param.shift(shift)
         # end for
-        self.unset_value()
+        self.reset_value()
     # end def
 
     def copy(
         self,
         params=None,
         params_err=None,
-        label=None
+        label=None,
+        offset=None
     ):
         paramset = deepcopy(self)
+        if offset is not None:
+            paramset.offset = offset
+        # end if
         if params is not None:
             paramset.set_params(params, params_err)
         # end if

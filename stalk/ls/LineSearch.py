@@ -1,29 +1,19 @@
-from numpy import array, linspace, concatenate, polyval, sign, equal
+from numpy import array, linspace, polyval, sign, equal
 from matplotlib import pyplot as plt
 
-from stalk.io.PesLoader import PesLoader
-from stalk.util import directorize
-
-from stalk.io import FilesFunction
-from stalk.nexus import NexusGenerator
-from stalk.params import ParameterSet, PesFunction
+from stalk.params.PesFunction import PesFunction
+from stalk.params.ParameterSet import ParameterSet
 from stalk.ls.LineSearchBase import LineSearchBase
 
 
 # Class for PES line-search in structure context
 class LineSearch(LineSearchBase):
-    jobs_list = None  # boolean list for bookkeeping of jobs
     d = None  # direction count
     W = None
     R = None
     M = None
     Lambda = None
     sigma = None
-    # status flags
-    shifted = False
-    generated = False
-    analyzed = False
-    loaded = False
 
     def __init__(
         self,
@@ -42,17 +32,14 @@ class LineSearch(LineSearchBase):
         if hessian is not None:
             self.set_hessian(hessian)
             self.figure_out_grid(grid=grid, **kwargs)
-            LineSearchBase.__init__(
-                self, grid=self.grid, sgn=self.sgn, **kwargs)
-            self.shift_structures()  # shift
+            LineSearchBase.__init__(self, sgn=self.sgn, **kwargs)
         else:
             LineSearchBase.__init__(self, **kwargs)
         # end if
     # end def
 
     def set_structure(self, structure):
-        assert isinstance(
-            structure, ParameterSet), 'provided structure is not a ParameterSet object'
+        assert isinstance(structure, ParameterSet), 'provided structure is not a ParameterSet object'
         assert structure.check_consistency(), 'Provided structure is not a consistent mapping'
         self.structure = structure
     # end def
@@ -66,7 +53,14 @@ class LineSearch(LineSearchBase):
     # end def
 
     def figure_out_grid(self, **kwargs):
-        self.grid, self.M = self._figure_out_grid(**kwargs)
+        offsets, self.M = self._figure_out_grid(**kwargs)
+        grid = []
+        for offset in offsets:
+            structure = self._shift_structure(offset)
+            grid.append(structure)
+        # end for
+        self.grid = grid
+        self.shifted = True
     # end def
 
     def _figure_out_grid(self, M=None, W=None, R=None, grid=None, **kwargs):
@@ -112,26 +106,9 @@ class LineSearch(LineSearchBase):
         return W
     # end def
 
-    def shift_structures(self):
-        structure_list = []
-        jobs_list = []
-        for shift in self.grid:
-            structure = self._shift_structure(shift)
-            structure_list.append(structure)
-            jobs_list.append(False)
-        # end for
-        self.structure_list = structure_list
-        self.jobs_list = jobs_list
-        self.shifted = True
-    # end def
-
     def add_shift(self, shift):
         structure = self._shift_structure(shift)
-        self.structure_list.append(structure)
-        self.jobs_list.append(False)
-        if shift not in self.grid:
-            self.grid = concatenate([self.grid, [shift]])
-        # end if
+        self.add_point(structure)
     # end def
 
     def _shift_structure(self, shift, roundi=4):
@@ -145,7 +122,7 @@ class LineSearch(LineSearchBase):
             label = 'd{}_{}{}'.format(self.d, sgn, shift_rnd)
             params = params_this + shift * self.direction
         # end if
-        structure = self.structure.copy(params=params, label=label)
+        structure = self.structure.copy(params=params, label=label, offset=shift)
         return structure
     # end def
 
@@ -157,119 +134,15 @@ class LineSearch(LineSearchBase):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
         assert isinstance(
             pes_eval, PesFunction), 'The evaluation function must be inherited from PesFunction class.'
-        grid, values, errors = [], [], []
-        for shift, structure in zip(self.grid, self.structure_list):
-            res = pes_eval.evaluate(structure, sigma=self.sigma)
+        for point in self._grid:
+            res = pes_eval.evaluate(point, sigma=self.sigma)
             if add_sigma:
                 res.add_sigma(self.sigma)
             # end if
-            grid.append(shift)
-            values.append(res.get_value())
-            errors.append(res.get_error())
+            point.value = res.get_value()
+            point.error = res.get_error()
         # end for
-        return array(grid), array(values), array(errors)
-    # end def
-
-    def generate_ls_jobs(
-        self,
-        pes_gen,
-        path='',
-        eqm_jobs=[],
-        exclude_eqm=True,
-        **kwargs,
-    ):
-        '''Generate PES jobs on the line-search grid using a job-generating function.'''
-        assert self.shifted, 'Must shift parameters first before generating jobs'
-        assert isinstance(
-            pes_gen, (NexusGenerator, FilesFunction)), 'The evaluation function must be inherited from either NexusGenerator class or FilesFunction class.'
-        jobs = []
-        for si, structure in enumerate(self.structure_list):
-            if self.jobs_list[si]:
-                continue
-            else:
-                self.jobs_list[si] = True
-            # end if
-            if exclude_eqm and structure.label == 'eqm':
-                continue
-            # end if
-            jobs += pes_gen.generate(structure.get_nexus_structure(), self._make_job_path(
-                path, structure.label), sigma=self.sigma, eqm_jobs=eqm_jobs)
-        # end for
-        self.generated = True
-        return jobs
-    # end def
-
-    # job must accept 0: position, 1: path, 2: sigma
-    def generate_eqm_jobs(
-        self,
-        pes_gen,
-        sigma=None,
-        path='',
-        **kwargs,
-    ):
-        if self.generated:
-            return []
-        # end if
-        sigma = sigma if sigma is not None else self.sigma
-        path = self._make_job_path(path, self.structure.label)
-        return pes_gen.generate(self.structure.get_nexus_structure(), path, sigma=sigma)
-    # end def
-
-    def _make_job_path(self, path, label):
-        return '{}{}'.format(directorize(path), label)
-    # end def
-
-    def analyze_job(self, structure, loader, path, add_sigma=False):
-        assert isinstance(
-            loader, PesLoader), 'The loader function must be inherited from PesLoader class.'
-        res = loader.load(path=self._make_job_path(path, structure.label))
-        if add_sigma:
-            res.add_sigma(self.sigma)
-        # end if
-        return res.get_result()
-    # end def
-
-    # Loader function
-    def analyze_jobs(self, loader, path, prune0=True, add_sigma=False):
-        grid, values, errors = [], [], []
-        for shift, structure in zip(self.grid, self.structure_list):
-            assert isinstance(
-                structure, ParameterSet), 'The structure must be inherited from ParameterSet class.'
-            value, error = self.analyze_job(
-                structure, loader, path, add_sigma=add_sigma)
-            structure.set_value(value, error)
-            # FIXME: skipping values messes up the grid <-> list consistency
-            if prune0 and value == 0:
-                print('ls{}: skipped shift = {}, value {}'.format(
-                    self.d, shift, value))
-            else:
-                grid.append(shift)
-                values.append(value)
-                errors.append(error)
-            # end if
-        # end for
-        return array(grid), array(values), array(errors)
-    # end def
-
-    # Load results directly from 'grid', 'values' and 'errors' args, or else using 'loader'.
-    def load_results(self, loader=None, path=None, grid=None, values=None, errors=None, add_sigma=False):
-        grid = grid if grid is not None else self.grid
-        if grid is not None and values is not None:
-            self.loaded = self.set_results(grid, values, errors)
-        else:
-            self.loaded = self.set_results(
-                *self.analyze_jobs(loader, path, add_sigma=add_sigma))
-        # end if
-        return self.loaded
-    # end def
-
-    def load_eqm_results(self, loader=None, path=None, values=None, errors=None, add_sigma=False):
-        if values is not None:
-            value, error = values, errors
-        else:
-            value, error = self.analyze_job(self.structure, loader, path, add_sigma=False)
-        # end if
-        return value, error
+        self.search()
     # end def
 
     def set_results(
@@ -279,26 +152,20 @@ class LineSearch(LineSearchBase):
         errors=None,
         **kwargs
     ):
+        grid = grid if grid is not None else self.grid
         if values is None or all(equal(array(values), None)):
             return False
         # end if
         if errors is None:
             errors = 0.0 * array(values)
         # end if
-        self.set_values(grid, values, errors, also_search=True)
-        self._update_list_values(values, errors)
+        self.values = values
+        self.errors = errors
         return True
     # end def
 
-    def _update_list_values(self, values, errors):
-        for s, v, e in zip(self.structure_list, values, errors):
-            s.value = v
-            s.error = e
-        # end for
-    # end def
-
     def get_shifted_params(self):
-        return array([structure.params for structure in self.structure_list])
+        return array([structure.params for structure in self._grid if isinstance(structure, ParameterSet)])
     # end def
 
     def plot(
@@ -365,24 +232,6 @@ class LineSearch(LineSearchBase):
         # end if
         if self.R is not None:
             string += '\n  R: {:<9f}'.format(self.R)
-        # end if
-        return string
-    # end def
-
-    # str of grid
-    def __str_grid__(self):
-        if self.grid is None:
-            string = '\n  data: no grid'
-        else:
-            string = '\n  data:'
-            values = self.values if self.values is not None else self.M * ['-']
-            errors = self.errors if self.errors is not None else self.M * ['-']
-            string += '\n    {:11s}  {:9s}  {:9s}  {:9s}'.format(
-                'label', 'grid', 'value', 'error')
-            for s, g, v, e in zip(self.structure_list, self.grid, values, errors):
-                string += '\n    {:11s}  {: 8f}  {:9.9s}  {:<9.9s}'.format(
-                    s.label, g, str(v), str(e))
-            # end for
         # end if
         return string
     # end def

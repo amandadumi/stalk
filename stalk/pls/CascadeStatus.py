@@ -32,3 +32,10 @@ class CascadeStatus():
         return string
     # end def
 # end class
+
+
+class CascadeError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+    # end def
+# end class

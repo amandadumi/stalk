@@ -19,6 +19,7 @@ __license__ = "BSD-3-Clause"
 
 class TargetParallelLineSearch(ParallelLineSearch):
     ls_type = TargetLineSearch
+    ls_list: list[TargetLineSearch] = []
     epsilon_p = None
     epsilon_d = None
     error_p = None
@@ -138,6 +139,12 @@ useful keyword arguments:
         # end if
         self.optimize_epsilon_d(self._get_thermal_epsilon_d(
             temperature), verbose=verbose, **kwargs)
+    # end def
+
+    def plot_error_surfaces(self, **kwargs):
+        for ls in self.ls_list:
+            ls.plot_error_surface(**kwargs)
+        # end for
     # end def
 
     # TODO: fixed-point method, also need to init error matrices

@@ -2,8 +2,9 @@
 '''Generic classes for 1-dimensional line-searches
 '''
 
-from numpy import array, random, polyval, polyder, equal
+from numpy import array, random, polyval, polyder
 
+from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.util import get_min_params, get_fraction_error
 
 __author__ = "Juha Tiihonen"
@@ -12,18 +13,12 @@ __license__ = "BSD-3-Clause"
 
 
 # Class for line-search along direction in abstract context
-class LineSearchBase():
+class LineSearchBase(LineSearchGrid):
 
-    structure = None  # eqm structure
-    structure_list = None  # list of ParameterSet objects
     fraction = None
     fit_kind = None
     func = None
     func_p = None
-    grid = None
-    values = None
-    errors = None
-    mask = []
     x0 = None
     x0_err = None
     y0 = None
@@ -40,15 +35,16 @@ class LineSearchBase():
         sgn=1,
         **kwargs,
     ):
+        LineSearchGrid.__init__(self, grid)
         self.fraction = fraction
         self.set_func(**kwargs)
         self.sgn = sgn
-        if grid is not None:
-            self.set_grid(grid)
-        # end if
         if values is not None:
-            self.set_values(grid, values, errors,
-                            also_search=(self.grid is not None))
+            self.values = values
+            if errors is not None:
+                self.errors = errors
+            # end if
+            self.search()
         # end if
     # end def
 
@@ -79,39 +75,12 @@ class LineSearchBase():
         return func, func_p
     # end def
 
-    def set_grid(self, grid):
-        assert len(grid) > 2, 'Number of grid points must be greater than 2'
-        self.reset()
-        self.grid = array(grid)
-    # end def
-
-    def set_values(self, grid=None, values=None, errors=None, also_search=True):
-        grid = grid if grid is not None else self.grid
-        assert values is not None, 'must set values'
-        assert len(values) == len(
-            grid), 'Number of values does not match the grid'
-        self.reset()
-        if errors is None:
-            self.errors = None
-        else:
-            self.errors = array(errors)
-        # end if
-        self.set_grid(grid)
-        self.values = array(values)
-        self.mask = len(values) * [True]
-        if also_search and not all(equal(array(values), None)):
-            self.search()
-        # end if
-    # end def
-
     def search(self, **kwargs):
         """Perform line-search with the preset values and settings, saving the result to self."""
-        assert self.grid is not None and self.values is not None
-        errors = self.errors[self.mask] if self.errors is not None else None
         res = self._search_with_error(
-            self.grid[self.mask],
-            self.values[self.mask] * self.sgn,
-            errors,
+            self.valid_grid,
+            self.valid_values * self.sgn,
+            self.valid_errors,
             fit_kind=self.fit_kind,
             fraction=self.fraction,
             **kwargs)
@@ -121,18 +90,6 @@ class LineSearchBase():
         self.y0_err = res[3]
         self.fit = res[4]
         self.analyzed = True
-    # end def
-
-    def disable_value(self, i):
-        assert i < len(self.mask), 'Cannot disable element {} from array of {}'.format(
-            i, len(self.mask))
-        self.mask[i] = False
-    # end def
-
-    def enable_value(self, i):
-        assert i < len(self.mask), 'Cannot enable element {} from array of {}'.format(
-            i, len(self.mask))
-        self.mask[i] = True
     # end def
 
     def _search(
@@ -231,13 +188,16 @@ class LineSearchBase():
         # end if
     # end def
 
-    def get_distribution(self, grid=None, values=None, errors=None, fit_kind=None, **kwargs):
-        grid = grid if grid is not None else self.grid
-        values = values if values is not None else self.values
-        errors = errors if errors is not None else self.errors
+    def get_distribution(self, fit_kind=None, **kwargs):
         func, func_p = self.get_func(fit_kind)
-        assert errors is not None, 'Cannot produce distribution unless errors are provided'
-        return self._get_distribution(grid, values * self.sgn, errors, func=func, func_p=func_p, **kwargs)
+        return self._get_distribution(
+            self.valid_grid,
+            self.valid_values * self.sgn,
+            self.valid_errors,
+            func=func,
+            func_p=func_p,
+            **kwargs
+        )
     # end def
 
     def get_x0_distribution(self, errors=None, N=100, **kwargs):
@@ -283,7 +243,7 @@ class LineSearchBase():
         if self.fit_kind is not None:
             string += '\n  fit_kind: {:s}'.format(self.fit_kind)
         # end if
-        string += self.__str_grid__()
+        string += str(self.grid)
         if self.x0 is None:
             string += '\n  x0: not set'
         else:
@@ -301,23 +261,5 @@ class LineSearchBase():
         return string
     # end def
 
-    # str of grid
-    def __str_grid__(self):
-        if self.grid is None:
-            string = '\n  data: no grid'
-        else:
-            string = '\n  data:'
-            values = self.values if self.values is not None else len(
-                self.values) * ['-']
-            errors = self.errors if self.errors is not None else len(
-                self.values) * ['-']
-            string += '\n    {:9s} {:9s} {:9s}'.format(
-                'grid', 'value', 'error')
-            for g, v, e in zip(self.grid, values, errors):
-                string += '\n    {: 8f} {:9s} {:9s}'.format(g, str(v), str(e))
-            # end for
-        # end if
-        return string
-    # end def
 
 # end class
