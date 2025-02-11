@@ -9,6 +9,7 @@ from .Parameter import Parameter
 from .ParameterHessian import ParameterHessian
 from .GeometryResult import GeometryResult
 from .PesFunction import PesFunction
+from .LineSearchPoint import LineSearchPoint
 from .ParameterSet import ParameterSet
 from .ParameterStructure import ParameterStructure
 
@@ -22,5 +23,6 @@ __all__ = [
     'ParameterStructure',
     'GeometryResult',
     'PesFunction',
+    'LineSearchPoint',
     'ParameterHessian'
 ]
