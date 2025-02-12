@@ -30,7 +30,7 @@ class ParameterSet(LineSearchPoint):
         if params is not None:
             self.init_params(
                 params,
-                params_err=params_err,
+                errors=params_err,
                 units=units,
                 labels=labels
             )
@@ -40,11 +40,11 @@ class ParameterSet(LineSearchPoint):
         # end if
     # end def
 
-    def init_params(self, params, params_err=None, units=None, labels=None):
-        if params_err is None:
-            params_err = len(params) * [params_err]
+    def init_params(self, params, errors=None, units=None, labels=None):
+        if errors is None:
+            errors = len(params) * [errors]
         else:
-            assert len(params_err) == len(params)
+            assert len(errors) == len(params)
         # end if
         if units is None or isinstance(units, str):
             units = len(params) * [units]
@@ -57,12 +57,12 @@ class ParameterSet(LineSearchPoint):
             assert len(labels) == len(labels)
         # end if
         p_list = []
-        for p, (param, param_err, unit, label) in enumerate(zip(params, params_err, units, labels)):
+        for p, (param, error, unit, label) in enumerate(zip(params, errors, units, labels)):
             if isinstance(param, Parameter):
                 parameter = param
             elif isscalar(param):
                 lab = label if label is not None else 'p{}'.format(p)
-                parameter = Parameter(param, param_err, unit=unit, label=lab)
+                parameter = Parameter(param, error, unit=unit, label=lab)
             else:
                 raise ValueError('Parameter is unsupported type: ' + str(param))
             # end if
@@ -71,20 +71,20 @@ class ParameterSet(LineSearchPoint):
         self._param_list = p_list
     # end def
 
-    def set_params(self, params, params_err=None):
+    def set_params(self, params, errors=None):
         # If params have not been initiated yet, do it now without extra info
         if self.num_params > 0:
             assert len(params) == self.num_params
         else:
-            self.init_params(params, params_err)
+            self.init_params(params, errors)
         # end if
-        if params_err is None:
-            params_err = len(params) * [0.0]
+        if errors is None:
+            errors = len(params) * [0.0]
         # end if
-        for sparam, param, param_err in zip(self.params_list, params, params_err):
+        for sparam, param, error in zip(self.params_list, params, errors):
             assert isinstance(sparam, Parameter)
             sparam.value = param
-            sparam.error = param_err
+            sparam.error = error
         # end for
         self.reset_value()
     # end def
@@ -97,7 +97,7 @@ class ParameterSet(LineSearchPoint):
 
     @property
     def params_list(self):
-        return [p for p in self._param_list]
+        return [p for p in self._param_list if isinstance(p, Parameter)]
     # end def
 
     @property
@@ -110,7 +110,7 @@ class ParameterSet(LineSearchPoint):
     @property
     def params_err(self):
         if self.num_params > 0:
-            return array([p.param_err for p in self.params_list])
+            return array([p.error for p in self.params_list])
         # end if
     # end def
 
