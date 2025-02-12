@@ -8,6 +8,8 @@ from .LineSearchBase import LineSearchBase
 from .LineSearch import LineSearch
 from .LineSearchDummy import LineSearchDummy
 from .LineSearchGrid import LineSearchGrid
+from .FittingFunction import FittingFunction
+from .FittingResult import FittingResult
 from .TargetLineSearch import TargetLineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 
@@ -16,6 +18,8 @@ __all__ = [
     'LineSearchBase',
     'LineSearchDummy',
     'LineSearchGrid',
+    'FittingFunction',
+    'FittingResult',
     'TargetLineSearch',
     'TargetLineSearchBase'
 ]
