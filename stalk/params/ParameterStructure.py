@@ -31,7 +31,7 @@ class ParameterStructure(ParameterSet):
         forward_args={},
         backward_args={},
         value=None,
-        error=None,
+        error=0.0,
         label=None,
         units='B',
         dim=3,
@@ -56,7 +56,8 @@ class ParameterStructure(ParameterSet):
             self.set_axes(axes)
         # end if
         if value is not None:
-            self.set_value(value, error)
+            self.value = value
+            self.error = error
         # end if
         if elem is not None:
             self.set_elem(elem)
@@ -156,12 +157,6 @@ class ParameterStructure(ParameterSet):
                 self.pos = pos_new
             # end if
         # end if
-    # end def
-
-    def set_value(self, value, error=None):
-        assert self.num_params > 0 or self.pos is not None, 'Cannot assign value to abstract structure, set params or pos first'
-        self.value = value
-        self.error = error
     # end def
 
     # Perform forward mapping: if mapping function provided, return new params; else, return None
@@ -310,7 +305,7 @@ class ParameterStructure(ParameterSet):
     # end def
 
     def get_params_distribution(self, N=100):
-        return [self.params + self.params_err * g for g in random.randn(N, self.num_params)]
+        return [self.params + self.params_err * g for g in random.randn(N, len(self))]
     # end def
 
     def remap_forward(self, forward, N=None, fraction=0.159, **kwargs):

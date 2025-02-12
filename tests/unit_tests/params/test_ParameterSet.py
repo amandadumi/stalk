@@ -17,7 +17,7 @@ def test_ParameterSet():
     # nominal test empty/defaults
     s = ParameterSet([])
     assert s._param_list == []
-    assert s.num_params == 0
+    assert len(s) == 0
     assert s.params is None
     assert s.params_err is None
     assert s.value is None
@@ -41,7 +41,7 @@ def test_ParameterSet():
         label=label,
         labels=labels
     )
-    assert s.num_params == 2
+    assert len(s) == 2
     assert s.value == value
     assert s.error == error
     assert s.label == label
@@ -58,7 +58,7 @@ def test_ParameterSet():
 
     # Test copy original
     s_copy = s.copy()
-    assert s_copy.num_params == 2
+    assert len(s_copy) == 2
     assert s_copy.value == value
     assert s_copy.error == error
     assert s_copy.label == label
@@ -113,10 +113,9 @@ def test_ParameterSet():
     # Test setting of value
     new_value = 100.0
     new_error = 101.0
-    s.set_value(new_value)
-    print(s.value, s.error)
+    s.value = new_value
     assert s.value == new_value and s.error == 0.0
-    s.set_value(new_value, new_error)
+    s.error = new_error
     assert s.value == new_value and s.error == new_error
 
     # test (placeholder) consistency check

@@ -36,7 +36,8 @@ class ParameterSet(LineSearchPoint):
             )
         # end if
         if value is not None:
-            self.set_value(value, error)
+            self.value = value
+            self.error = error
         # end if
     # end def
 
@@ -73,8 +74,8 @@ class ParameterSet(LineSearchPoint):
 
     def set_params(self, params, errors=None):
         # If params have not been initiated yet, do it now without extra info
-        if self.num_params > 0:
-            assert len(params) == self.num_params
+        if len(self) > 0:
+            assert len(params) == len(self)
         else:
             self.init_params(params, errors)
         # end if
@@ -89,12 +90,6 @@ class ParameterSet(LineSearchPoint):
         self.reset_value()
     # end def
 
-    def set_value(self, value, error=0.0):
-        assert self.params is not None, 'Cannot assign value to abstract structure, set params first'
-        self.value = value
-        self.error = error
-    # end def
-
     @property
     def params_list(self):
         return [p for p in self._param_list if isinstance(p, Parameter)]
@@ -102,25 +97,24 @@ class ParameterSet(LineSearchPoint):
 
     @property
     def params(self):
-        if self.num_params > 0:
+        if len(self) > 0:
             return array([p.value for p in self.params_list])
         # end if
     # end def
 
     @property
     def params_err(self):
-        if self.num_params > 0:
+        if len(self) > 0:
             return array([p.error for p in self.params_list])
         # end if
     # end def
 
-    @property
-    def num_params(self):
+    def __len__(self):
         return len(self.params_list)
     # end def
 
     def shift_params(self, shifts):
-        if len(shifts) != self.num_params:
+        if len(shifts) != len(self):
             raise ValueError('Shifts has wrong dimensions!')
         # end if
         for param, shift in zip(self.params_list, shifts):

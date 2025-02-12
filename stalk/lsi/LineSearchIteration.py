@@ -112,7 +112,7 @@ class LineSearchIteration():
         while not load_failed:
             path = '{}data.p'.format(self._get_pls_path(i))
             pls = ParallelLineSearch(load=path, mode='load')
-            if pls is not None and pls.check_integrity():
+            if pls is not None:
                 pls_list.append(pls)
                 i += 1
             else:

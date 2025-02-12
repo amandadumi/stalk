@@ -502,11 +502,7 @@ class ParallelLineSearch(PesSampler):
 
     def get_shifts(self):
         self._require_loaded()
-        return self._get_shifts()
-    # end def
-
-    def _get_shifts(self):
-        return array([ls.get_x0(err=False) for ls in self.ls_list])
+        return array([ls.x0 for ls in self.ls_list])
     # end def
 
     def _calculate_params_next(self, params, directions, shifts):
@@ -518,7 +514,7 @@ class ParallelLineSearch(PesSampler):
     # end def
 
     def _calculate_params_next_error(self, params, directions, params_next, N=200, fraction=0.025, **kwargs):
-        x0s_d = self._get_x0_distributions(N=N)
+        x0s_d = array([ls.get_x0_distribution(errors=ls.errors, N=N, **kwargs) for ls in self.ls_list]).T
         params_d = []
         for x0s in x0s_d:
             params_d.append(self._calculate_params_next(
@@ -527,10 +523,6 @@ class ParallelLineSearch(PesSampler):
         params_next_err = [get_fraction_error(p, fraction=fraction)[
             1] for p in array(params_d).T]
         return array(params_next_err)
-    # end def
-
-    def _get_x0_distributions(self, N=200, **kwargs):
-        return array([ls.get_x0_distribution(errors=ls.errors, N=N, **kwargs) for ls in self.ls_list]).T
     # end def
 
     def write_to_disk(self, fname='data.p', overwrite=False):

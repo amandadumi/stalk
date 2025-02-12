@@ -2,7 +2,7 @@
 '''Class for containing a 1D grid of points, values and errorbars
 '''
 
-from numpy import array
+from numpy import array, all
 
 from stalk.params.LineSearchPoint import LineSearchPoint
 
@@ -40,13 +40,13 @@ class LineSearchGrid():
     @property
     def valid_grid(self):
         '''Return offset array of valid points'''
-        return array([point.offset for point in self._grid if point.valid])
+        return array([point for point in self._grid if point.valid])
     # end def
 
     @property
     def grid(self):
-        '''Return offset array of points'''
-        return array([point.offset for point in self._grid])
+        '''Return array of points'''
+        return array([point for point in self._grid])
     # end def
 
     @grid.setter
@@ -55,6 +55,18 @@ class LineSearchGrid():
         for offset in grid:
             self.add_point(offset)
         # end for
+    # end def
+
+    @property
+    def offsets(self):
+        '''Return offset array of points'''
+        return array([point.offset for point in self._grid])
+    # end def
+
+    @property
+    def valid_offsets(self):
+        '''Return offset array of points'''
+        return array([point.offset for point in self._grid if point.valid])
     # end def
 
     @property
@@ -99,14 +111,19 @@ class LineSearchGrid():
         # end if
     # end def
 
-    # Get all enabled arrays: (grid, values, errors)
-    def get_all(self):
-        return self.grid, self.values, self.errors
+    @property
+    def noisy(self):
+        return not all(self.valid_errors == 0.0)
     # end def
 
-    # Get full arrays including disabled and invalid: (grid, values, errors)
+    # Get all enabled arrays: (offsets, values, errors)
+    def get_all(self):
+        return self.offsets, self.values, self.errors
+    # end def
+
+    # Get full arrays including disabled and invalid: (offsets, values, errors)
     def get_valid(self):
-        return self.valid_grid, self.valid_values, self.valid_errors
+        return self.valid_offsets, self.valid_values, self.valid_errors
     # end def
 
     # Finds and returns a requested point, if present; if not, returns None

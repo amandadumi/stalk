@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from pytest import raises
-
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.util.util import match_to_tol
 
@@ -17,6 +15,7 @@ def test_LineSearchGrid():
     empty_grid = LineSearchGrid()
     assert len(empty_grid) == 0
     assert len(empty_grid.grid) == 0
+    assert len(empty_grid.offsets) == 0
     assert len(empty_grid.values) == 0
     assert len(empty_grid.errors) == 0
 
@@ -24,12 +23,13 @@ def test_LineSearchGrid():
     grid1_in = [1.0]
     grid1 = LineSearchGrid(grid1_in)
     assert len(grid1) == 1
-    match_to_tol(grid1.grid, grid1_in)
+    match_to_tol(grid1.offsets, grid1_in)
     assert len(grid1.values) == 1
     assert grid1.values[0] is None
     assert len(grid1.errors) == 1
     assert grid1.errors[0] == 0.0
     assert len(grid1.valid_grid) == 0
+    assert len(grid1.valid_offsets) == 0
     assert len(grid1.valid_values) == 0
     assert len(grid1.valid_errors) == 0
     # Make valid by setting value
@@ -39,7 +39,7 @@ def test_LineSearchGrid():
     grid1.errors = errors1_in
     match_to_tol(grid1.values, values1_in)
     match_to_tol(grid1.errors, errors1_in)
-    match_to_tol(grid1.valid_grid, grid1_in)
+    match_to_tol(grid1.valid_offsets, grid1_in)
     match_to_tol(grid1.valid_values, values1_in)
     match_to_tol(grid1.valid_errors, errors1_in)
 
@@ -48,6 +48,6 @@ def test_LineSearchGrid():
     grid3_sorted = [-1.0, 0.0, 1.0]
     grid3 = LineSearchGrid(grid3_in)
     assert len(grid3) == 3
-    match_to_tol(grid3.grid, grid3_sorted)
+    match_to_tol(grid3.offsets, grid3_sorted)
 
 # end def

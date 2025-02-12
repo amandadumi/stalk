@@ -41,8 +41,7 @@ class TargetLineSearchBase(LineSearchBase):
         self,
         grid,
         values,
-        interpolate_kind='cubic',
-        **kwargs,
+        interpolate_kind='cubic'
     ):
         if values is None or all(equal(array(values), None)):
             return
@@ -80,8 +79,7 @@ class TargetLineSearchBase(LineSearchBase):
             grid_this = array(
                 [min([max([p, self.target_grid.min()]), self.target_grid.max()]) for p in (grid + x0)])
             values = self.evaluate_target(grid_this)
-            x0, y0, fit = self._search(
-                grid_this, values * self.sgn, **kwargs)
+            x0, y0, fit = self.search(grid_this, values * self.sgn, **kwargs)
         # end for
         bias_x = x0 - self.target_x0
         bias_y = y0 - self.target_y0
@@ -103,15 +101,14 @@ class TargetLineSearchBase(LineSearchBase):
     ):
         grid = grid if grid is not None else self.grid
         errors = errors if errors is not None else self.errors
-        errorbar_x, errorbar_y = self._compute_errorbar(grid, errors, **kwargs)
-        return errorbar_x, errorbar_y
-    # end def
-
-    def _compute_errorbar(self, grid, errors, **kwargs):
         values = self.evaluate_target(grid)
         if values is not None:
-            x0, x0_err, y0, y0_err, fit = self._search_with_error(
-                grid, values * self.sgn, errors, **kwargs)
+            x0, x0_err, y0, y0_err, fit = self.search_with_error(
+                grid,
+                values * self.sgn,
+                errors,
+                **kwargs
+            )
             return x0_err, y0_err
         # end if
     # end def

@@ -81,7 +81,7 @@ def get_structure_H2O():
 
 
 def get_hessian_H2O():
-    return ParameterHessian(hessian=hessian_H2O)
+    return ParameterHessian(hessian=hessian_H2O, structure=get_structure_H2O())
 # end def
 
 

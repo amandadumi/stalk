@@ -239,7 +239,9 @@ class ParameterHessian():
         for s in structure_list:
             if isinstance(s, ParameterSet):
                 # Set value, error
-                s.set_value(*pes.evaluate(s))
+                value, error = pes.evaluate(s)
+                s.value = value
+                s.error = error
             # end if
         # end for
     # end def
@@ -282,6 +284,10 @@ class ParameterHessian():
             # end for
         # end for
         return dp_list, structure_list, label_list
+    # end def
+
+    def __len__(self):
+        return self.D
     # end def
 
 # end class

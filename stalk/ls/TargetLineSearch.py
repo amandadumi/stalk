@@ -141,16 +141,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         # end try
     # end def
 
-    @property
-    def R_max(self):
-        return min([-self.grid.min(), self.grid.max()])
-    # end def
-
-    @property
-    def W_max(self):
-        return self._R_to_W(self.R_max)
-    # end def
-
     # X: grid of W values; Y: grid of sigma values; E: grid of total errors
     #   if Gs is not provided, use M and N
     def generate_W_sigma_data(

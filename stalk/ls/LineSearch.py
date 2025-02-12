@@ -1,6 +1,7 @@
-from numpy import array, linspace, polyval, sign, equal
+from numpy import array, linspace, polyval, sign, equal, isscalar
 from matplotlib import pyplot as plt
 
+from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
 from stalk.ls.LineSearchBase import LineSearchBase
@@ -8,107 +9,228 @@ from stalk.ls.LineSearchBase import LineSearchBase
 
 # Class for PES line-search in structure context
 class LineSearch(LineSearchBase):
-    d = None  # direction count
-    W = None
-    R = None
-    M = None
-    Lambda = None
-    sigma = None
+    _structure: ParameterSet | None = None  # The equilibrium structure
+    _hessian: ParameterHessian | None = None  # The equilibrium full Hessian
+    _sigma = 0.0  # Target errorbar
+    _d: int | None = None  # direction count
 
     def __init__(
         self,
         structure=None,
         hessian=None,
-        d=0,
+        d=None,
         sigma=0.0,
         grid=None,
-        **kwargs,
+        M=7,
+        W=None,
+        R=None,
+        **ls_args
+        # values=None, errors=None, fraction=0.025, sgn=1
+        # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
     ):
-        self.sigma = sigma if sigma is not None else 0.0
-        self.d = d
+        LineSearchBase.__init__(self, grid=None, **ls_args)
+        self.sigma = sigma
         if structure is not None:
-            self.set_structure(structure)
+            self.structure = structure
         # end if
         if hessian is not None:
-            self.set_hessian(hessian)
-            self.figure_out_grid(grid=grid, **kwargs)
-            LineSearchBase.__init__(self, sgn=self.sgn, **kwargs)
+            self.hessian = hessian
+        # end if
+        if d is not None:
+            self.d = d
+        # end if
+        # Try to initialize grid based on available information
+        try:
+            self.initialize_grid(M=M, W=W, R=R, grid=grid)
+        except ValueError:
+            # Setting the grid later then
+            pass
+        # end try
+    # end def
+
+    @property
+    def structure(self):
+        return self._structure
+    # end def
+
+    @structure.setter
+    def structure(self, structure):
+        if isinstance(structure, ParameterSet):
+            if structure.check_consistency():
+                self._structure = structure
+                # Empty grid when updating structure
+                self._grid = []
+            else:
+                raise ValueError('Provided structure is not a consistent mapping')
+            # end if
         else:
-            LineSearchBase.__init__(self, **kwargs)
+            raise ValueError('Provided structure is not a ParameterSet object')
         # end if
     # end def
 
-    def set_structure(self, structure):
-        assert isinstance(structure, ParameterSet), 'provided structure is not a ParameterSet object'
-        assert structure.check_consistency(), 'Provided structure is not a consistent mapping'
-        self.structure = structure
+    @property
+    def sigma(self):
+        return self._sigma
     # end def
 
-    def set_hessian(self, hessian):
-        self.hessian = hessian
-        Lambda = hessian.get_lambda(self.d)
-        self.Lambda = abs(Lambda)
-        self.sgn = sign(Lambda)
-        self.direction = hessian.get_directions(self.d)
-    # end def
-
-    def figure_out_grid(self, **kwargs):
-        offsets, self.M = self._figure_out_grid(**kwargs)
-        grid = []
-        for offset in offsets:
-            structure = self._shift_structure(offset)
-            grid.append(structure)
-        # end for
-        self.grid = grid
-        self.shifted = True
-    # end def
-
-    def _figure_out_grid(self, M=None, W=None, R=None, grid=None, **kwargs):
-        if M is None:
-            M = self.M if self.M is not None else 7  # universal default
-        # end if
-        if grid is not None:
-            self.M = len(grid)
-        elif R is not None:
-            assert not R < 0, 'R cannot be negative, {} requested'.format(R)
-            grid = self._make_grid_R(R, M=M)
-            self.R = R
-        elif W is not None:
-            assert not W < 0, 'W cannot be negative, {} requested'.format(W)
-            grid = self._make_grid_W(W, M=M)
-            self.W = W
+    @sigma.setter
+    def sigma(self, sigma):
+        if isscalar(sigma) and sigma >= 0.0:
+            self._sigma = sigma
         else:
-            raise AssertionError('Must characterize grid')
+            raise ValueError("Sigma must be >= 0.0")
         # end if
-        return grid, M
+    # end def
+
+    @property
+    def d(self):
+        return self._d
+    # end def
+
+    @d.setter
+    def d(self, d):
+        if self.hessian is not None:
+            max_d = len(self.hessian)
+        elif self.structure is not None:
+            max_d = len(self.structure)
+        else:
+            max_d = 1e10
+        # end if
+        if isinstance(d, int) and d < max_d:
+            self._d = d
+        else:
+            raise ValueError('d must be integer smaller than the Hessian/structure dimension')
+        # end if
+    # end def
+
+    @property
+    def hessian(self):
+        return self._hessian
+    # end def
+
+    @hessian.setter
+    def hessian(self, hessian):
+        if isinstance(hessian, ParameterHessian):
+            self._hessian = hessian
+            Lambda = self.hessian.get_lambda(self.d)
+            self.sgn = sign(Lambda)
+            if self.structure is None:
+                # Use Hessian structure if no other has been provided yet
+                self.structure = hessian.structure
+            # end if
+        else:
+            raise ValueError('Provided Hessian is not a ParameterHessian object')
+        # end if
+    # end def
+
+    @property
+    def Lambda(self):
+        return None if self.hessian is None else abs(self.hessian.get_lambda(self.d))
+    # end def
+
+    @property
+    def direction(self):
+        if self.d is None:
+            return 0.0
+        # end if
+        if self.hessian is not None:
+            return self.hessian.get_directions(self.d)
+        elif self.structure is not None:
+            # Get pure parameter direction
+            direction = len(self.structure) * [0.0]
+            direction[self.d] += 1.0
+            return array(direction)
+        else:
+            return 0.0
+        # end if
+    # end def
+
+    def initialize_grid(self, M=7, W=None, R=None, grid=None):
+        if grid is None:
+            if M < 0:
+                raise ValueError("Grid size M must be positive!")
+            # end if
+            if R is not None:
+                offsets = self._make_grid_R(R, M=M)
+            elif W is not None and self.hessian is not None:
+                if self.hessian is None:
+                    raise ValueError('Must set Hessian before using W to set grid.')
+                else:
+                    offsets = self._make_grid_W(W, M=M)
+                # end if
+            else:
+                raise ValueError('Must provide grid, R or W to characterize grid.')
+            # end if
+        else:
+            offsets = grid
+        # end if
+
+        if self.structure is None:
+            # Reverting to LineSearchPoints
+            self.grid = offsets
+        else:
+            # Using shifted parametric structures
+            self.grid = [self._shift_structure(offset) for offset in offsets]
+        # end if
     # end def
 
     def _make_grid_R(self, R, M):
+        if R < 0:
+            raise ValueError("R must be positive!")
+        # end if
         R = max(R, 1e-4)
         grid = linspace(-R, R, M)
         return grid
     # end def
 
     def _make_grid_W(self, W, M):
+        if W < 0:
+            raise ValueError("W must be positive!")
+        # end if
         R = self._W_to_R(max(W, 1e-4))
         return self._make_grid_R(R, M=M)
     # end def
 
     def _W_to_R(self, W):
         """Map W to R"""
-        R = (2 * W / self.Lambda)**0.5
-        return R
+        if self.Lambda is None:
+            return None
+        else:
+            return (2 * W / self.Lambda)**0.5
+        # end if
     # end def
 
     def _R_to_W(self, R):
         """Map R to W"""
-        W = 0.5 * self.Lambda * R**2
-        return W
+        if self.Lambda is None:
+            return None
+        else:
+            return 0.5 * self.Lambda * R**2
+        # end if
+    # end def
+
+    @property
+    def R_max(self):
+        if len(self) > 0:
+            return min([-self.offsets.min(), self.offsets.max()])
+        else:
+            return 0.0
+        # end if
+    # end def
+
+    @property
+    def W_max(self):
+        return self._R_to_W(self.R_max)
     # end def
 
     def add_shift(self, shift):
-        structure = self._shift_structure(shift)
-        self.add_point(structure)
+        if self.structure is None:
+            # Reverting to LineSearchPoint
+            self.add_point(shift)
+        else:
+            structure = self._shift_structure(shift)
+            self.add_point(structure)
+        # end if
     # end def
 
     def _shift_structure(self, shift, roundi=4):
@@ -142,7 +264,7 @@ class LineSearch(LineSearchBase):
             point.value = res.get_value()
             point.error = res.get_error()
         # end for
-        self.search()
+        self._search_and_store()
     # end def
 
     def set_results(
@@ -165,7 +287,11 @@ class LineSearch(LineSearchBase):
     # end def
 
     def get_shifted_params(self):
-        return array([structure.params for structure in self._grid if isinstance(structure, ParameterSet)])
+        if len(self) > 0:
+            return array([structure.params for structure in self.grid if isinstance(structure, ParameterSet)])
+        else:
+            return None
+        # end if
     # end def
 
     def plot(

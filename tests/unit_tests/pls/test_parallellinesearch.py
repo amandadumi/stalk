@@ -12,10 +12,10 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 
-def test_parallellinesearch_class():
+def test_parallellinesearch_class(tmp_path):
     from stalk import ParallelLineSearch
 
-    pls = ParallelLineSearch(mode='pes', pes_func=pes_H2O)
+    pls = ParallelLineSearch(path=str(tmp_path) + 'pls/', mode='pes', pes_func=pes_H2O)
     assert pls.get_status() == '000000'
     s = get_structure_H2O()
     s.shift_params([0.2, 0.2])
@@ -93,10 +93,10 @@ def test_parallellinesearch_class():
     # ls0_y0_ref = -0.48854587, 0.0
     # ls1_x0_ref = -0.04318508, 0.0
     # ls1_y0_ref = -0.42666697, 0.0
-    # assert match_to_tol(ls0.get_x0(), ls0_x0_ref)
-    # assert match_to_tol(ls0.get_y0(), ls0_y0_ref)
-    # assert match_to_tol(ls1.get_x0(), ls1_x0_ref)
-    # assert match_to_tol(ls1.get_y0(), ls1_y0_ref)
+    # assert match_to_tol(ls0.x0, ls0_x0_ref)
+    # assert match_to_tol(ls0.y0, ls0_y0_ref)
+    # assert match_to_tol(ls1.x0, ls1_x0_ref)
+    # assert match_to_tol(ls1.y0, ls1_y0_ref)
 
     next_params_ref = [0.98723545, 104.21430094]
     assert match_to_tol(pls.get_next_params(), next_params_ref)
@@ -119,7 +119,4 @@ def test_parallellinesearch_class():
     # pls.load_results()
     # assert match_to_tol(pls.propagate().structure.params,
     #                     [1.170805, 104.283132], tol=1e-5)
-
-    from shutil import rmtree
-    rmtree('pls/')
 # end def

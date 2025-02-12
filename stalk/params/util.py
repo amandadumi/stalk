@@ -1,4 +1,4 @@
-from numpy import linalg, pi, arccos, array, dot, loadtxt
+from numpy import linalg, pi, arccos, array, dot
 from scipy.optimize import minimize
 
 

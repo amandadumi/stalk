@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
-from numpy import array
 from pytest import raises
+from numpy import linspace
 
+from stalk import LineSearch
+from stalk.params.LineSearchPoint import LineSearchPoint
+from stalk.params.ParameterStructure import ParameterStructure
 from stalk.util import match_to_tol
 from ..assets.h2o import get_structure_H2O, get_hessian_H2O
 
@@ -11,81 +14,96 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 
-def test_linesearchbase_class():
-    from stalk.ls import LineSearchBase
-    ls = LineSearchBase()  # test generation
-    with raises(AssertionError):
-        ls.get_x0()
+# test LineSearch class
+def test_LineSearch():
+
+    # Empty init
+    ls = LineSearch()
+    assert ls.d is None
+    assert ls.direction == 0.0
+    assert ls.structure is None
+    assert ls.hessian is None
+    assert ls.W_max is None
+    assert ls.R_max == 0.0
+    assert len(ls) == 0
+    assert len(ls.grid) == 0
+    assert len(ls.offsets) == 0
+    assert len(ls.values) == 0
+    assert len(ls.errors) == 0
+    assert ls.get_shifted_params() is None
+    with raises(ValueError):
+        # M cannot be negative
+        ls.initialize_grid(M=-1)
     # end with
-    with raises(AssertionError):
-        ls.get_y0()
+    with raises(ValueError):
+        # Must characterize grid somehow
+        ls.initialize_grid(M=5)
     # end with
-    with raises(AssertionError):
-        ls.search()
+    with raises(ValueError):
+        # Cannot use negative R
+        ls.initialize_grid(M=5, R=-0.1)
+    # end with
+    with raises(ValueError):
+        # Cannot use W before setting Hessian
+        ls.initialize_grid(M=5, W=0.1)
+    # end with
+    ls = LineSearch(d=1)
+    assert ls.d == 1
+
+    # Without structure, the grid is only abstract points
+    ls.initialize_grid(grid=[0.1, 0.0, -0.1])
+    for point in ls.grid:
+        assert isinstance(point, LineSearchPoint)
+    # end for
+    ls.add_shift(0.2)
+    assert len(ls) == 4
+
+    # Test nominal init using actual structure
+    structure = get_structure_H2O()
+    d = 1
+    R = 0.2
+    sigma = 3.0
+    M = 5
+    offsets_ref = linspace(-R, R, M)
+    params_ref = structure.params[d] + offsets_ref
+    ls_s = LineSearch(structure=structure, M=M, d=d, sigma=sigma, R=R)
+    assert ls_s.structure == structure
+    assert ls_s.d == 1
+    assert ls_s.sigma == sigma
+    assert ls_s.W_max is None
+    match_to_tol(ls_s.R_max, R)
+    match_to_tol(ls_s.direction, [0.0, 1.0])
+    params = ls_s.get_shifted_params()
+    for point, ref in zip(ls_s.grid, offsets_ref):
+        assert isinstance(point, ParameterStructure)
+        assert point.offset == ref
+        match_to_tol(point.params[d] - structure.params[d], ref)
+    # end for
+    for params, ref in zip(ls_s.get_shifted_params(), params_ref):
+        match_to_tol(params, ref)
+    # end for
+    with raises(ValueError):
+        ls_s.d = 2
     # end with
 
-    ls = LineSearchBase(
-        grid=[0, 1, 2, 3, 4],
-        values=[2, 1, 0, 1, 2],
-        fit_kind='pf3')
-    x0 = ls.get_x0()
-    y0 = ls.get_y0()
-    x0_ref = [2.0000000000, 0.0]
-    y0_ref = [0.3428571428, 0.0]
-    fit_ref = [0.0, 4.28571429e-01, -1.71428571e+00, 2.05714286e+00]
-    assert match_to_tol(x0, x0_ref)
-    assert match_to_tol(y0, y0_ref)
-    assert match_to_tol(ls.fit, fit_ref)
-
-    # test _search method
-    x2, y2, pf2 = ls._search(2 * ls.grid, 2 * ls.values, None)
-    assert match_to_tol(x2, 2 * x0_ref[0])
-    assert match_to_tol(y2, 2 * y0_ref[0])
-    x3, y3, pf3 = ls._search(ls.grid, ls.values, fit_kind='pf2')
-    assert match_to_tol(x3, [2.0])
-    assert match_to_tol(y3, [0.34285714285])
-    assert match_to_tol(pf3, [0.42857143, -1.71428571, 2.05714286])
-    # TODO: more tests
-# end def
-
-
-# test LineSearch
-def test_linesearch_class():
-    from stalk import LineSearch
-    s = get_structure_H2O()
-    h = get_hessian_H2O()
-
-    with raises(AssertionError):
-        ls_d0 = LineSearch(s, h, d=1)
+    # Test nominal init using Hessian
+    hessian = get_hessian_H2O()
+    W = 0.2
+    d = 1
+    ls_h = LineSearch(hessian=hessian, M=M, d=d, sigma=sigma, W=W)
+    assert ls_h.structure == hessian.structure
+    assert ls_h.hessian == hessian
+    assert ls_h.d == 1
+    assert ls_h.W_max == W
+    assert ls_h.Lambda == hessian.get_lambda(d)
+    with raises(ValueError):
+        ls_h.sigma = -1.0
+    # end with
+    with raises(ValueError):
+        ls_h.d = 2
+    # end with
+    with raises(ValueError):
+        ls_h.sigma = []
     # end with
 
-    ls_d0 = LineSearch(s, h, d=0, R=1.3)
-    ls_d1 = LineSearch(s, h, d=1, W=3.0)
-    # test grid generation
-    gridR_d0 = ls_d0._make_grid_R(1.3, M=9)
-    gridW_d0 = ls_d0._make_grid_W(3.0, M=7)
-    gridR_d1 = ls_d1._make_grid_R(1.3, M=7)
-    gridW_d1 = ls_d1._make_grid_W(3.0, M=9)
-    gridR_d0_ref = array(
-        '-1.3   -0.975 -0.65  -0.325  0.     0.325  0.65   0.975  1.3'.split(), dtype=float)
-    gridW_d0_ref = array(
-        '-2.36783828 -1.57855885 -0.78927943  0.          0.78927943  1.57855885 2.36783828'.split(), dtype=float)
-    gridR_d1_ref = array(
-        '-1.3        -0.86666667 -0.43333333  0.          0.43333333  0.86666667  1.3'.split(), dtype=float)
-    gridW_d1_ref = array(
-        '-3.73611553 -2.80208665 -1.86805777 -0.93402888  0.          0.93402888  1.86805777  2.80208665  3.73611553'.split(), dtype=float)
-    assert match_to_tol(gridR_d0, gridR_d0_ref)
-    assert match_to_tol(gridR_d1, gridR_d1_ref)
-    assert match_to_tol(gridW_d0, gridW_d0_ref)
-    assert match_to_tol(gridW_d1, gridW_d1_ref)
-
-    with raises(AssertionError):
-        grid, M = ls_d0.figure_out_grid()
-    # end with
-    with raises(AssertionError):
-        grid, M = ls_d0.figure_out_grid(R=-1.0)
-    # end with
-    with raises(AssertionError):
-        grid, M = ls_d0.figure_out_grid(W=-1.0)
-    # end with
 # end def
