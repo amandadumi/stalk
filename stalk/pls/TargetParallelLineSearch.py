@@ -468,7 +468,6 @@ useful keyword arguments:
         for epsilon, ls, in zip(epsilon_d, self.ls_list):
             W_opt, sigma_opt = ls.maximize_sigma(
                 epsilon, **kwargs)  # no altering the error
-            # W_opt, sigma_opt = ls.interpolate_max_sigma(abs(epsilon))
             windows.append(W_opt)
             noises.append(sigma_opt)
         # end for

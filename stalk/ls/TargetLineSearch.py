@@ -3,8 +3,10 @@
 '''
 
 from numpy import array, argsort, isscalar, linspace, append, nan, isnan, where
-from numpy import random, argmin, equal
+from numpy import random, argmin, ndarray
 
+from stalk.ls.FittingFunction import FittingFunction
+from stalk.ls.LineSearchGrid import LineSearchGrid
 from .LineSearch import LineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 
@@ -16,33 +18,46 @@ __license__ = "BSD-3-Clause"
 # Class for error scan line-search
 class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
+    _Gs: None | ndarray = None  # N x M set of correlated random fluctuations for the grid
+    _epsilon = None  # optimized target error
+    _W_opt = None  # W to meet epsilon
+    _sigma_opt = None  # sigma to meet epsilon
+    _fit_func_opt = None  # Fit function to meet epsilon
     E_mat = None  # resampled W-sigma matrix of errors
     W_mat = None  # resampled W-mesh
     S_mat = None  # resampled sigma-mesh
     T_mat = None  # resampled trust-mesh (whether error is reliable)
-    Gs = None  # N x M set of correlated random fluctuations for the grid
-    epsilon = None  # optimized target error
-    W_opt = None  # W to meet epsilon
-    sigma_opt = None  # sigma to meet epsilon
-    # FLAGS
-    resampled = False
-    optimized = False
+    target_bias_order = 1
+    target_bias_mix = 0.0
 
     def __init__(
         self,
+        # kwargs related to LineSearch
         structure=None,
         hessian=None,
         d=None,
+        # sigma=0.0
+        offsets=None,
         M=7,
-        W=None,  # characteristic window
-        R=None,  # max displacement
-        grid=None,  # manual set of shifts
-        values=None,
+        W=None,
+        R=None,
         pes=None,
-        **kwargs,  # some redundancy in submitting kwargs
+        # kwargs related to TargetLineSearchBase
+        bias_order=1,
+        bias_mix=0.0,
+        interpolate_kind='cubic',
+        # Line-search kwargs
+        **ls_args
+        # values=None, errors=None, fraction=0.025, sgn=1
+        # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
     ):
-        # provide target_grid, target_values explicitly
-        TargetLineSearchBase.__init__(self, **kwargs)
+        # Set bias_mix and target_fit in TargetLineSearchBase
+        TargetLineSearchBase.__init__(
+            self,
+            bias_mix=bias_mix,
+            bias_order=bias_order
+        )
+        # The necessary init is done in LineSearch class
         LineSearch.__init__(
             self,
             structure=structure,
@@ -51,188 +66,314 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             M=M,
             W=W,
             R=R,
-            grid=grid,
-            values=values,
+            offsets=offsets,
             pes=pes,
-            **kwargs,
+            **ls_args,
         )
+        # Finally, attempt to reset interpolation
+        if self.valid:
+            self.reset_interpolation(interpolate_kind=interpolate_kind)
+        # end if
+    # end def
+
+    @property
+    def M(self):
+        if self.Gs is not None:
+            return self.Gs.shape[1]
+        else:
+            return len(self)
+        # end if
+    # end def
+
+    @property
+    def N(self):
+        if self.Gs is not None:
+            return self.Gs.shape[0]
+        else:
+            return 0
+        # end if
+    # end def
+
+    @property
+    def sigma_opt(self):
+        return self._sigma_opt
+    # end def
+
+    @sigma_opt.setter
+    def sigma_opt(self, sigma_opt):
+        if isscalar(sigma_opt) and sigma_opt > 0.0:
+            self._sigma_opt = sigma_opt
+    # end def
+
+    @property
+    def W_opt(self):
+        return self._W_opt
+    # end def
+
+    @W_opt.setter
+    def W_opt(self, W_opt):
+        if isscalar(W_opt) and W_opt > 0.0:
+            self._W_opt = W_opt
+        # end if
+    # end def
+
+    @property
+    def fit_func_opt(self):
+        return self._fit_func_opt
+    # end def
+
+    @fit_func_opt.setter
+    def fit_func_opt(self, fit_func):
+        if isinstance(fit_func, FittingFunction):
+            self._fit_func_opt = fit_func
+        # end if
+    # end def
+
+    @property
+    def R_opt(self):
+        return self._W_to_R(self.W_opt)
+    # end def
+
+    @property
+    def Gs(self):
+        return self._Gs
+    # end def
+
+    @property
+    def Ws(self):
+        if self.resampled:
+            return self.W_mat[0]
+        else:
+            return None
+        # end if
+    # end def
+
+    @property
+    def sigmas(self):
+        if self.resampled:
+            return self.S_mat[:, 0]
+        else:
+            return None
+        # end if
+    # end def
+
+    @property
+    def resampled(self):
+        return self.E_mat is not None
+    # end def
+
+    @property
+    def optimized(self):
+        return self.W_opt is not None and self.sigma_opt is not None
+    # end def
+
+    @Gs.setter
+    def Gs(self, Gs):
+        if isinstance(Gs, ndarray) and Gs.ndim == 2:
+            if Gs.shape[0] < 2:
+                raise AssertionError('Gs must have at least two rows')
+            elif Gs.shape[1] < 3:
+                raise AssertionError('Gs must have at least two columns')
+            else:
+                self._Gs = Gs
+                # When new Gs is set
+                self._reset_resampling()
+            # end if
+        else:
+            raise ValueError('Gs must be a 2D array')
+        # end if
+    # end def
+
+    def _reset_resampling(self):
+        self.E_mat = None
+        self.S_mat = None
+        self.W_mat = None
+        self.T_mat = None
     # end def
 
     def compute_bias_of(
         self,
+        M=None,
         R=None,
         W=None,
-        verbose=False,
-        bias_mix=None,
-        **kwargs
+        num_W=10,  # number of W points if no grids are provided
+        **ls_args  # sgn, fraction, fit_func, N, Gs, bias_order, bias_mix
     ):
-        bias_mix = bias_mix if bias_mix is not None else self.bias_mix
-        biases_x, biases_y, biases_tot = [], [], []
-        if verbose:
-            print((4 * '{:<10s} ').format('R', 'bias_x', 'bias_y', 'bias_tot'))
-        # end if
-        if R is not None:
-            Rs = array([R]) if isscalar(R) else R
-            for R in Rs:
-                R = max(R, 1e-5)  # for numerical stability
-                grid, M = self._figure_out_grid(R=R, **kwargs)
-                bias_x, bias_y, bias_tot = self.compute_bias(
-                    grid, bias_mix=bias_mix, **kwargs)
-                biases_x.append(bias_x)
-                biases_y.append(bias_y)
-                biases_tot.append(bias_tot)
-                if verbose:
-                    print((4 * '{:<10f} ').format(R, bias_x, bias_y, bias_tot))
-                # end if
-            # end for
-        elif W is not None:
-            Ws = array([W]) if isscalar(W) else W
-            if verbose:
-                print((4 * '{:<10s} ').format('W',
-                      'bias_x', 'bias_y', 'bias_tot'))
+        M = M if M is not None else self.M
+
+        Rs = []
+        Ws = []
+        if R is None:
+            if W is None:
+                # By default, compute bias for a range of W values
+                for W in linspace(0.0, self.W_max, num_W):
+                    Ws.append(W)
+                    Rs.append(self._W_to_R(W))
+                # end for
+            elif isscalar(W):
+                Ws.append(W)
+                Rs.append(self._W_to_R(W))
+            else:
+                Ws = W
+                Rs = [self._W_to_R(W) for W in Ws]
             # end if
-            for W in Ws:
-                W = max(W, 1e-5)  # for numerical stability
-                grid, M = self._figure_out_grid(W=W, **kwargs)
-                bias_x, bias_y, bias_tot = self.compute_bias(
-                    grid, bias_mix=bias_mix, **kwargs)
-                biases_x.append(bias_x)
-                biases_y.append(bias_y)
-                biases_tot.append(bias_tot)
-                if verbose:
-                    print((4 * '{:<10f} ').format(W, bias_x, bias_y, bias_tot))
-                # end if
-            # end for
+        else:
+            if isscalar(R):
+                Ws.append(self._R_to_W(R))
+                Rs.append(R)
+            else:
+                Rs = R
+                Ws = [self._R_to_W(R) for R in Rs]
+            # end if
         # end if
-        return array(biases_x), array(biases_y), array(biases_tot)
+
+        biases = []
+        for W in Ws:
+            offsets = self.figure_out_adjusted_offsets(M=M, W=W)
+            values = self.evaluate_target(offsets)
+            bias = self.compute_bias(
+                grid=LineSearchGrid(offsets=offsets, values=values),
+                **ls_args
+            )
+            biases.append(bias)
+        # end for
+        return array(Ws), array(Rs), array(biases)
     # end def
 
-    def compute_error(
+    def figure_out_adjusted_offsets(
         self,
-        grid=None,
-        errors=None,
-        W=None,
-        R=None,
-        **kwargs
+        **grid_args  # M, R, W, offsets
     ):
-        grid = self._figure_out_grid(R=R, W=W, grid=grid)
-        bias_x, bias_y, bias_tot = self.compute_bias(grid, **kwargs)
-        errorbar_x, errorbar_y = self.compute_errorbar(grid, errors, **kwargs)
-        error = bias_tot + errorbar_x
-        return error
-    # end def
-
-    # override TargetLineSearchBase class
-    def set_target(self, grid, values, **kwargs):
-        if values is None or all(equal(array(values), None)):
-            return
+        if self.fit_res is None:
+            raise AssertionError('Must have fit_res before adjusting offsets')
         # end if
-        TargetLineSearchBase.set_target(self, grid, values, **kwargs)
-        self.values = values
-    # end def
-
-    def evaluate_target(self, grid):
-        try:
-            return TargetLineSearchBase.evaluate_target(self, grid)
-        except AssertionError:
-            print('  W_max and R_max are respectively {} and {}'.format(
-                self.W_max, self.R_max))
-            return None
-        # end try
+        return self.figure_out_offsets(**grid_args) + self.target_fit.x0
     # end def
 
     # X: grid of W values; Y: grid of sigma values; E: grid of total errors
     #   if Gs is not provided, use M and N
-    def generate_W_sigma_data(
+    def generate_error_surface(
         self,
-        W_num=10,
+        W_num=3,
         W_max=None,
-        sigma_num=10,
+        sigma_num=3,
         sigma_max=None,
         noise_frac=0.05,
         Gs=None,
         M=None,
         N=None,
-        fit_kind=None,
-        verbose=False,
-        **kwargs
+        bias_mix=None,
+        bias_order=None,
     ):
-        if Gs is None:
-            M = M if M is not None else self.M
-            self.regenerate_Gs(M, N)  # set (or reset) Gs and M appropriately
-        else:  # Gs is not None
-            N, M = Gs.shape
-            assert N > 1, 'Must provide N > 1'
-            assert M > 1, 'Must provide M > 1'
-            self.Gs = Gs
-            self.M = M
+        if not self.valid_target:
+            raise AssertionError("Must have valid target data before generating error.")
         # end if
-        if verbose:
-            print(
-                '  tls{}: generating {}-by-{} error surface with N={}'.format(self.d, W_num, sigma_num, N))
-        # end if
+        # This will set self.Gs -> self.M, self.N
+        self._regenerate_Gs(N=N, M=M, Gs=Gs)
+
         W_max = W_max if W_max is not None else self.W_max
-        fit_kind = fit_kind if fit_kind is not None else self.fit_kind
         sigma_max = sigma_max if sigma_max is not None else W_max * noise_frac
-        # starting window array: sigma = 0, so only bias
+        if bias_mix is not None:
+            self.target_bias_mix = bias_mix
+        # end if
+        if bias_order is not None:
+            self.target_bias_order = bias_order
+        # end if
+
+        if W_max <= 0.0:
+            raise ValueError('Must provide W_max > 0')
+        # end if
+        if sigma_max <= 0.0:
+            raise ValueError('Must provide sigma_max > 0')
+        # end if
+
+        # Initial W and sigma grids
         Ws = linspace(0.0, W_max, W_num)
         sigmas = linspace(0.0, sigma_max, sigma_num)
-        errors = array(self.M * [sigmas[0]])
-        E_this = [self._compute_error(self._make_grid_W(
-            W, self.M), errors, Gs=self.Gs, fit_kind=fit_kind, **kwargs) for W in Ws]
-        self.fit_kind = fit_kind
-        self.E_mat = array([E_this])
+        # Start from adding the first row: sigma=0 -> plain bias
+        E0_row = [self._compute_target_error(W, sigmas[0]) for W in Ws]
+        self.E_mat = array([E0_row])
         self.W_mat = array([Ws])
         self.S_mat = array([W_num * [sigmas[0]]])
         self.T_mat = self._generate_T_mat()
-        # append the rest
+        # Then, append the noisy rows
         for sigma in sigmas[1:]:
-            self._insert_sigma_data(sigma, Gs=self.Gs, fit_kind=fit_kind)
+            self.insert_sigma_data(sigma)
         # end for
-        self.resampled = True
+    # end def
+
+    # Compute fitting bias and error using consistent parameters that are stored in Gs and
+    # target_fit
+    def _compute_target_error(self, W, sigma):
+        offsets = self.figure_out_adjusted_offsets(W=W, M=self.M)
+        values = self.evaluate_target(offsets)
+        errors = self.M * [sigma]
+        grid = LineSearchGrid(offsets=offsets, values=values, errors=errors)
+        error = self.compute_error(
+            grid,
+            Gs=self.Gs,
+            fit_func=self.fit_func,
+            sgn=self.sgn,
+            fraction=self.target_fit.fraction,
+            bias_order=self.target_bias_order,
+            bias_mix=self.target_bias_mix
+        )
+        return error
     # end def
 
     def _generate_T_mat(self):
         return self.W_mat >= self.S_mat
     # end def
 
-    def _check_Gs_M_N(self, Gs, M, N):
-        """Return True if Gs (and derived quantities) do not need regeneration, otherwise return False"""
-        if self.Gs is None:
-            return False
+    # Return true if a different resampling than current is requested
+    def _check_resampling_changed(
+        self,
+        M=None,
+        N=None,
+        Gs=None,
+        fit_func=None,
+        bias_order=None,
+        bias_mix=None,
+        **kwargs
+    ):
+        result = Gs is not None
+        result |= M is not None and M != self.M
+        result |= N is not None and N != self.N
+        result |= fit_func is not None and fit_func != self.fit_func
+        result |= bias_mix is not None and bias_mix != self.target_bias_mix
+        result |= bias_order is not None and bias_order != self.target_bias_order
+        return result
+    # end def
+
+    # Reset or regenerate Gs if the user changes M or N or provides new Gs
+    def _regenerate_Gs(self, M=None, N=None, Gs=None):
+        if Gs is not None:
+            # If Gs provided, try to insert them and ignore other arguments, return False
+            self.Gs = Gs
+        else:
+            M = M if M is not None else self.M
+            N = N if N is not None else self.N
+            # If M or N changes, regenerate
+            if not isinstance(M, int) or M <= 2:
+                raise ValueError('Must provide M > 2')
+            # end if
+            if not isinstance(N, int) or N <= 1:
+                raise ValueError('Must provide N > 1')
+            # end if
+            if M != self.M and N != self.N:
+                self.Gs = random.randn(N, M)
+            # end if
         # end if
-        Gs = Gs if Gs is not None else self.Gs  # only Gs will matter when provided
-        M = M if M is not None else self.M  # check user input
-        N = N if N is not None else len(self.Gs)  # check user input
-        return (len(Gs) == N and len(Gs[0]) == M)
     # end def
 
-    def regenerate_Gs(self, M, N):
-        """Regenerate and save Gs array"""
-        assert N is not None and N > 1, 'Must provide N > 1'
-        assert M is not None and M > 1, 'Must provide M > 1'
-        self.Gs = random.randn(N, M)
-        self.M = M
-    # end def
-
-    def insert_sigma_data(self, sigma, **kwargs):
-        self._insert_sigma_data(
-            sigma, Gs=self.Gs, fit_kind=self.fit_kind, **kwargs)
-    # end def
-
-    def insert_W_data(self, W, **kwargs):
-        assert W < self.W_max, 'Cannot resample past W_max={:<9f}; extend the target data'.format(
-            self.W_max)
-        self._insert_W_data(W, Gs=self.Gs, fit_kind=self.fit_kind, **kwargs)
-    # end def
-
-    def _insert_sigma_data(self, sigma, **kwargs):
-        Ws = self.W_mat[0]
-        Es = [self._compute_error(self._make_grid_W(
-            W, self.M), self.M * [sigma], **kwargs) for W in Ws]
-        W_mat = append(self.W_mat, [Ws], axis=0)
-        S_mat = append(self.S_mat, [len(Ws) * [sigma]], axis=0)
-        E_mat = append(self.E_mat, [Es], axis=0)
+    def insert_sigma_data(self, sigma):
+        if not (self.resampled and isscalar(sigma) and sigma > 0):
+            raise AssertionError('Must have resampled data and scalar sigma > 0')
+        # end if
+        E_row = [self._compute_target_error(W, sigma) for W in self.Ws]
+        W_mat = append(self.W_mat, [self.Ws], axis=0)
+        S_mat = append(self.S_mat, [len(self.Ws) * [sigma]], axis=0)
+        E_mat = append(self.E_mat, [E_row], axis=0)
         idx = argsort(S_mat[:, 0])
         self.W_mat = W_mat[idx]
         self.S_mat = S_mat[idx]
@@ -240,14 +381,15 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self.T_mat = self._generate_T_mat()
     # end def
 
-    def _insert_W_data(self, W, **kwargs):
+    def insert_W_data(self, W):
+        if not (self.resampled and isscalar(W) and W > 0 and W < self.W_max):
+            raise AssertionError('Must have resampled data and scalar 0 < W < W_max')
+        # end if
         sigmas = self.S_mat[:, 0]
-        grid = self._make_grid_W(W, self.M)
-        Es = [self._compute_error(grid, self.M * [sigma], **kwargs)
-              for sigma in sigmas]
+        E_col = [self._compute_target_error(W, sigma) for sigma in sigmas]
         W_mat = append(self.W_mat, array([len(sigmas) * [W]]).T, axis=1)
         S_mat = append(self.S_mat, array([sigmas]).T, axis=1)
-        E_mat = append(self.E_mat, array([Es]).T, axis=1)
+        E_mat = append(self.E_mat, array([E_col]).T, axis=1)
         idx = argsort(W_mat[0])
         self.W_mat = W_mat[:, idx]
         self.S_mat = S_mat[:, idx]
@@ -255,186 +397,224 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self.T_mat = self._generate_T_mat()
     # end def
 
-    def optimize(self, epsilon, **kwargs):
+    def optimize(
+        self,
+        epsilon,
+        fit_kind='pf3',
+        fit_func=None,
+        fit_args=None,
+        fraction=None,
+        **kwargs
+        # generate_args: W_num, W_max, sigma_num, sigma_max, noise_frac, M, N, Gs
+        # bias_mix, bias_order
+        # maximize_sigma_args: W_resolution, S_resolution, max_rounds
+    ):
         """Optimize W and sigma to a given target error epsilon > 0."""
-        self.W_opt, self.sigma_opt = self.maximize_sigma(epsilon, **kwargs)
-        self.epsilon = epsilon
-        self.optimized = True
+        if not self.valid_target:
+            raise AssertionError("Must have valid target data before optimization.")
+        # end if
+        # Set the fit function as requested
+        self.set_fit_func(
+            fit_func=fit_func,
+            fit_kind=fit_kind,
+            fit_args=fit_args
+        )
+        if fraction is not None:
+            # Set fraction as requested
+            self.target_fit.fraction
+        # end if
+        try:
+            self.W_opt, self.sigma_opt = self.maximize_sigma(
+                epsilon,
+                **kwargs
+            )
+            self.fit_func_opt = fit_func
+            self.epsilon = epsilon
+        except AssertionError:
+            print('Optimization failed!')
+        # end try
     # end def
 
+    # Optimize W and sigma based on maximizing sigma.
     def maximize_sigma(
         self,
         epsilon,
-        allow_override=True,  # allow regeneration of errors
-        fix_res=True,
-        Gs=None,
-        M=None,
-        N=None,
-        verbose=True,
-        low_thr=0.9,
-        **kwargs
+        W_resolution=0.05,  # W resolution fraction of the error surface
+        S_resolution=0.05,  # S resolution fraction of the error surface
+        max_rounds=10,  # maximum number of rounds
+        **generate_args
+        # W_num, W_max, sigma_num, sigma_max, noise_frac, Gs, M, N, bias_mix, bias_order
     ):
-        """Optimize W and sigma based on maximizing sigma."""
-        if self.resampled:
-            if not self._check_Gs_M_N(Gs, M, N):
-                if allow_override:
-                    self.generate_W_sigma_data(
-                        Gs=Gs, M=M, N=N, verbose=verbose, **kwargs)
-                else:
-                    raise AssertionError('Requested inconsistent resampling.')
-                # end if
+        if not isscalar(epsilon) or epsilon <= 0.0:
+            raise ValueError("Must provide epsilon > 0.")
+        # end if
+        if W_resolution >= 1.0 or W_resolution <= 0.0:
+            raise ValueError('W resolution must be 0.0 < W_resolution < 1.0')
+        # end if
+        if S_resolution >= 1.0 or S_resolution <= 0.0:
+            raise ValueError('S resolution must be 0.0 < S_resolution < 1.0')
+        # end if
+        if max_rounds <= 0:
+            raise ValueError('Must provide max_rounds > 0')
+        # end if
+        # Make sure error surface is generated
+        if self.E_mat is None or self._check_resampling_changed(**generate_args):
+            self.generate_error_surface(**generate_args)
+        # end if
+
+        # Find W and sigma that maximize sigma
+        for round in range(max_rounds):
+            xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
+            if self._treat_errors(xi, yi, epsilon, W_resolution, S_resolution):
+                break
             # end if
+        # end while
+        return self.W_mat[yi, xi], self.S_mat[yi, xi]
+    # end def
+
+    # Treat various accuracy errors by adding resolution inside boundaries
+    # When new points are added, the opeations return False; if none are added
+    # the operations return True and the loop breaks.
+    def _treat_errors(self, xi, yi, epsilon, X_resolution, Y_resolution):
+        if isnan(xi) or isnan(yi):
+            msg = 'Could not find the target error. '
+            msg += f'The smallest epsilon is {self.E_mat.min()} and {epsilon} was requested.'
+            raise AssertionError(msg)
+        # end if
+        result = True
+        if xi == 0:
+            result &= self._treat_x_underflow(X_resolution)
+        elif xi == self.E_mat.shape[1] - 1:
+            result &= self._treat_x_overflow(xi, X_resolution)
         else:
-            self.generate_W_sigma_data(
-                Gs=Gs, M=M, N=N, verbose=verbose, **kwargs)
+            result &= self._treat_x_res(xi, X_resolution)
         # end if
-        W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-        if 'not_found' in errs:
-            raise AssertionError(
-                '  tls{}: W, sigma not found for epsilon = {}. Check minimum bias and raise epsilon.'.format(self.d, epsilon))
-        # end if
-        if fix_res:
-            while 'x_underflow' in errs and self._fix_x_underflow(W, verbose=verbose):
-                W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-            # end while
-            while 'y_underflow' in errs and self._fix_y_underflow(sigma, verbose=verbose):
-                W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-            # end while
-            while 'y_overflow' in errs and self._fix_y_overflow(sigma, verbose=verbose):
-                W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-            # end while
-            while 'low_res' in errs and self._fix_low_res(epsilon, verbose=verbose):
-                W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-            # end while
-        return W, sigma
-    # end def
 
-    def _fix_x_underflow(self, W_this, verbose=True):
-        W_new = self.W_mat[0, 1] / 2
-        if W_new < self.W_max * 1e-3:
-            if verbose:
-                print('  tls{}: W underflow: did not add W = {}'.format(
-                    self.d, W_new.round(7)))
-            # end if
-            return False
-        # end if
-        self.insert_W_data(W_new)
-        if verbose:
-            print('  tls{}: W underflow: added W = {} to resampling grid'.format(
-                self.d, (W_new).round(7)))
-        # end if
-        return True
-    # end def
-
-    def _fix_y_underflow(self, S_this, verbose=True):
-        S_new = self.S_mat[1, 0] / 2
-        if S_new < self.W_max * 1e-8:
-            return False
-        # end if
-        self.insert_sigma_data(S_new)
-        if verbose:
-            print('  tls{}: Sigma underflow: added sigma = {} to resampling grid'.format(
-                self.d, (S_new).round(7)))
-        # end if
-        return True
-    # end def
-
-    def _fix_y_overflow(self, S_this, verbose=True):
-        S_new = S_this * 2
-        if S_new > self.W_max:
-            if verbose:
-                print('  tls{}: Sigma overflow: did not add sigma = {} to resampling grid'.format(
-                    self.d, S_new))
-            # end if
-            return False
-        # end if
-        self.insert_sigma_data(S_new)
-        if verbose:
-            print('  tls{}: Sigma overlow: added sigma = {} to resampling grid'.format(
-                self.d, (S_new).round(7)))
-        # end if
-        return True
-    # end def
-
-    def _fix_low_res(self, epsilon, verbose=True):
-        status = False
-        Wi, Si = self._argmax_y(self.E_mat, self.T_mat, epsilon)
-        W_this, S_this = self.W_mat[0, Wi], self.S_mat[Si, 0]
-        if Si < self.S_mat.shape[0] - 1:
-            S_new = (self.S_mat[Si, 0] + self.S_mat[Si + 1, 0]) / 2
-            if abs(S_new - S_this) > self.S_mat.max() * 5e-3:
-                self.insert_sigma_data(S_new)
-                status = True
-                if verbose:
-                    print(
-                        '  tls{}: Low-res: added sigma = {} to resampling grid'.format(self.d, S_new.round(7)))
-                # end if
-            # end if
-        # end if
-        W_lo = (self.W_mat[0, Wi - 1] + self.W_mat[0, Wi]) / 2
-        if Wi < len(self.W_mat[0]) - 1:  # whether to add high W value
-            W_hi = (self.W_mat[0, Wi] + self.W_mat[0, Wi + 1]) / 2
-            if abs(W_hi - W_this) > self.W_max * 2e-2:
-                status = True
-                self.insert_W_data(W_hi)
-                if verbose:
-                    print(
-                        '  tls{}: Low-res: added W = {} to resampling grid'.format(self.d, W_hi.round(7)))
-                # end if
-            # end if
-        # end if
-        if abs(W_lo - W_this) > self.W_max * 2e-2:
-            self.insert_W_data(W_lo)
-            status = True
-            if verbose:
-                print(
-                    '  tls{}: Low-res: added W = {} to resampling grid'.format(self.d, W_lo.round(7)))
-            # end if
-        # end if
-        return status
-    # end def
-
-    def interpolate_max_sigma(self, epsilon, low_thr=0.9, **kwargs):
-        W, sigma, E, errs = self._maximize_y(epsilon, low_thr=low_thr)
-        # TODO: bilinear interpolation
-        if any([err in errs for err in ['y_overflow', 'x_underflow']]):
-            return W, sigma
+        if yi == 0:
+            result &= self._treat_y_underflow(Y_resolution)
+        elif yi == self.E_mat.shape[0] - 1:
+            result &= self._treat_y_overflow(yi, Y_resolution)
         else:
-            Wi, Si = self._argmax_y(self.E_mat, epsilon)
-            a = (self.E_mat[Si + 1, Wi] - epsilon) / \
-                (self.E_mat[Si, Wi] - epsilon)
-            sigma = a * (self.S_mat[Si, Wi] - self.S_mat[Si + 1, Wi])
-            return W, sigma
+            result &= self._treat_y_res(yi, Y_resolution)
+        # end if
+        return result
+    # end def
+
+    # Fix x underflow by adding a new W value between the first and second
+    def _treat_x_underflow(self, X_resolution):
+        W_max = self.W_mat[0, -1]
+        # The first W is (almost) zero
+        W_this = self.W_mat[0, 0]
+        W_right = (self.W_mat[0, 0] + self.W_mat[0, 1]) / 2
+        W_diff = (W_right - W_this) / W_max
+        if W_diff > X_resolution:
+            self.insert_W_data(W_right)
+            return False
+        else:
+            # Else, print a recommendation
+            msg = f'Persistent W-underflow in tls{self.d}:'
+            msg += f' To improve performance, sample low W near {W_this}'
+            print(msg)
+            return True
         # end if
     # end def
 
-    def _maximize_y(self, epsilon, low_thr=0.9):
-        """Return X, Y, and E values """
-        assert self.resampled, 'Must resample errors first!'
-        assert low_thr < 0.99, 'Threshold limit too high'
-        assert epsilon > 0, 'epsilon must be positive'
-        errs = []
+    def _treat_x_overflow(self, xi, X_resolution):
+        W_max = self.W_mat[0, -1]
+        W_this = self.W_mat[0, xi]
+        W_left = self.W_mat[0, xi - 1]
+        W_diff = (W_this - W_left) / W_max
+        if W_diff > X_resolution:
+            # Add new W value to the left
+            W_new = (W_this + W_left) / 2
+            self.insert_W_data(W_new)
+            return False
+        else:
+            # Else, print a recommendation
+            msg = f'Persistent W-overflow in tls{self.d}:'
+            msg += f' To improve performance, sample W > {W_this}'
+            print(msg)
+            return True
+        # end if
+    # end def
+
+    def _treat_x_res(self, xi, X_resolution):
+        W_max = self.W_mat[0, -1]
+        W_this = self.W_mat[0, xi]
+        W_left = self.W_mat[0, xi - 1]
+        W_right = self.W_mat[0, xi + 1]
+        res = True
+        if (W_this - W_left) / W_max / 2 > X_resolution:
+            # Add new W value to the left
+            self.insert_W_data((W_this + W_left) / 2)
+            res &= False
+        # end if
+        if (W_right - W_this) / W_max / 2 > X_resolution:
+            # Add new W value to the right
+            self.insert_W_data((W_this + W_right) / 2)
+            res &= False
+        # end if
+        return res
+    # end def
+
+    # Fix x underflow by adding a new sigma value between the first and second
+    def _treat_y_underflow(self, Y_resolution):
+        S_max = self.S_mat[-1, 0]
+        S_this = self.S_mat[1, 0]  # should be zero
+        S_up = self.S_mat[1, 0] / 2
+        S_diff = (S_up - S_this) / S_max
+        if S_diff > Y_resolution:
+            self.insert_sigma_data(S_up)
+            return False
+        else:
+            # Else, print a recommendation
+            msg = f'Persistent Sigma underflow in tls{self.d}:'
+            msg += f' To improve performance, check Y_resolution: {Y_resolution}'
+            print(msg)
+            return True
+        # end if
+    # end def
+
+    # Fix x underflow by adding a new sigma value twice as high until W_max
+    def _treat_y_overflow(self, S_this, Y_resolution):
+        S_this = self.S_mat[-1, 0]
+        S_up = max(2 * S_this, self.W_max)
+        S_diff = (S_up - S_this) / S_up
+        if S_diff > Y_resolution:
+            self.insert_sigma_data(S_up)
+            return False
+        else:
+            msg = f'Could not add sigma higher than {S_up}.'
+            msg += f' To improve performance, sample W > {self.W_max}.'
+            print(msg)
+            return True
+        # end if
+    # end def
+
+    def _treat_y_res(self, yi, Y_resolution):
+        S_max = self.S_mat[-1, 0]
+        S_this = self.S_mat[yi, 0]
+        S_down = self.S_mat[yi - 1, 0]
+        S_up = self.S_mat[yi + 1, 0]
+        res = True
+        if (S_up - S_this) / S_max / 2 > Y_resolution:
+            self.insert_sigma_data((S_this + S_up) / 2)
+            res &= False
+        # end if
+        if (S_this - S_down) / S_max / 2 > Y_resolution:
+            self.insert_sigma_data((S_this + S_down) / 2)
+            res &= False
+        # end if
+        return res
+    # end def
+
+    # Return the W and maximum sigma to meet epsilon and maximization errors
+    def _maximize_y(self, epsilon):
         xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
-        if isnan(xi):
-            return nan, nan, nan, ['not_found']
-        # end if
         E0 = self.E_mat[yi, xi]
         x0 = self.W_mat[yi, xi]
         y0 = self.S_mat[yi, xi]
-        if xi == 0:
-            errs.append('x_underflow')
-        elif xi == self.E_mat.shape[1] - 1:
-            errs.append('x_overflow')
-        # end if
-        if yi == 0:
-            errs.append('y_underflow')
-        elif yi == self.E_mat.shape[0] - 1:
-            errs.append('y_overflow')
-        # end if
-        if E0 / epsilon < low_thr:
-            errs.append('low_res')
-        # end if
-        return x0, y0, E0, errs
+        return x0, y0, E0, (xi, yi)
     # end def
 
     def _argmax_y(self, E, T, epsilon):
@@ -455,17 +635,17 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         return xi, yi
     # end def
 
-    def statistical_cost(self, sigma=None, M=None):
+    def statistical_cost(self):
         """Return statistical cost based on sigma and M"""
-        sigma = sigma if sigma is not None else self.sigma_opt
-        M = M if M is not None else self.M
-        return M * sigma**-2
+        if not self.optimized:
+            raise AssertionError('Cannot compute statistical cost before optimization')
+        # end if
+        return self.M * self.sigma_opt**-2
     # end def
 
     def plot_error_surface(
         self,
-        ax=None,
-        **kwargs
+        ax=None
     ):
         if not self.optimized:
             print('Must optimize before plotting error surface')

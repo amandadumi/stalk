@@ -2,6 +2,7 @@
 '''Generic classes for 1-dimensional line-searches
 '''
 
+from numpy import linspace
 from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
@@ -21,7 +22,7 @@ class LineSearchBase(LineSearchGrid):
 
     def __init__(
         self,
-        grid=None,
+        offsets=None,
         values=None,
         errors=None,
         fraction=0.025,
@@ -32,9 +33,9 @@ class LineSearchBase(LineSearchGrid):
         N=200,
         Gs=None,
     ):
-        LineSearchGrid.__init__(self, grid)
+        LineSearchGrid.__init__(self, offsets)
         self.sgn = sgn
-        self.init_fit_func(
+        self.set_fit_func(
             fit_func=fit_func,
             fit_args=fit_args,
             fit_kind=fit_kind
@@ -49,7 +50,11 @@ class LineSearchBase(LineSearchGrid):
         # end if
     # end def
 
-    def init_fit_func(
+    def set_fit_func(self, **kwargs):
+        self.fit_func = self.get_fit_func(**kwargs)
+    # end def
+
+    def get_fit_func(
         self,
         fit_func=None,
         fit_args={},
@@ -57,14 +62,14 @@ class LineSearchBase(LineSearchGrid):
     ):
         if isinstance(fit_func, FittingFunction):
             # If fitting function is good as is
-            self.fit_func = fit_func
+            return fit_func
         elif callable(fit_func):
             # Try to initiate
-            self.fit_func = FittingFunction(fit_func, args=fit_args)
+            return FittingFunction(fit_func, args=fit_args)
         else:
             # Try to infer from fit_kind
-            if 'pf' in fit_kind:
-                self.fit_func = FittingFunction(
+            if hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
+                return FittingFunction(
                     get_min_params,
                     args={'pfn': int(fit_kind[2:])}
                 )
@@ -96,7 +101,7 @@ class LineSearchBase(LineSearchGrid):
         fit_func = fit_func if isinstance(sgn, FittingFunction) else self.fit_func
         fraction = fraction if isinstance(fraction, float) else self.fraction
 
-        return fit_func.find_noisy_minimum(self, N=N, Gs=Gs, fraction=fraction)
+        return fit_func.find_noisy_minimum(grid, N=N, Gs=Gs, fraction=fraction)
     # end def
 
     def search(
@@ -105,18 +110,24 @@ class LineSearchBase(LineSearchGrid):
         sgn=None,
         grid=None,
         fraction=None,
-        fit_func=None,
-        N=200,
-        Gs=None,
+        fit_func=None
     ):
         # It is possible to override grid to get alternative results. Used in resampling
         # alternative errorbars
-        grid = grid if isinstance(grid, LineSearchGrid) else self._grid
+        grid = grid if isinstance(grid, LineSearchGrid) else self
         sgn = sgn if isinstance(sgn, int) else self.sgn
-        fit_func = fit_func if isinstance(sgn, FittingFunction) else self.fit_func
+        fit_func = fit_func if isinstance(fit_func, FittingFunction) else self.fit_func
         fraction = fraction if isinstance(fraction, float) else self.fraction
 
-        return fit_func.find_minimum(grid, N=N, Gs=Gs)
+        return fit_func.find_minimum(grid, sgn=sgn)
+    # end def
+
+    def reset_search(self, x0=0.0, y0=0.0):
+        self.fit_res.x0 = x0
+        self.fit_res.x0_err = 0.0
+        self.fit_res.y0 = y0
+        self.fit_res.y0_err = 0.0
+        return self
     # end def
 
     @property
@@ -142,6 +153,14 @@ class LineSearchBase(LineSearchGrid):
     @property
     def y0_err(self):
         return None if self.fit_res is None else self.fit_res.y0_err
+    # end def
+
+    def _make_offsets_R(self, R, M):
+        if R < 1e-6:
+            raise ValueError("R must be larger than 1e-6")
+        # end if
+        offsets = linspace(-R, R, M)
+        return offsets
     # end def
 
     def __str__(self):

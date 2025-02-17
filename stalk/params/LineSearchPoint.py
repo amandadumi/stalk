@@ -2,7 +2,7 @@
 '''Class for containing grid, value and error of a single point of line-search
 '''
 
-from numpy import isscalar, abs
+from numpy import isscalar, abs, isnan
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -82,7 +82,7 @@ class LineSearchPoint():
     @property
     def valid(self):
         '''The value is valid, when it is enabled and has a value'''
-        return self._enabled and isscalar(self._value)
+        return self._enabled and isscalar(self._value) and not isnan(self._value)
     # end def
 
     def reset_value(self):

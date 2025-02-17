@@ -17,12 +17,21 @@ class LineSearchGrid():
 
     def __init__(
         self,
-        grid=None
+        offsets=None,
+        values=None,
+        errors=None
     ):
-        if grid is not None:
-            for offset in grid:
+        self._grid = []
+        if offsets is not None:
+            for offset in offsets:
                 self.add_point(offset)
             # end for
+            if values is not None:
+                self.values = values
+            # end if
+            if errors is not None:
+                self.errors = errors
+            # end if
         # end for
     # end def
 
@@ -52,8 +61,8 @@ class LineSearchGrid():
     @grid.setter
     def grid(self, grid):
         self._grid = []
-        for offset in grid:
-            self.add_point(offset)
+        for point in grid:
+            self.add_point(point)
         # end for
     # end def
 
@@ -87,6 +96,8 @@ class LineSearchGrid():
             for value, point in zip(values, self._grid):
                 point.value = value
             # end for
+        else:
+            raise ValueError("Values must be of same length as grid")
         # end if
     # end def
 
@@ -108,12 +119,37 @@ class LineSearchGrid():
             for error, point in zip(errors, self._grid):
                 point.error = error
             # end for
+        else:
+            raise ValueError("Errors must be of same length as grid")
+        # end if
+    # end def
+
+    @property
+    def R_max(self):
+        if len(self) > 0:
+            return min([-self.offsets.min(), self.offsets.max()])
+        else:
+            return 0.0
+        # end if
+    # end def
+
+    @property
+    def valid_R_max(self):
+        if len(self) > 0 and len(self.valid_grid) > 1:
+            return min([-self.valid_offsets.min(), self.valid_offsets.max()])
+        else:
+            return 0.0
         # end if
     # end def
 
     @property
     def noisy(self):
         return not all(self.valid_errors == 0.0)
+    # end def
+
+    @property
+    def valid(self):
+        return len(self.valid_grid) > 1
     # end def
 
     # Get all enabled arrays: (offsets, values, errors)

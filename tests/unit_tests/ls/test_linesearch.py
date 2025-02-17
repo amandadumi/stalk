@@ -20,6 +20,7 @@ def test_LineSearch():
     # Empty init
     ls = LineSearch()
     assert ls.d is None
+    assert ls.sgn == 1
     assert ls.direction == 0.0
     assert ls.structure is None
     assert ls.hessian is None
@@ -33,25 +34,25 @@ def test_LineSearch():
     assert ls.get_shifted_params() is None
     with raises(ValueError):
         # M cannot be negative
-        ls.initialize_grid(M=-1)
+        ls.figure_out_offsets(M=-1)
     # end with
     with raises(ValueError):
         # Must characterize grid somehow
-        ls.initialize_grid(M=5)
+        ls.figure_out_offsets(M=5)
     # end with
     with raises(ValueError):
         # Cannot use negative R
-        ls.initialize_grid(M=5, R=-0.1)
+        ls.figure_out_offsets(M=5, R=-0.1)
     # end with
     with raises(ValueError):
         # Cannot use W before setting Hessian
-        ls.initialize_grid(M=5, W=0.1)
+        ls.figure_out_offsets(M=5, W=0.1)
     # end with
     ls = LineSearch(d=1)
     assert ls.d == 1
 
     # Without structure, the grid is only abstract points
-    ls.initialize_grid(grid=[0.1, 0.0, -0.1])
+    ls.set_grid(offsets=[0.1, 0.0, -0.1])
     for point in ls.grid:
         assert isinstance(point, LineSearchPoint)
     # end for
@@ -68,6 +69,7 @@ def test_LineSearch():
     params_ref = structure.params[d] + offsets_ref
     ls_s = LineSearch(structure=structure, M=M, d=d, sigma=sigma, R=R)
     assert ls_s.structure == structure
+    assert len(ls_s) == M
     assert ls_s.d == 1
     assert ls_s.sigma == sigma
     assert ls_s.W_max is None
@@ -90,11 +92,15 @@ def test_LineSearch():
     hessian = get_hessian_H2O()
     W = 0.2
     d = 1
+    M = 9
     ls_h = LineSearch(hessian=hessian, M=M, d=d, sigma=sigma, W=W)
+    assert len(ls_h) == M
     assert ls_h.structure == hessian.structure
     assert ls_h.hessian == hessian
     assert ls_h.d == 1
+    assert ls_h.sgn == 1
     assert ls_h.W_max == W
+    assert ls_h.valid_W_max == 0.0
     assert ls_h.Lambda == hessian.get_lambda(d)
     with raises(ValueError):
         ls_h.sigma = -1.0
@@ -105,5 +111,7 @@ def test_LineSearch():
     with raises(ValueError):
         ls_h.sigma = []
     # end with
+
+    # TODO: test evaluation, fitting etc
 
 # end def

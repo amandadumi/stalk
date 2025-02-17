@@ -37,7 +37,7 @@ class FittingFunction():
         sgn=1,
     ):
         if not isinstance(grid, LineSearchGrid):
-            raise ValueError("Fitting function input must be inherited from LineSearcGrid.")
+            raise ValueError("Fitting function input must be inherited from LineSearchGrid.")
         # end if
         res = self._eval_function(grid.valid_offsets, grid.valid_values * sgn)
         return res
@@ -59,7 +59,7 @@ class FittingFunction():
         if not isinstance(grid, LineSearchGrid):
             raise ValueError("Fitting function input must be inherited from LineSearcGrid.")
         # end if
-        result = self._eval_function(grid.valid_offsets, grid.valid_values)
+        result = self._eval_function(grid.valid_offsets, grid.valid_values * sgn)
         # If errors present, resample errorbars; if not, errors default to 0
         if grid.noisy:
             x0s, y0s = self.get_distribution(
@@ -70,8 +70,8 @@ class FittingFunction():
             )
             result.x0_err = get_fraction_error(x0s - result.x0, fraction=fraction)[1]
             result.y0_err = get_fraction_error(y0s - result.y0, fraction=fraction)[1]
-            result.fraction = fraction
         # end if
+        result.fraction = fraction
         return result
     # end def
 

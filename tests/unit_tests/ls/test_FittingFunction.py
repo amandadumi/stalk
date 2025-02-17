@@ -31,8 +31,8 @@ def test_FittingFunction():
     fit_res = fit.find_minimum(grid)
     assert isinstance(fit_res, FittingResult)
     assert fit_res.analyzed
-    match_to_tol(fit_res.x0, ref.x0)
-    match_to_tol(fit_res.y0, ref.y0)
+    assert match_to_tol(fit_res.x0, ref.x0)
+    assert match_to_tol(fit_res.y0, ref.y0)
     assert fit_res.x0_err == 0.0
     assert fit_res.y0_err == 0.0
 
@@ -42,8 +42,8 @@ def test_FittingFunction():
     fit_noisy = fit.find_noisy_minimum(grid, Gs=Gs)
     assert isinstance(fit_noisy, FittingResult)
     assert fit_noisy.analyzed
-    match_to_tol(fit_noisy.x0, ref.x0)
-    match_to_tol(fit_noisy.y0, ref.y0 + y_offset)
+    assert match_to_tol(fit_noisy.x0, ref.x0)
+    assert match_to_tol(fit_noisy.y0, ref.y0)
     # The fluctuation is numerically zero
     assert fit_noisy.x0_err == 0.0
     assert fit_noisy.y0_err == 0.0

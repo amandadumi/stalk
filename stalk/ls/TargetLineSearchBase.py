@@ -2,11 +2,12 @@
 '''TargetLineSearch classes for the assessment and evaluation of fitting errors
 '''
 
-from numpy import array, argsort
-from numpy import equal
-from scipy.interpolate import interp1d, PchipInterpolator
+from numpy import array, isscalar, nan, where
+from scipy.interpolate import CubicSpline, PchipInterpolator
 
+from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchBase import LineSearchBase
+from stalk.ls.LineSearchGrid import LineSearchGrid
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -15,138 +16,225 @@ __license__ = "BSD-3-Clause"
 
 # Class for line-search with resampling and bias assessment against target
 class TargetLineSearchBase(LineSearchBase):
-    target_x0 = None
-    target_y0 = None
-    target_grid = None
-    target_values = None
+    _target_interp = None  # Interpolant
+    target_fit = FittingResult  # Target fit
     bias_mix = None
+    bias_order = 1
 
     def __init__(
         self,
-        target_grid=None,
-        target_values=None,
-        target_y0=None,
-        target_x0=0.0,
+        offsets=None,
+        values=None,
+        errors=None,
         bias_mix=0.0,
-        **kwargs,
+        bias_order=1,
+        interpolate_kind='cubic',
+        **ls_args,
+        # fraction=0.025, sgn=1, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
     ):
-        LineSearchBase.__init__(self, **kwargs)
-        self.target_x0 = target_x0
-        self.target_y0 = target_y0
+        LineSearchBase.__init__(
+            self,
+            offsets=offsets,
+            values=values,
+            errors=errors,
+            **ls_args
+        )
         self.bias_mix = bias_mix
-        self.set_target(grid=target_grid, values=target_values, **kwargs)
+        self.bias_order = bias_order
+        self.target_fit = FittingResult(0.0, 0.0)
+        if self.valid:
+            self.reset_interpolation(interpolate_kind=interpolate_kind)
+        # end if
     # end def
 
-    def set_target(
+    @property
+    def valid_target(self):
+        return self._target_interp is not None
+    # end def
+
+    def reset_interpolation(
         self,
-        grid,
-        values,
         interpolate_kind='cubic'
     ):
-        if values is None or all(equal(array(values), None)):
-            return
+        if not self.valid:
+            raise AssertionError("Must provide values before interpolation")
         # end if
-        sidx = argsort(grid)
-        self.target_grid = array(grid)[sidx]
-        self.target_values = array(values)[sidx]
-        if self.target_y0 is None:
-            self.target_y0 = self.target_values.min()  # approximation
-        # end if
-        self.target_xlim = [grid.min(), grid.max()]
         if interpolate_kind == 'pchip':
-            self.target_in = PchipInterpolator(grid, values, extrapolate=False)
+            self._target_interp = PchipInterpolator(
+                self.valid_offsets,
+                self.valid_values,
+                extrapolate=True
+            )
+        elif interpolate_kind == 'cubic':
+            self._target_interp = CubicSpline(
+                self.valid_offsets,
+                self.valid_values,
+                extrapolate=True
+            )
         else:
-            self.target_in = interp1d(
-                grid, values, kind=interpolate_kind, bounds_error=False)
+            raise ValueError("Could not recognize interpolate kind" + str(interpolate_kind))
         # end if
     # end def
 
-    def evaluate_target(self, grid):
-        assert grid.min() - self.target_xlim[0] > -1e-6 and grid.max(
-        ) - self.target_xlim[1] < 1e-6, 'Requested points off the grid: ' + str(grid)
-        return self.target_in(0.99999 * grid)
+    def evaluate_target(self, offsets):
+        if isscalar(offsets):
+            if self.valid_target:
+                return self._evaluate_target_point(offsets)
+            else:
+                return nan
+            # end if
+        else:
+            if self.valid_target:
+                return array([self._evaluate_target_point(offset) for offset in offsets])
+            else:
+                return array(len(offsets) * [nan])
+            # end if
+        # end if
     # end def
 
-    def compute_bias(self, grid=None, bias_mix=None, **kwargs):
+    def _evaluate_target_point(self, offset):
+        if offset < self._target_interp.x.min() or offset > self._target_interp.x.max():
+            return nan
+        else:
+            return self._target_interp(offset)
+        # end if
+    # end def
+
+    def compute_bias(
+        self,
+        grid: LineSearchGrid,
+        bias_mix=None,
+        bias_order=None,
+        **ls_args  # sgn, fit_func
+    ):
+        if not self.valid_target:
+            return nan
+        # end if
         bias_mix = bias_mix if bias_mix is not None else self.bias_mix
-        grid = grid if grid is not None else self.target_grid
-        return self._compute_bias(grid, bias_mix, **kwargs)
-    # end def
-
-    def _compute_xy_bias(self, grid, bias_order=1, **kwargs):
-        x0 = 0
-        for i in range(bias_order):
-            grid_this = array(
-                [min([max([p, self.target_grid.min()]), self.target_grid.max()]) for p in (grid + x0)])
-            values = self.evaluate_target(grid_this)
-            x0, y0, fit = self.search(grid_this, values * self.sgn, **kwargs)
-        # end for
-        bias_x = x0 - self.target_x0
-        bias_y = y0 - self.target_y0
-        return bias_x, bias_y
-    # end def
-
-    def _compute_bias(self, grid, bias_mix=None, **kwargs):
-        bias_mix = bias_mix if bias_mix is not None else self.bias_mix
-        bias_x, bias_y = self._compute_xy_bias(grid, **kwargs)
+        bias_order = bias_order if bias_order is not None else self.bias_order
+        if bias_order <= 0:
+            raise ValueError("bias_order must be 1 or more.")
+        # end if
+        bias_x, bias_y = self._compute_xy_bias(
+            grid,
+            bias_order=bias_order,
+            x0_ref=self.target_fit.x0,
+            y0_ref=self.target_fit.y0,
+            **ls_args
+        )
         bias_tot = abs(bias_x) + bias_mix * abs(bias_y)
-        return bias_x, bias_y, bias_tot
+        return bias_tot
+    # end def
+
+    def _compute_xy_bias(
+        self,
+        grid: LineSearchGrid,
+        bias_order=1,
+        x0_ref=0.0,
+        y0_ref=0.0,
+        **ls_args  # sgn, fit_func
+    ):
+        x0 = x0_ref
+        x_min = self._target_interp.x.min()
+        x_max = self._target_interp.x.max()
+        # Repeat search 'bias_order' times to simulate how bias is self-induced
+        for i in range(bias_order):
+            offsets = grid.offsets + x0
+            offsets[where(offsets < x_min)] = x_min
+            offsets[where(offsets > x_max)] = x_max
+            values = self.evaluate_target(offsets)
+            res = self.search(
+                grid=LineSearchGrid(offsets, values=values),
+                **ls_args
+            )
+            x0 = res.x0
+            y0 = res.y0
+        # end for
+        # Offset bias
+        bias_x = x0 - x0_ref
+        # Value bias
+        bias_y = y0 - y0_ref
+        return bias_x, bias_y
     # end def
 
     def compute_errorbar(
         self,
-        grid=None,
-        errors=None,
-        **kwargs
+        grid: LineSearchGrid,
+        **ls_args  # sgn, fraction, fit_func, N, Gs
     ):
-        grid = grid if grid is not None else self.grid
-        errors = errors if errors is not None else self.errors
-        values = self.evaluate_target(grid)
+        if not self.valid_target:
+            return nan, nan
+        # end if
+        offsets = grid.valid_offsets
+        values = self.evaluate_target(offsets)
         if values is not None:
-            x0, x0_err, y0, y0_err, fit = self.search_with_error(
-                grid,
-                values * self.sgn,
-                errors,
-                **kwargs
+            res = self.search_with_error(
+                grid=LineSearchGrid(offsets, values=values, errors=grid.valid_errors),
+                **ls_args
             )
-            return x0_err, y0_err
+            return res.x0_err, res.y0_err
         # end if
     # end def
 
-    def _compute_error(self, grid, errors, **kwargs):
-        bias_x, bias_y, bias_tot = self._compute_bias(grid, **kwargs)
-        errorbar_x, errorbar_y = self._compute_errorbar(grid, errors, **kwargs)
-        return bias_tot + errorbar_x
+    def compute_error(
+        self,
+        grid: LineSearchGrid,
+        bias_mix=None,
+        bias_order=None,
+        N=200,
+        Gs=None,
+        fraction=None,
+        **ls_args  # sgn, fraction, fit_func
+    ):
+        bias = self.compute_bias(
+            grid,
+            bias_mix=bias_mix,
+            bias_order=bias_order,
+            **ls_args
+        )
+        errorbar_x, errorbar_y = self.compute_errorbar(
+            grid,
+            N=N,
+            Gs=Gs,
+            fraction=fraction,
+            **ls_args
+        )
+        return bias + errorbar_x
+    # end def
+
+    def bracket_target_bias(
+        self,
+        bracket_fraction=0.5,
+        M=7,
+        max_iter=10,
+        **ls_args  # sgn=1, fit_kind='pf3', fit_func=None, fit_args={}
+    ):
+        if bracket_fraction <= 0 or bracket_fraction >= 1.0:
+            raise ValueError("Must be 0 < bracket_fraction < 1")
+        # end if
+        if not self.valid_target:
+            raise AssertionError("Target data is not valid yet.")
+        # end if
+        self.set_fit_func(**ls_args)
+
+        R_this = self.valid_R_max
+        bias_x = self.fit_res.x0
+        for i in range(max_iter):
+            offsets = self._make_offsets_R(R_this, M) + bias_x
+            bias_x, bias_y = self._compute_xy_bias(
+                LineSearchGrid(offsets),
+                bias_order=1
+            )
+            R_this *= bracket_fraction
+        # end for
+        self.target_fit.x0 = bias_x
+        self.target_fit.y0 = bias_y
     # end def
 
     def __str__(self):
         string = LineSearchBase.__str__(self)
-        if self.target_grid is not None:
-            string += '\n  target grid: set'
-        # end if
-        if self.target_values is not None:
-            string += '\n  target values: set'
-        # end if
         string += '\n  bias_mix: {:<4f}'.format(self.bias_mix)
         return string
     # end def
-
-    # str of grid
-    # TODO: change; currently overlapping information
-    def __str_grid__(self):
-        if self.target_grid is None:
-            string = '\n  target data: no grid'
-        else:
-            string = '\n  target data:'
-            values = self.target_values if self.target_values is not None else self.M * \
-                ['-']
-            string += '\n    {:9s} {:9s}'.format('grid', 'value')
-            for g, v in zip(self.target_grid, values):
-                string += '\n    {: 8f} {:9s}'.format(g, str(v))
-            # end for
-        # end if
-        return string
-    # end def
-
 
 # end class

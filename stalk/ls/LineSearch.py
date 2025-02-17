@@ -20,28 +20,32 @@ class LineSearch(LineSearchBase):
         hessian=None,
         d=None,
         sigma=0.0,
-        grid=None,
+        offsets=None,
         M=7,
         W=None,
         R=None,
+        pes=None,
         **ls_args
         # values=None, errors=None, fraction=0.025, sgn=1
         # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
     ):
-        LineSearchBase.__init__(self, grid=None, **ls_args)
+        LineSearchBase.__init__(self, offsets=None, **ls_args)
         self.sigma = sigma
+        if d is not None:
+            self.d = d
+        # end if
         if structure is not None:
             self.structure = structure
         # end if
         if hessian is not None:
             self.hessian = hessian
         # end if
-        if d is not None:
-            self.d = d
-        # end if
         # Try to initialize grid based on available information
         try:
-            self.initialize_grid(M=M, W=W, R=R, grid=grid)
+            self.set_grid(M=M, W=W, R=R, offsets=offsets)
+            if pes is not None:
+                self.evaluate_pes(pes)
+            # end if
         except ValueError:
             # Setting the grid later then
             pass
@@ -113,7 +117,7 @@ class LineSearch(LineSearchBase):
         if isinstance(hessian, ParameterHessian):
             self._hessian = hessian
             Lambda = self.hessian.get_lambda(self.d)
-            self.sgn = sign(Lambda)
+            self.sgn = int(sign(Lambda))
             if self.structure is None:
                 # Use Hessian structure if no other has been provided yet
                 self.structure = hessian.structure
@@ -145,26 +149,31 @@ class LineSearch(LineSearchBase):
         # end if
     # end def
 
-    def initialize_grid(self, M=7, W=None, R=None, grid=None):
-        if grid is None:
-            if M < 0:
-                raise ValueError("Grid size M must be positive!")
-            # end if
-            if R is not None:
-                offsets = self._make_grid_R(R, M=M)
-            elif W is not None and self.hessian is not None:
-                if self.hessian is None:
-                    raise ValueError('Must set Hessian before using W to set grid.')
-                else:
-                    offsets = self._make_grid_W(W, M=M)
-                # end if
+    def figure_out_offsets(self, M=7, W=None, R=None, offsets=None):
+        if offsets is not None:
+            return offsets
+        # end
+        if M < 0:
+            raise ValueError("Grid size M must be positive!")
+        # end if
+        if R is not None:
+            return self._make_offsets_R(R, M=M)
+        elif W is not None and self.hessian is not None:
+            if self.hessian is None:
+                raise ValueError('Must set Hessian before using W to set grid.')
             else:
-                raise ValueError('Must provide grid, R or W to characterize grid.')
+                return self._make_offsets_W(W, M=M)
             # end if
         else:
-            offsets = grid
+            raise ValueError('Must provide grid, R or W to characterize grid.')
         # end if
+    # end def
 
+    def set_grid(
+        self,
+        **grid_kwargs  # M=7, W=None, R=None, offsets=None
+    ):
+        offsets = self.figure_out_offsets(**grid_kwargs)
         if self.structure is None:
             # Reverting to LineSearchPoints
             self.grid = offsets
@@ -174,21 +183,12 @@ class LineSearch(LineSearchBase):
         # end if
     # end def
 
-    def _make_grid_R(self, R, M):
-        if R < 0:
-            raise ValueError("R must be positive!")
-        # end if
-        R = max(R, 1e-4)
-        grid = linspace(-R, R, M)
-        return grid
-    # end def
-
-    def _make_grid_W(self, W, M):
+    def _make_offsets_W(self, W, M):
         if W < 0:
             raise ValueError("W must be positive!")
         # end if
-        R = self._W_to_R(max(W, 1e-4))
-        return self._make_grid_R(R, M=M)
+        R = self._W_to_R(max(W, 1e-8))
+        return self._make_offsets_R(R, M=M)
     # end def
 
     def _W_to_R(self, W):
@@ -210,17 +210,13 @@ class LineSearch(LineSearchBase):
     # end def
 
     @property
-    def R_max(self):
-        if len(self) > 0:
-            return min([-self.offsets.min(), self.offsets.max()])
-        else:
-            return 0.0
-        # end if
+    def W_max(self):
+        return self._R_to_W(self.R_max)
     # end def
 
     @property
-    def W_max(self):
-        return self._R_to_W(self.R_max)
+    def valid_W_max(self):
+        return self._R_to_W(self.valid_R_max)
     # end def
 
     def add_shift(self, shift):
@@ -250,14 +246,14 @@ class LineSearch(LineSearchBase):
 
     def evaluate_pes(
         self,
-        pes_eval,
+        pes,
         add_sigma=False
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
         assert isinstance(
-            pes_eval, PesFunction), 'The evaluation function must be inherited from PesFunction class.'
+            pes, PesFunction), 'The evaluation function must be inherited from PesFunction class.'
         for point in self._grid:
-            res = pes_eval.evaluate(point, sigma=self.sigma)
+            res = pes.evaluate(point, sigma=self.sigma)
             if add_sigma:
                 res.add_sigma(self.sigma)
             # end if
