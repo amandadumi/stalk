@@ -61,7 +61,7 @@ def test_XyzGeometry_write(tmp_path):
         assert el_ref == el
     # end for
     for pos_ref, pos in zip(pos_H2O, res.get_pos()):
-        match_to_tol(pos_ref, pos)
+        assert match_to_tol(pos_ref, pos)
     # end for
 
 # end def

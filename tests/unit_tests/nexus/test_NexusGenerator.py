@@ -22,7 +22,8 @@ def test_NexusGenerator(tmp_path):
     s = NexusStructure(
         label='label',
         pos=pos_H2O,
-        elem=elem_H2O
+        elem=elem_H2O,
+        units='A'
     )
     path = 'path'
 
@@ -49,7 +50,7 @@ def test_NexusGenerator(tmp_path):
     analyzer.analyze()
     energy_ref = pes_H2O(pos_H2O)
     # Assert that the results match
-    match_to_tol(analyzer.value, energy_ref[0])
-    match_to_tol(analyzer.error, energy_ref[1])
+    assert match_to_tol(analyzer.value, energy_ref[0])
+    assert match_to_tol(analyzer.error, energy_ref[1])
 
 # end def

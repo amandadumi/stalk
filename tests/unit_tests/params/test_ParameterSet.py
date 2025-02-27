@@ -100,14 +100,14 @@ def test_ParameterSet():
     # Test setting of parameters (w/o error)
     new_params = [10., 11.]
     s.set_params(new_params, None)
-    match_to_tol(s.params, new_params)
-    match_to_tol(s.params_err, [0.0, 0.0])
+    assert match_to_tol(s.params, new_params)
+    assert match_to_tol(s.params_err, [0.0, 0.0])
     assert s.value is None
     # Test setting of parameters (w/ error)
     new_params_err = [12., 13.]
     s.set_params(new_params, new_params_err)
-    match_to_tol(s.params, new_params)
-    match_to_tol(s.params_err, [0.0, 0.0])
+    assert match_to_tol(s.params, new_params)
+    assert match_to_tol(s.params_err, new_params_err)
     assert s.value is None
 
     # Test setting of value

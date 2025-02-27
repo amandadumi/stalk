@@ -206,7 +206,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         if R is None:
             if W is None:
                 # By default, compute bias for a range of W values
-                for W in linspace(0.0, self.W_max, num_W):
+                for W in linspace(0.0, self.valid_W_max, num_W):
                     Ws.append(W)
                     Rs.append(self._W_to_R(W))
                 # end for

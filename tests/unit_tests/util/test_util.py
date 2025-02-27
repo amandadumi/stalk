@@ -12,9 +12,9 @@ __license__ = "BSD-3-Clause"
 
 def test_units():
     from stalk.util.util import Bohr, Ry, Hartree
-    match_to_tol(Bohr, 0.5291772105638411, 1e-10)
-    match_to_tol(Ry, 13.605693012183622, 1e-10)
-    match_to_tol(Hartree, 2 * Ry, 1e-10)
+    assert match_to_tol(Bohr, 0.5291772105638411, 1e-10)
+    assert match_to_tol(Ry, 13.605693012183622, 1e-10)
+    assert match_to_tol(Hartree, 2 * Ry, 1e-10)
 # end def
 
 

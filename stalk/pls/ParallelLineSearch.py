@@ -244,7 +244,7 @@ class ParallelLineSearch(PesSampler):
             D = [d if d in D else None for d in range(self.D)]
         # end if
         assert len(D) == self.D, 'len(D) must match D'
-        noises = self.noises if self.noisy else self.D * [None]
+        noises = self.noises if self.noisy else self.D * [0.0]
         ls_list = []
         for d, window, noise in zip(D, self.windows, noises):
             if d is None:

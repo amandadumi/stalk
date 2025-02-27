@@ -91,6 +91,8 @@ class FittingFunction():
             else:
                 raise ValueError("Must provide either N > 0 or an array of G displacements")
             # end if
+        elif Gs.shape[1] != len(grid.valid_errors):
+            raise AssertionError("Must provide Gs that are consistent with valid data.")
         # end if
         x0_distribution = []
         y0_distribution = []

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from numpy import array, linspace, polyval, sign, equal, isscalar
 from matplotlib import pyplot as plt
 

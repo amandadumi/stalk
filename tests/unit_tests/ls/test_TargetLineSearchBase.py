@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from numpy import isnan, linspace
+from numpy import isnan, linspace, random
 from scipy.interpolate import PchipInterpolator, CubicSpline
 from pytest import raises
 
@@ -80,7 +80,7 @@ def test_TargetLineSearchBase():
     assert tls.fit_func.args['pfn'] == 2
 
     # Test evaluation
-    match_to_tol(tls.evaluate_target(grid.offsets), grid.values)
+    assert match_to_tol(tls.evaluate_target(grid.offsets), grid.values)
     assert tls.evaluate_target(grid.offsets[4]) == grid.values[4]
     assert isnan(tls.evaluate_target(grid.offsets[0] - 1e-6))
     assert isnan(tls.evaluate_target(grid.offsets[-1] + 1e-6))
@@ -89,14 +89,15 @@ def test_TargetLineSearchBase():
         tls.compute_bias(grid, bias_order=0)
     # end with
     bias = tls.compute_bias(grid)
-    match_to_tol(bias, ref.x0 + bias_mix * ref.y0)
+    assert match_to_tol(bias, ref.x0 + bias_mix * ref.y0)
     # Test assessment of errorbars
-    errorbar_x, errorbar_y = tls.compute_errorbar(grid)
+    Gs = random.randn(30, len(tls))
+    errorbar_x, errorbar_y = tls.compute_errorbar(grid, Gs=Gs)
     assert errorbar_x > 0.0
     assert errorbar_y > 0.0
     # Test assessment of total error
-    error = tls.compute_error(grid)
-    match_to_tol(error, bias + errorbar_x)
+    error = tls.compute_error(grid, Gs=Gs)
+    assert match_to_tol(error, bias + errorbar_x)
 
     # Test reset interpolation
     tls.reset_interpolation(interpolate_kind='cubic')
@@ -104,7 +105,7 @@ def test_TargetLineSearchBase():
     with raises(ValueError):
         tls.reset_interpolation('error')
     # end with
-    match_to_tol(tls.evaluate_target(grid.offsets), grid.values)
+    assert match_to_tol(tls.evaluate_target(grid.offsets), grid.values)
     assert tls.evaluate_target(grid.offsets[4]) == grid.values[4]
     assert isnan(tls.evaluate_target(grid.offsets[0] - 1e-6))
     assert isnan(tls.evaluate_target(grid.offsets[-1] + 1e-6))
@@ -126,8 +127,8 @@ def test_TargetLineSearchBase():
     assert tls.target_fit.x0 != ref.x0
     assert tls.target_fit.y0 != ref.y0
     tls.bracket_target_bias(fit_kind='pf2')
-    # After bracketing, the biases should be zero
-    match_to_tol(tls.target_fit.x0, ref.x0)
-    match_to_tol(tls.target_fit.y0, ref.y0)
+    # After bracketing, the biases should be close to zero
+    assert match_to_tol(tls.target_fit.x0, ref.x0, tol=1e-4)
+    assert match_to_tol(tls.target_fit.y0, ref.y0, tol=1e-4)
 
 # end def

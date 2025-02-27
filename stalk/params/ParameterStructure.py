@@ -108,9 +108,10 @@ class ParameterStructure(ParameterSet):
             self.axes = self.set_axes(axes, check=False)
         # end if
 
-        # If forward_func has been given, update params; if not, return None
+        # If forward_func has been given, update params (but not positions)
         if self.forward_func is not None:
-            self.set_params(self.map_forward())
+            # Only update params, not positions
+            ParameterSet.set_params(self, self.map_forward())
         # end if
 
         # setting pos will unset value
@@ -240,7 +241,7 @@ class ParameterStructure(ParameterSet):
         return match_to_tol(params, params_new, tol)
     # end def
 
-    def shift_pos(self, dpos):
+    def shift_pos(self, dpos, translate=True):
         assert self.pos is not None, 'position has not been set'
         if isscalar(dpos):
             new_pos = self.pos + dpos
@@ -249,12 +250,21 @@ class ParameterStructure(ParameterSet):
             assert self.pos.size == dpos.size
             new_pos = (self.pos.flatten() + dpos.flatten()).reshape(-1, self.dim)
         # end if
-        self.set_position(new_pos)
+        self.set_position(new_pos, translate=translate)
     # end def
 
     def shift_params(self, dparams, dpos_mode=False):
+        params_old = self.params
         ParameterSet.shift_params(self, dparams)
-        self.set_params(self.params, dpos_mode=dpos_mode)
+        # After params have been shifted, attempt to update pos+axes
+        if self.backward_func is not None:
+            pos_new, self.axes = self.map_backward()
+            if dpos_mode:
+                self.pos += pos_new - self.map_backward(params_old)[0]
+            else:
+                self.pos = pos_new
+            # end if
+        # end if
     # end def
 
     def copy(

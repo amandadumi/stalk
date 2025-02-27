@@ -54,8 +54,8 @@ def test_LineSearchBase():
     grid, ref = generate_exact_pf2(1.23, 2.34, N=5)
     ls_val = LineSearchBase(offsets=grid.offsets, values=grid.values, fit_kind='pf2')
     assert ls_val.fit_res.analyzed
-    match_to_tol(ls_val.x0, ref.x0)
-    match_to_tol(ls_val.y0, ref.y0)
+    assert match_to_tol(ls_val.x0, ref.x0)
+    assert match_to_tol(ls_val.y0, ref.y0)
     assert ls_val.x0_err == 0.0
     assert ls_val.y0_err == 0.0
 
@@ -71,8 +71,8 @@ def test_LineSearchBase():
         N=10
     )
     assert ls_noisy.fit_res.analyzed
-    match_to_tol(ls_noisy.x0, ref.x0)
-    match_to_tol(ls_noisy.y0, ref.y0)
+    assert match_to_tol(ls_noisy.x0, ref.x0)
+    assert match_to_tol(ls_noisy.y0, ref.y0)
     assert ls_noisy.x0_err > 0.0
     assert ls_noisy.y0_err > 0.0
     assert ls_noisy.fraction == fraction
@@ -80,16 +80,16 @@ def test_LineSearchBase():
     # TODO: add coverage
     res = ls_noisy.search()
     assert isinstance(res, FittingResult)
-    match_to_tol(res.x0, ref.x0)
-    match_to_tol(res.y0, ref.y0)
+    assert match_to_tol(res.x0, ref.x0)
+    assert match_to_tol(res.y0, ref.y0)
     assert res.x0_err == 0.0
     assert res.y0_err == 0.0
     # Test search with error
     # TODO: add coverage
     res = ls_noisy.search_with_error()
     assert isinstance(res, FittingResult)
-    match_to_tol(res.x0, ref.x0)
-    match_to_tol(res.y0, ref.y0)
+    assert match_to_tol(res.x0, ref.x0)
+    assert match_to_tol(res.y0, ref.y0)
     assert res.x0_err > 0.0
     assert res.y0_err > 0.0
 

@@ -41,7 +41,7 @@ def test_NexusStructure(tmp_path):
         loader=XyzGeometry()
     )
     E_relax = pes_H2O(s)
-    match_to_tol(E_original, E_relax, 1e-7)
-    match_to_tol(s.pos, pos_H2O)
+    assert match_to_tol(E_original, E_relax, 1e-7)
+    assert match_to_tol(s.pos, pos_H2O)
 
 # end def

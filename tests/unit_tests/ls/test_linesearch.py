@@ -73,16 +73,16 @@ def test_LineSearch():
     assert ls_s.d == 1
     assert ls_s.sigma == sigma
     assert ls_s.W_max is None
-    match_to_tol(ls_s.R_max, R)
-    match_to_tol(ls_s.direction, [0.0, 1.0])
+    assert match_to_tol(ls_s.R_max, R)
+    assert match_to_tol(ls_s.direction, [0.0, 1.0])
     params = ls_s.get_shifted_params()
     for point, ref in zip(ls_s.grid, offsets_ref):
         assert isinstance(point, ParameterStructure)
         assert point.offset == ref
-        match_to_tol(point.params[d] - structure.params[d], ref)
+        assert match_to_tol(point.params[d] - structure.params[d], ref)
     # end for
     for params, ref in zip(ls_s.get_shifted_params(), params_ref):
-        match_to_tol(params, ref)
+        assert match_to_tol(params[d], ref)
     # end for
     with raises(ValueError):
         ls_s.d = 2
