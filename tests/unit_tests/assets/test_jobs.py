@@ -4,7 +4,9 @@ import os
 import numpy as np
 from pathlib import Path
 from nexus import obj, job, settings, generate_physical_system, input_template
-from simulation import GenericSimulation, SimulationAnalyzer
+from simulation import GenericSimulation, SimulationAnalyzer, Simulation
+from stalk.io.PesLoader import PesLoader
+from stalk.params.PesResult import PesResult
 
 # Add nexus tester to path
 app_path = os.path.dirname(__file__) + "/../../nxs_tester.py"
@@ -26,15 +28,20 @@ nx_settings = obj(
 )
 
 
+# Tailor Nexus analyzer for generic testing
 class TestAnalyzer(SimulationAnalyzer):
     value = None
     error = 0.0
 
     def __init__(
         self,
-        sim
+        arg0
     ):
-        self.path = sim.path
+        if isinstance(arg0, Simulation):
+            self.path = arg0.path
+        else:
+            self.path = arg0
+        # end if
     # end def
 
     def analyze(self):
@@ -47,7 +54,22 @@ class TestAnalyzer(SimulationAnalyzer):
             else:
                 self.value = res[0]
             # end if
+        else:
+            raise AssertionError('The job has not run yet!')
+        # end if
     # end def
+# end class
+
+
+# Tailor Nexus analyzer for generic testing
+class TestLoader(PesLoader):
+
+    def __load__(self, path, **kwargs):
+        ai = TestAnalyzer(path, **kwargs)
+        ai.analyze()
+        return PesResult(ai.value, ai.error)
+    # end def
+
 # end class
 
 
@@ -58,7 +80,14 @@ def init_nexus():
 # end def
 
 
-def nxs_generic_pes(structure, path, sigma=None, system_args={}, pes_variable='dummy', **kwargs):
+def nxs_generic_pes(
+    structure,
+    path,
+    system_args={},
+    pes_variable='dummy',
+    sigma=None,
+    **kwargs
+):
     init_nexus()
     system = generate_physical_system(structure=structure, **system_args)
     # TODO: this could be done more elegantly using Nexus templates
@@ -69,8 +98,7 @@ def nxs_generic_pes(structure, path, sigma=None, system_args={}, pes_variable='d
         job=job(**testjob),
         path=path,
         input=job_input,
-        identifier='nxs_test',
-        analyzer_type=TestAnalyzer  # This is not needed here
+        identifier='nxs_test'
     )
     return [sim]
 # end def

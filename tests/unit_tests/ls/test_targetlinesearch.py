@@ -270,7 +270,7 @@ def test_TargetLineSearch_generate():
     # test maximize sigma, default values
     # (presuming generate_error_surface is called like above)
     # Note: the process is stochastic; a deterministic test is done for optimize() method.
-    epsilon = 0.02
+    epsilon = 0.015
     W_opt, sigma_opt = tls.maximize_sigma(epsilon)
     assert W_opt < W_max
     assert sigma_opt > 0.0

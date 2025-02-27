@@ -16,7 +16,7 @@ def evaluate_pes(pos, pes_variable):
     if pes_variable == 'relax_h2o':
         res1 = pos_H2O
         res2 = elem_H2O
-    else:
+    else:  # default: dummy
         pass
     # end if
     return res1, res2
