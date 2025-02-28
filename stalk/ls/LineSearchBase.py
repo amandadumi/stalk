@@ -81,7 +81,7 @@ class LineSearchBase(LineSearchGrid):
 
     def _search_and_store(self, N=200, Gs=None, fraction=0.025):
         """Perform line-search with the preset values and settings, saving the result to self."""
-        self.fit_res = self.search_with_error(N=200, Gs=None, fraction=fraction)
+        self.fit_res = self.search_with_error(N=N, Gs=Gs, fraction=fraction)
     # end def
 
     def search_with_error(

@@ -20,7 +20,7 @@ def test_NexusLineSearch(tmp_path):
     assert len(ls.jobs) == 0
     assert len(ls.enabled_jobs) == 0
     with raises(TypeError):
-        ls.evaluate_pes()
+        ls.evaluate()
     # end with
 
     # Test nominal init
@@ -37,6 +37,7 @@ def test_NexusLineSearch(tmp_path):
     hessian = ParameterHessian(hessian_H2O)
     M = 3
     R = 0.2
+    fit_kind = 'pf2'
     pes = NexusGenerator(nxs_generic_pes, {'pes_variable': 'h2o'})
     ls = NexusLineSearch(
         structure=s,
@@ -44,10 +45,10 @@ def test_NexusLineSearch(tmp_path):
         d=d,
         M=M,
         R=R,
+        fit_kind=fit_kind,
         pes=pes,
         path=path,
-        loader=TestLoader(),
-        postpone_analyze=False  # calculate all points during init
+        loader=TestLoader()
     )
     assert ls.generated
     assert ls.analyzed
@@ -81,7 +82,7 @@ def test_NexusLineSearch(tmp_path):
     assert len(ls.jobs) == M
     assert len(ls.enabled_jobs) == M
     # Generating: changing path is recorded to old jobs, too
-    ls.generate_jobs(pes=pes, path=path + '/new_round')
+    ls.evaluate(pes=pes, path=path + '/new_round')
     assert len(ls.jobs) == M + 2
     assert len(ls.enabled_jobs) == M + 1
     assert ls.generated

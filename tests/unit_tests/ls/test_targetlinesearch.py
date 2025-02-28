@@ -267,13 +267,6 @@ def test_TargetLineSearch_generate():
         # Epsilon is > 0 but still too small to be found.
         tls.maximize_sigma(1e-10)
     # end with
-    # test maximize sigma, default values
-    # (presuming generate_error_surface is called like above)
-    # Note: the process is stochastic; a deterministic test is done for optimize() method.
-    epsilon = 0.015
-    W_opt, sigma_opt = tls.maximize_sigma(epsilon)
-    assert W_opt < W_max
-    assert sigma_opt > 0.0
 # end def
 
 

@@ -1,7 +1,6 @@
 from numpy import array, isscalar, random, diag
 from copy import deepcopy
 
-from .PesFunction import PesFunction
 from stalk.util import match_to_tol, get_fraction_error, directorize
 from .ParameterSet import ParameterSet
 
@@ -388,20 +387,6 @@ class ParameterStructure(ParameterSet):
             string += '\n  periodic: no'
         # end if
         return string
-    # end def
-
-    def relax(
-        self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        **kwargs,
-    ):
-        if not isinstance(pes, PesFunction):
-            # Checks are made in the wrapper class
-            pes = PesFunction(pes_func, pes_args)
-        # end if
-        ParameterSet.relax(self, pes=pes, **kwargs)
     # end def
 
     def load(

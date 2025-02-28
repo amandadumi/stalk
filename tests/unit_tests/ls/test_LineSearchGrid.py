@@ -18,6 +18,7 @@ def test_LineSearchGrid():
     assert len(empty_grid.offsets) == 0
     assert len(empty_grid.values) == 0
     assert len(empty_grid.errors) == 0
+    assert not empty_grid.evaluated
 
     # Init with 1 data
     grid1_in = [1.0]
@@ -32,6 +33,7 @@ def test_LineSearchGrid():
     assert len(grid1.valid_offsets) == 0
     assert len(grid1.valid_values) == 0
     assert len(grid1.valid_errors) == 0
+    assert not grid1.evaluated
     # Make valid by setting value
     values1_in = [2.0]
     errors1_in = [3.0]
@@ -42,6 +44,7 @@ def test_LineSearchGrid():
     assert match_to_tol(grid1.valid_offsets, grid1_in)
     assert match_to_tol(grid1.valid_values, values1_in)
     assert match_to_tol(grid1.valid_errors, errors1_in)
+    assert grid1.evaluated
 
     # Init with unsorted data
     grid3_in = [0.0, -1.0, 1.0]
@@ -49,5 +52,6 @@ def test_LineSearchGrid():
     grid3 = LineSearchGrid(grid3_in)
     assert len(grid3) == 3
     assert match_to_tol(grid3.offsets, grid3_sorted)
+    assert not grid3.evaluated
 
 # end def

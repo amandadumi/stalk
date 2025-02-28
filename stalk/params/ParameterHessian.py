@@ -4,6 +4,7 @@
 
 from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
 
+from stalk.params.ParameterStructure import ParameterStructure
 from stalk.params.PesFunction import PesFunction
 from stalk.util import Ry, Hartree, Bohr, bipolyfit
 from .ParameterSet import ParameterSet
@@ -176,6 +177,8 @@ class ParameterHessian():
         structure=None,
         dp=0.01,
         pes=None,
+        pes_func=None,
+        pes_args={},
         dpos_mode=False,
         **kwargs,
     ):
@@ -183,7 +186,14 @@ class ParameterHessian():
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
         dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
-        self._evaluate_energies(pes=pes, structure_list=structure_list, label_list=label_list, **kwargs)
+        self._evaluate_energies(
+            structure_list=structure_list,
+            pes=pes,
+            pes_func=pes_func,
+            pes_args=pes_args,
+            label_list=label_list,
+            **kwargs
+        )
         # Pick those displacements and energies that were successfully computed
         energies = []
         pdiffs = []
@@ -234,14 +244,20 @@ class ParameterHessian():
         self.init_hessian_array(hessian)
     # end def
 
-    def _evaluate_energies(self, pes, structure_list, **kwargs):
-        assert isinstance(pes, PesFunction), 'The PES must be inherited from PesFunction class'
+    def _evaluate_energies(
+        self,
+        structure_list,
+        pes=None,
+        pes_func=None,
+        pes_args={},
+    ):
+        pes = PesFunction(pes, pes_func, pes_args)
         for s in structure_list:
             if isinstance(s, ParameterSet):
                 # Set value, error
-                value, error = pes.evaluate(s)
-                s.value = value
-                s.error = error
+                res = pes.evaluate(s)
+                s.value = res.get_value()
+                s.error = res.get_error()
             # end if
         # end for
     # end def
@@ -264,7 +280,11 @@ class ParameterHessian():
                 label += '{}'.format(dp)
             # end for
             structure_new = structure.copy()
-            structure_new.shift_params(dparams, dpos_mode=dpos_mode)
+            if isinstance(structure, ParameterStructure):
+                structure_new.shift_params(dparams, dpos_mode=dpos_mode)
+            else:
+                structure_new.shift_params(dparams)
+            # end if
             structure_list.append(structure_new)
             dp_list.append(dparams)
             label_list.append(label)

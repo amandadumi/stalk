@@ -9,7 +9,7 @@ from textwrap import indent
 from stalk.util import get_fraction_error, directorize
 from stalk.params import ParameterSet
 from stalk.params import ParameterHessian
-from stalk.ls import LineSearch, LineSearchDummy
+from stalk.ls import LineSearch
 from .PesSampler import PesSampler
 
 __author__ = "Juha Tiihonen"

@@ -54,16 +54,16 @@ class NexusStructure(ParameterStructure):
 
     def generate_jobs(
         self,
-        pes,
+        pes=None,
+        pes_func=None,
+        pes_args={},
         path='',
         sigma=None,
         eqm_jobs=None,
     ):
-        if not isinstance(pes, NexusGenerator):
-            raise TypeError('The pes must be inherited from NexusGenerator class.')
-        # end if
+        pes = NexusGenerator(pes, pes_func, pes_args)
         self._job_path = self._make_job_path(path)
-        jobs = pes.generate(
+        jobs = pes.evaluate(
             self.get_nexus_structure(),
             self._job_path,
             sigma=sigma,
@@ -72,13 +72,17 @@ class NexusStructure(ParameterStructure):
         self._jobs = jobs
     # end def
 
-    def analyze_pes(self, loader, sigma=0.0):
-        if not isinstance(loader, PesLoader):
-            raise TypeError('The loader must be inherited from PesFunction class.')
-        # end if
+    def analyze_pes(
+        self,
+        loader=None,
+        load_func=None,
+        load_args={},
+        sigma=0.0
+    ):
         if not self.generated:
             raise AssertionError('The pes jobs must be generated before analyzing.')
         # end if
+        loader = PesLoader(loader, load_func, load_args)
         # Sigma will be added automatically
         if self.enabled:
             res = loader.load(self._job_path, sigma=sigma)
@@ -108,7 +112,7 @@ class NexusStructure(ParameterStructure):
             pes = NexusGenerator(pes_func, pes_args)
         # end if
         # Make a copy structure for job generation
-        relax_jobs = pes.generate(self.get_nexus_structure(), directorize(path))
+        relax_jobs = pes.evaluate(self.get_nexus_structure(), directorize(path))
         # Run project
         run_project(relax_jobs)
 
@@ -154,7 +158,7 @@ class NexusStructure(ParameterStructure):
         if not isinstance(pes, NexusGenerator):
             pes = NexusGenerator(pes_func, pes_args)
         # end if
-        jobs = pes.generate(self.get_nexus_structure(), path, sigma=None, samples=samples)
+        jobs = pes.evaluate(self.get_nexus_structure(), path, sigma=None, samples=samples)
         run_project(jobs)
 
         Err = loader.load(path, **loader_args).get_error()

@@ -7,6 +7,7 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
 from stalk.ls.LineSearchBase import LineSearchBase
+from stalk.params.PesResult import PesResult
 
 
 # Class for PES line-search in structure context
@@ -15,6 +16,7 @@ class LineSearch(LineSearchBase):
     _hessian: ParameterHessian | None = None  # The equilibrium full Hessian
     _sigma = 0.0  # Target errorbar
     _d: int | None = None  # direction count
+    _enabled = True  # whether enabled or not
 
     def __init__(
         self,
@@ -27,6 +29,8 @@ class LineSearch(LineSearchBase):
         W=None,
         R=None,
         pes=None,
+        pes_func=None,
+        pes_args={},
         **ls_args
         # values=None, errors=None, fraction=0.025, sgn=1
         # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
@@ -45,11 +49,10 @@ class LineSearch(LineSearchBase):
         # Try to initialize grid based on available information
         try:
             self.set_grid(M=M, W=W, R=R, offsets=offsets)
-            if pes is not None:
-                self.evaluate_pes(pes)
-            # end if
-        except ValueError:
-            # Setting the grid later then
+            # Try to evaluate the pes and set the results
+            self.evaluate(pes=pes, pes_func=pes_func, pes_args=pes_args)
+        except (ValueError, TypeError):
+            # If the grid or pes input values are missing, the grid will be set later
             pass
         # end try
     # end def
@@ -151,6 +154,16 @@ class LineSearch(LineSearchBase):
         # end if
     # end def
 
+    @property
+    def enabled(self):
+        return self._enabled
+    # end def
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+    # end def
+
     def figure_out_offsets(self, M=7, W=None, R=None, offsets=None):
         if offsets is not None:
             return offsets
@@ -246,42 +259,33 @@ class LineSearch(LineSearchBase):
         return structure
     # end def
 
-    def evaluate_pes(
+    def evaluate(
         self,
-        pes,
-        add_sigma=False
+        pes=None,
+        pes_func=None,
+        pes_args={},
+        add_sigma=False,
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
-        assert isinstance(
-            pes, PesFunction), 'The evaluation function must be inherited from PesFunction class.'
+        pes = PesFunction(pes, pes_func, pes_args)
+        results = []
         for point in self._grid:
             res = pes.evaluate(point, sigma=self.sigma)
             if add_sigma:
                 res.add_sigma(self.sigma)
             # end if
+            results.append(res)
+        # end for
+        self._set_results(results)
+        return results
+    # end def
+
+    def _set_results(self, results: list[PesResult]):
+        for res, point in zip(results, self._grid):
             point.value = res.get_value()
             point.error = res.get_error()
         # end for
         self._search_and_store()
-    # end def
-
-    def set_results(
-        self,
-        grid,
-        values,
-        errors=None,
-        **kwargs
-    ):
-        grid = grid if grid is not None else self.grid
-        if values is None or all(equal(array(values), None)):
-            return False
-        # end if
-        if errors is None:
-            errors = 0.0 * array(values)
-        # end if
-        self.values = values
-        self.errors = errors
-        return True
     # end def
 
     def get_shifted_params(self):

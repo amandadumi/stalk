@@ -150,10 +150,12 @@ class ParameterSet(LineSearchPoint):
 
     def relax(
         self,
-        pes,
+        pes=None,
+        pes_func=None,
+        pes_args={},
         **kwargs
     ):
-        assert isinstance(pes, PesFunction), "Must provide PES as a PesFunction instance."
+        pes = PesFunction(pes, pes_func, pes_args)
 
         # Relax numerically using a wrapper around SciPy minimize
         def relax_aux(p):

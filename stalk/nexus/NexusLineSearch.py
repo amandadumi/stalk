@@ -2,7 +2,9 @@
 
 from nexus import run_project
 
+from stalk.io.PesLoader import PesLoader
 from stalk.ls.LineSearch import LineSearch
+from stalk.nexus.NexusGenerator import NexusGenerator
 from stalk.nexus.NexusStructure import NexusStructure
 
 
@@ -45,50 +47,53 @@ class NexusLineSearch(LineSearch):
     def __init__(
         self,
         pes=None,
+        pes_func=None,
+        pes_args={},
         path='',
         loader=None,
+        load_func=None,
+        load_args={},
         add_sigma=False,
-        postpone_analyze=False,
         **ls_args
         # structure=None, hessian=None, d=None, sigma=0.0, offsets=None, M=7, W=None
         # R=None, values=None, errors=None, fraction=0.025, sgn=1, fit_kind='pf3'
         # fit_func=None, fit_args={}, N=200, Gs=None
     ):
+        # Omitting pes from LineSearch constructor leads to omission of evaluation
         super().__init__(**ls_args)
-        if pes is not None:
-            # pes type is checked in NexusStructure class
-            self.evaluate_pes(
-                pes,
+        try:
+            self.evaluate(
                 path=path,
-                loader=loader,
-                add_sigma=add_sigma,
-                postpone_analyze=postpone_analyze
+                pes=pes,
+                pes_func=pes_func,
+                pes_args=pes_args
             )
-        # end if
+            # If jobs were generated OK, run Nexus project
+            if self.generated:
+                run_project(self.enabled_jobs)
+                self.analyze_jobs(
+                    loader=loader,
+                    load_func=load_func,
+                    load_args=load_args,
+                    add_sigma=add_sigma,
+                )
+            # end if
+        except TypeError:
+            # If pes is not yet provided, do not go on
+            pass
+        # end try
     # end def
 
-    def evaluate_pes(
+    # Instead of a list of results, evaluate function returns a list of jobs to run
+    def evaluate(
         self,
-        pes,
         path='',
-        loader=None,
-        add_sigma=False,
-        postpone_analyze=False,
+        pes=None,
+        pes_func=None,
+        pes_args={}
     ):
-        self.generate_jobs(pes, path=path)
-        # Next, the jobs need running either here or externally
-        if not postpone_analyze:
-            run_project(self.enabled_jobs)
-            self.analyze_jobs(loader, add_sigma=add_sigma)
-        # end if
-    # end def
-
-    def generate_jobs(
-        self,
-        pes,
-        path='',
-    ):
-        self.generate_eqm_jobs(pes, path=path)
+        pes = NexusGenerator(pes, pes_func, pes_args)
+        self._generate_eqm_jobs(pes, path=path)
         eqm_jobs = None
         eqm_point = self.find_point(0.0)
         if eqm_point is not None and isinstance(eqm_point, NexusStructure):
@@ -108,14 +113,14 @@ class NexusLineSearch(LineSearch):
         # end for
     # end def
 
-    def generate_eqm_jobs(
+    def _generate_eqm_jobs(
         self,
-        pes,
+        pes: NexusGenerator,
         path='',
     ):
         # Try to find eqm point and generate jobs
         eqm_point = self.find_point(0.0)
-        if eqm_point is not None and isinstance(eqm_point, NexusStructure):
+        if eqm_point is not None and isinstance(eqm_point, NexusStructure) and not eqm_point.generated:
             eqm_point.generate_jobs(
                 pes=pes,
                 path=path,
@@ -126,13 +131,19 @@ class NexusLineSearch(LineSearch):
 
     def analyze_jobs(
         self,
-        loader,
+        loader=None,
+        load_func=None,
+        load_args={},
         add_sigma=False
     ):
+        loader = PesLoader(loader, load_func, load_args)
+        # Add sigma if add_sigma flag is on
         sigma = self.sigma if add_sigma else 0.0
         for point in self._grid:
             point.analyze_pes(loader, sigma=sigma)
         # end for
+        # Search and store minimum
+        self._search_and_store()
     # end def
 
 # end class

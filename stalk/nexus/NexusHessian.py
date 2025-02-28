@@ -4,6 +4,7 @@
 
 from numpy import array
 
+from stalk.nexus.NexusStructure import NexusStructure
 from stalk.util import directorize
 from stalk.io.PesLoader import PesLoader
 from stalk.params.ParameterHessian import ParameterHessian
@@ -20,7 +21,7 @@ class NexusHessian(ParameterHessian):
 
     def _evaluate_energies(
         self,
-        structure_list,
+        structure_list: list[NexusStructure],
         label_list=None,
         path='fdiff',
         pes=None,
@@ -40,17 +41,12 @@ class NexusHessian(ParameterHessian):
         for s, label in zip(structure_list, label_list):
             dir = '{}{}'.format(directorize(path), label)
             # Make a copy structure for job generation
-            jobs += pes.generate(s.get_nexus_structure(), dir)
+            jobs += pes.evaluate(s.get_nexus_structure(), dir)
         # end for
         from nexus import run_project
         run_project(jobs)
 
-        # Load jobs
-        if not isinstance(loader, PesLoader):
-            # Try to instantiate PesLoader class in the hopes that load_func conforms
-            loader = PesLoader(load_args)
-            loader.__load__ = load_func
-        # end if
+        loader = PesLoader(load_func, load_args)
         Es = []
         for label in label_list:
             dir = '{}{}'.format(directorize(path), label)

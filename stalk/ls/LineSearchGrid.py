@@ -47,6 +47,18 @@ class LineSearchGrid():
     # end def
 
     @property
+    def shifted(self):
+        '''True if more than two enabled points have been shifted'''
+        return len([point for point in self._grid if point.enabled]) > 2
+    # end def
+
+    @property
+    def evaluated(self):
+        '''True if all enabled points are evaluated'''
+        return len(self) > 0 and all([point.valid for point in self._grid if point.enabled])
+    # end def
+
+    @property
     def valid_grid(self):
         '''Return offset array of valid points'''
         return array([point for point in self._grid if point.valid])
