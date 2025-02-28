@@ -66,8 +66,8 @@ class LineSearchGrid():
 
     @property
     def grid(self):
-        '''Return array of points'''
-        return array([point for point in self._grid])
+        '''Return list of points'''
+        return [point for point in self._grid]
     # end def
 
     @grid.setter
