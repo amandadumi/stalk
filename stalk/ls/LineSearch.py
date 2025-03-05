@@ -164,6 +164,16 @@ class LineSearch(LineSearchBase):
         self._enabled = enabled
     # end def
 
+    @property
+    def W_max(self):
+        return self._R_to_W(self.R_max)
+    # end def
+
+    @property
+    def valid_W_max(self):
+        return self._R_to_W(self.valid_R_max)
+    # end def
+
     def figure_out_offsets(self, M=7, W=None, R=None, offsets=None):
         if offsets is not None:
             return offsets
@@ -222,16 +232,6 @@ class LineSearch(LineSearchBase):
         else:
             return 0.5 * self.Lambda * R**2
         # end if
-    # end def
-
-    @property
-    def W_max(self):
-        return self._R_to_W(self.R_max)
-    # end def
-
-    @property
-    def valid_W_max(self):
-        return self._R_to_W(self.valid_R_max)
     # end def
 
     def add_shift(self, shift):

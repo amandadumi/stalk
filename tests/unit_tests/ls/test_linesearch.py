@@ -20,7 +20,7 @@ def test_LineSearch():
     # Empty init
     ls = LineSearch()
     assert ls.d is None
-    assert ls.sgn == 1
+    assert ls.settings.sgn == 1
     assert ls.direction == 0.0
     assert ls.structure is None
     assert ls.hessian is None

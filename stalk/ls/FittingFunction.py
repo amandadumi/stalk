@@ -57,7 +57,7 @@ class FittingFunction():
         fraction=0.025
     ):
         if not isinstance(grid, LineSearchGrid):
-            raise ValueError("Fitting function input must be inherited from LineSearcGrid.")
+            raise ValueError("Fitting function input must be inherited from LineSearchGrid.")
         # end if
         result = self._eval_function(grid.valid_offsets, grid.valid_values * sgn)
         # If errors present, resample errorbars; if not, errors default to 0
@@ -75,6 +75,8 @@ class FittingFunction():
         return result
     # end def
 
+    # Return a random resampled distribution of x0, y0 results based on the input grid
+    # (offsets, values, errors) realized on the fitting function
     def get_distribution(
         self,
         grid,
@@ -83,7 +85,7 @@ class FittingFunction():
         Gs=None,
     ):
         if not isinstance(grid, LineSearchGrid):
-            raise ValueError("Fitting function input must be inherited from LineSearcGrid.")
+            raise ValueError("Fitting function input must be inherited from LineSearchGrid.")
         # end if
         if Gs is None:
             if isinstance(N, int) and N > 0:
@@ -107,12 +109,31 @@ class FittingFunction():
         return array(x0_distribution), array(y0_distribution)
     # end def
 
-    def get_x0_distribution(self, grid, **kwargs):
+    def get_x0_distribution(
+        self,
+        grid,
+        **kwargs,  # sng=1, N=200, Gs=None
+    ):
         return self.get_distribution(grid, **kwargs)[0]
     # end def
 
-    def get_y0_distribution(self, grid, **kwargs):
+    def get_y0_distribution(
+        self,
+        grid,
+        **kwargs  # sng=1, N=200, Gs=None
+    ):
         return self.get_distribution(grid, **kwargs)[1]
+    # end def
+
+    def __eq__(self, other):
+        if not isinstance(other, FittingFunction):
+            return False
+        # end if
+        result = self.func is other.func
+        for key, val in self.args.items():
+            result &= key in other.args and val == other.args[key]
+        # end for
+        return result
     # end def
 
 # end class

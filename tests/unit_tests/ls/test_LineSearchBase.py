@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from pytest import raises
-
 from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchBase import LineSearchBase
@@ -19,36 +17,15 @@ def test_LineSearchBase():
 
     # test empty/defaults
     ls = LineSearchBase()
-    assert ls.sgn == 1
+    assert ls.settings.sgn == 1
     assert ls.x0 is None
     assert ls.x0_err is None
     assert ls.y0 is None
     assert ls.y0_err is None
-    assert ls.fraction is None
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func.func is get_min_params
-    assert ls.fit_func.args['pfn'] == 3
-
-    # test initialization of different fit functions
-    fit0 = FittingFunction(get_min_params, {'test': 0})
-    ls.set_fit_func(fit_func=fit0)
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func is fit0
-    assert ls.fit_func.args['test'] == 0
-
-    ls.set_fit_func(fit_func=get_min_params, fit_args={'test': 1})
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func.func is get_min_params
-    assert ls.fit_func.args['test'] == 1
-
-    ls.set_fit_func(fit_kind='pf6')
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func.func is get_min_params
-    assert ls.fit_func.args['pfn'] == 6
-
-    with raises(TypeError):
-        ls.set_fit_func(fit_kind='error')
-    # end with
+    assert ls.settings.fraction == 0.025
+    assert isinstance(ls.settings.fit_func, FittingFunction)
+    assert ls.settings.fit_func.func is get_min_params
+    assert ls.settings.fit_func.args['pfn'] == 3
 
     # Test initialization with grid and values, no noise
     grid, ref = generate_exact_pf2(1.23, 2.34, N=5)
@@ -75,7 +52,6 @@ def test_LineSearchBase():
     assert match_to_tol(ls_noisy.y0, ref.y0)
     assert ls_noisy.x0_err > 0.0
     assert ls_noisy.y0_err > 0.0
-    assert ls_noisy.fraction == fraction
     # Test search
     # TODO: add coverage
     res = ls_noisy.search()

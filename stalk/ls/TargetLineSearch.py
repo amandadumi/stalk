@@ -3,10 +3,10 @@
 '''
 
 from numpy import array, argsort, isscalar, linspace, append, nan, isnan, where
-from numpy import random, argmin, ndarray
+from numpy import argmin, ndarray
 
-from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.LineSearchGrid import LineSearchGrid
+from stalk.ls.TlsSettings import TlsSettings
 from .LineSearch import LineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 
@@ -22,13 +22,9 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     _epsilon = None  # optimized target error
     _W_opt = None  # W to meet epsilon
     _sigma_opt = None  # sigma to meet epsilon
-    _fit_func_opt = None  # Fit function to meet epsilon
     E_mat = None  # resampled W-sigma matrix of errors
     W_mat = None  # resampled W-mesh
     S_mat = None  # resampled sigma-mesh
-    T_mat = None  # resampled trust-mesh (whether error is reliable)
-    target_bias_order = 1
-    target_bias_mix = 0.0
 
     def __init__(
         self,
@@ -46,16 +42,21 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         bias_order=1,
         bias_mix=0.0,
         interpolate_kind='cubic',
+        fit_kind=None,
+        fit_func=None,
+        fit_args={},
         # Line-search kwargs
         **ls_args
-        # values=None, errors=None, fraction=0.025, sgn=1
-        # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
+        # offsets=None, values=None, errors=None, fraction=0.025, sgn=1, N=200, Gs=None
     ):
         # Set bias_mix and target_fit in TargetLineSearchBase
         TargetLineSearchBase.__init__(
             self,
             bias_mix=bias_mix,
-            bias_order=bias_order
+            bias_order=bias_order,
+            fit_kind=fit_kind,
+            fit_func=fit_func,
+            fit_args=fit_args,
         )
         # The necessary init is done in LineSearch class
         LineSearch.__init__(
@@ -77,20 +78,23 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     @property
-    def M(self):
-        if self.Gs is not None:
-            return self.Gs.shape[1]
-        else:
-            return len(self)
-        # end if
+    def target_settings(self):
+        return self._target_settings
     # end def
 
     @property
-    def N(self):
-        if self.Gs is not None:
-            return self.Gs.shape[0]
+    def setup(self):
+        return self.target_settings is not None and self.M > 0
+    # end def
+
+    @target_settings.setter
+    def target_settings(self, target_settings):
+        if not isinstance(target_settings, TlsSettings):
+            raise TypeError("The settings must be derived from TlsSettings!")
         else:
-            return 0
+            self._target_settings = target_settings
+            # Clear the error surface when new settings are introduced
+            self._reset_resampling()
         # end if
     # end def
 
@@ -118,25 +122,36 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     @property
-    def fit_func_opt(self):
-        return self._fit_func_opt
+    def epsilon(self):
+        return self._epsilon
     # end def
 
-    @fit_func_opt.setter
-    def fit_func_opt(self, fit_func):
-        if isinstance(fit_func, FittingFunction):
-            self._fit_func_opt = fit_func
+    @epsilon.setter
+    def epsilon(self, epsilon):
+        if isscalar(epsilon) and epsilon > 0.0:
+            self._epsilon = epsilon
+        else:
+            raise ValueError("Epsilon must be > 0.0 but " + str(epsilon) + "was given.")
         # end if
+    # end def
+
+    @property
+    def grid_opt(self):
+        if not self.optimized:
+            return None
+        # end if
+        offsets = self.figure_out_offsets(M=self.M, W=self.W_opt)
+        errors = self.target_settings.M * [self.sigma_opt]
+        grid = LineSearchGrid(
+            offsets=offsets,
+            errors=errors
+        )
+        return grid
     # end def
 
     @property
     def R_opt(self):
         return self._W_to_R(self.W_opt)
-    # end def
-
-    @property
-    def Gs(self):
-        return self._Gs
     # end def
 
     @property
@@ -167,28 +182,29 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         return self.W_opt is not None and self.sigma_opt is not None
     # end def
 
-    @Gs.setter
-    def Gs(self, Gs):
-        if isinstance(Gs, ndarray) and Gs.ndim == 2:
-            if Gs.shape[0] < 2:
-                raise AssertionError('Gs must have at least two rows')
-            elif Gs.shape[1] < 3:
-                raise AssertionError('Gs must have at least two columns')
-            else:
-                self._Gs = Gs
-                # When new Gs is set
-                self._reset_resampling()
-            # end if
-        else:
-            raise ValueError('Gs must be a 2D array')
-        # end if
+    @property
+    def Gs(self):
+        return self.target_settings.Gs
     # end def
 
-    def _reset_resampling(self):
-        self.E_mat = None
-        self.S_mat = None
-        self.W_mat = None
-        self.T_mat = None
+    @Gs.setter
+    def Gs(self, Gs):
+        self.settings.Gs = Gs
+        self._reset_resampling()
+    # end def
+
+    @property
+    def M(self):
+        return self.target_settings.M
+    # end def
+
+    @property
+    def T_mat(self):
+        if self.W_mat is None:
+            return None
+        else:
+            return self.W_mat >= self.S_mat
+        # end if
     # end def
 
     def compute_bias_of(
@@ -199,7 +215,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         num_W=10,  # number of W points if no grids are provided
         **ls_args  # sgn, fraction, fit_func, N, Gs, bias_order, bias_mix
     ):
-        M = M if M is not None else self.M
+        M = M if M is not None else len(self)
 
         Rs = []
         Ws = []
@@ -244,10 +260,88 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self,
         **grid_args  # M, R, W, offsets
     ):
-        if self.fit_res is None:
-            raise AssertionError('Must have fit_res before adjusting offsets')
+        return self.figure_out_offsets(**grid_args) + self.target_settings.target.x0
+    # end def
+
+    def optimize(
+        self,
+        epsilon,
+        W_resolution=0.025,  # W resolution fraction of the error surface
+        S_resolution=0.025,  # S resolution fraction of the error surface
+        max_rounds=10,  # maximum number of rounds
+        skip_setup=False,  # If confident
+        **kwargs
+        # fit_kind=None, fit_func=None, fit_args={}, fraction=None,
+        # generate_args: W_num, W_max, sigma_num, sigma_max, noise_frac, M, N, Gs
+        # bias_mix, bias_order
+    ):
+        """Optimize W and sigma to a given target error epsilon > 0."""
+        if not self.valid_target:
+            raise AssertionError("Must have valid target data before optimization.")
         # end if
-        return self.figure_out_offsets(**grid_args) + self.target_fit.x0
+        if not isscalar(epsilon) or epsilon <= 0.0:
+            raise ValueError("Must provide epsilon > 0.")
+        # end if
+        if W_resolution >= 1.0 or W_resolution <= 0.0:
+            raise ValueError('W resolution must be 0.0 < W_resolution < 1.0')
+        # end if
+        if S_resolution >= 1.0 or S_resolution <= 0.0:
+            raise ValueError('S resolution must be 0.0 < S_resolution < 1.0')
+        # end if
+        if max_rounds <= 0:
+            raise ValueError('Must provide max_rounds > 0')
+        # end if
+
+        # Skip if already optimized and allowed to skip setup (overlooks all overrides)
+        if not self.optimized or not skip_setup:
+            self.setup_optimization(**kwargs)
+        # end if
+        try:
+            # Find W and sigma that maximize sigma
+            for round in range(max_rounds):
+                xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
+                if self._treat_errors(xi, yi, epsilon, W_resolution, S_resolution):
+                    break
+                # end if
+            # end while
+            self.W_opt = self.W_mat[yi, xi]
+            self.sigma_opt = self.S_mat[yi, xi]
+            self.epsilon = epsilon
+        except AssertionError:
+            print('Optimization failed!')
+        # end try
+    # end def
+
+    def setup_optimization(
+        self,
+        W_num=3,
+        W_max=None,
+        sigma_num=3,
+        sigma_max=None,
+        noise_frac=0.05,
+        **ls_overrides
+        # fit_kind=None, fit_func=None, fit_args={}, fraction=0.025, Gs=None,
+        # M=None, N=None, bias_mix=0.0, bias_order=1
+    ):
+        if not self.valid_target:
+            raise AssertionError("Must have valid target data before setup.")
+        # end if
+        # Create new settings. If they do not match the previous ones (checked in setter):
+        # -> clear E_mat and regenerate Gs and regenerate the error surface
+        target_settings = self.target_settings.copy(**ls_overrides)
+        if target_settings != self.target_settings:
+            self.target_settings = target_settings
+        # end if
+        # Make sure error surface is generated
+        if self.E_mat is None:
+            self.generate_error_surface(
+                W_num=W_num,
+                W_max=W_max,
+                sigma_num=sigma_num,
+                sigma_max=sigma_max,
+                noise_frac=noise_frac
+            )
+        # end if
     # end def
 
     # X: grid of W values; Y: grid of sigma values; E: grid of total errors
@@ -259,26 +353,15 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         sigma_num=3,
         sigma_max=None,
         noise_frac=0.05,
-        Gs=None,
-        M=None,
-        N=None,
-        bias_mix=None,
-        bias_order=None,
     ):
         if not self.valid_target:
             raise AssertionError("Must have valid target data before generating error.")
+        elif not self.setup:
+            raise AssertionError("Must setup target line-search with M > 2")
         # end if
-        # This will set self.Gs -> self.M, self.N
-        self._regenerate_Gs(N=N, M=M, Gs=Gs)
 
         W_max = W_max if W_max is not None else self.W_max
         sigma_max = sigma_max if sigma_max is not None else W_max * noise_frac
-        if bias_mix is not None:
-            self.target_bias_mix = bias_mix
-        # end if
-        if bias_order is not None:
-            self.target_bias_order = bias_order
-        # end if
 
         if W_max <= 0.0:
             raise ValueError('Must provide W_max > 0')
@@ -295,75 +378,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self.E_mat = array([E0_row])
         self.W_mat = array([Ws])
         self.S_mat = array([W_num * [sigmas[0]]])
-        self.T_mat = self._generate_T_mat()
         # Then, append the noisy rows
         for sigma in sigmas[1:]:
             self.insert_sigma_data(sigma)
         # end for
-    # end def
-
-    # Compute fitting bias and error using consistent parameters that are stored in Gs and
-    # target_fit
-    def _compute_target_error(self, W, sigma):
-        offsets = self.figure_out_adjusted_offsets(W=W, M=self.M)
-        values = self.evaluate_target(offsets)
-        errors = self.M * [sigma]
-        grid = LineSearchGrid(offsets=offsets, values=values, errors=errors)
-        error = self.compute_error(
-            grid,
-            Gs=self.Gs,
-            fit_func=self.fit_func,
-            sgn=self.sgn,
-            fraction=self.target_fit.fraction,
-            bias_order=self.target_bias_order,
-            bias_mix=self.target_bias_mix
-        )
-        return error
-    # end def
-
-    def _generate_T_mat(self):
-        return self.W_mat >= self.S_mat
-    # end def
-
-    # Return true if a different resampling than current is requested
-    def _check_resampling_changed(
-        self,
-        M=None,
-        N=None,
-        Gs=None,
-        fit_func=None,
-        bias_order=None,
-        bias_mix=None,
-        **kwargs
-    ):
-        result = Gs is not None
-        result |= M is not None and M != self.M
-        result |= N is not None and N != self.N
-        result |= fit_func is not None and fit_func != self.fit_func
-        result |= bias_mix is not None and bias_mix != self.target_bias_mix
-        result |= bias_order is not None and bias_order != self.target_bias_order
-        return result
-    # end def
-
-    # Reset or regenerate Gs if the user changes M or N or provides new Gs
-    def _regenerate_Gs(self, M=None, N=None, Gs=None):
-        if Gs is not None:
-            # If Gs provided, try to insert them and ignore other arguments, return False
-            self.Gs = Gs
-        else:
-            M = M if M is not None else self.M
-            N = N if N is not None else self.N
-            # If M or N changes, regenerate
-            if not isinstance(M, int) or M <= 2:
-                raise ValueError('Must provide M > 2')
-            # end if
-            if not isinstance(N, int) or N <= 1:
-                raise ValueError('Must provide N > 1')
-            # end if
-            if M != self.M and N != self.N:
-                self.Gs = random.randn(N, M)
-            # end if
-        # end if
     # end def
 
     def insert_sigma_data(self, sigma):
@@ -378,7 +396,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self.W_mat = W_mat[idx]
         self.S_mat = S_mat[idx]
         self.E_mat = E_mat[idx]
-        self.T_mat = self._generate_T_mat()
     # end def
 
     def insert_W_data(self, W):
@@ -394,82 +411,16 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self.W_mat = W_mat[:, idx]
         self.S_mat = S_mat[:, idx]
         self.E_mat = E_mat[:, idx]
-        self.T_mat = self._generate_T_mat()
     # end def
 
-    def optimize(
-        self,
-        epsilon,
-        fit_kind='pf3',
-        fit_func=None,
-        fit_args=None,
-        fraction=None,
-        **kwargs
-        # generate_args: W_num, W_max, sigma_num, sigma_max, noise_frac, M, N, Gs
-        # bias_mix, bias_order
-        # maximize_sigma_args: W_resolution, S_resolution, max_rounds
-    ):
-        """Optimize W and sigma to a given target error epsilon > 0."""
-        if not self.valid_target:
-            raise AssertionError("Must have valid target data before optimization.")
-        # end if
-        # Set the fit function as requested
-        self.set_fit_func(
-            fit_func=fit_func,
-            fit_kind=fit_kind,
-            fit_args=fit_args
-        )
-        if fraction is not None:
-            # Set fraction as requested
-            self.target_fit.fraction
-        # end if
-        try:
-            self.W_opt, self.sigma_opt = self.maximize_sigma(
-                epsilon,
-                **kwargs
-            )
-            self.fit_func_opt = fit_func
-            self.epsilon = epsilon
-        except AssertionError:
-            print('Optimization failed!')
-        # end try
-    # end def
-
-    # Optimize W and sigma based on maximizing sigma.
-    def maximize_sigma(
-        self,
-        epsilon,
-        W_resolution=0.05,  # W resolution fraction of the error surface
-        S_resolution=0.05,  # S resolution fraction of the error surface
-        max_rounds=10,  # maximum number of rounds
-        **generate_args
-        # W_num, W_max, sigma_num, sigma_max, noise_frac, Gs, M, N, bias_mix, bias_order
-    ):
-        if not isscalar(epsilon) or epsilon <= 0.0:
-            raise ValueError("Must provide epsilon > 0.")
-        # end if
-        if W_resolution >= 1.0 or W_resolution <= 0.0:
-            raise ValueError('W resolution must be 0.0 < W_resolution < 1.0')
-        # end if
-        if S_resolution >= 1.0 or S_resolution <= 0.0:
-            raise ValueError('S resolution must be 0.0 < S_resolution < 1.0')
-        # end if
-        if max_rounds <= 0:
-            raise ValueError('Must provide max_rounds > 0')
-        # end if
-        # Make sure error surface is generated
-        if self.E_mat is None or self._check_resampling_changed(**generate_args):
-            self.generate_error_surface(**generate_args)
-        # end if
-
-        # Find W and sigma that maximize sigma
-        for round in range(max_rounds):
-            xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
-            if self._treat_errors(xi, yi, epsilon, W_resolution, S_resolution):
-                break
-            # end if
-        # end while
-        return self.W_mat[yi, xi], self.S_mat[yi, xi]
+    # Compute fitting bias and error using consistent parameters
+    def _compute_target_error(self, W, sigma):
+        offsets = self.figure_out_adjusted_offsets(W=W, M=self.M)
+        values = self.evaluate_target(offsets)
+        errors = self.M * [sigma]
+        grid = LineSearchGrid(offsets=offsets, values=values, errors=errors)
+        error = self.compute_error(grid)
+        return error
     # end def
 
     # Treat various accuracy errors by adding resolution inside boundaries
@@ -560,7 +511,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # Fix x underflow by adding a new sigma value between the first and second
     def _treat_y_underflow(self, Y_resolution):
         S_max = self.S_mat[-1, 0]
-        S_this = self.S_mat[1, 0]  # should be zero
+        S_this = self.S_mat[0, 0]  # should be zero
         S_up = self.S_mat[1, 0] / 2
         S_diff = (S_up - S_this) / S_max
         if S_diff > Y_resolution:
@@ -664,6 +615,12 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         ax.contour(X, Y, Z, [self.epsilon], colors='k')
         ax.plot(X.flatten(), Y.flatten(), 'k.', alpha=0.3)
         ax.plot(self.W_opt, self.sigma_opt, 'ko')
+    # end def
+
+    def _reset_resampling(self):
+        self.E_mat = None
+        self.S_mat = None
+        self.W_mat = None
     # end def
 
 # end class

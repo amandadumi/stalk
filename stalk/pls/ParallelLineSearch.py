@@ -277,7 +277,7 @@ class ParallelLineSearch(PesSampler):
             return self.structure.params_err
         # end if
     # end def
-
+    
     def calculate_next_params(
         self,
         N=200,
@@ -286,9 +286,8 @@ class ParallelLineSearch(PesSampler):
     ):
         # deterministic
         params = self.params
-        shifts = self.get_shifts()
-        directions = self.hessian.get_directions()
-        params_next = self._calculate_params_next(params, directions, shifts)
+        shifts = self.shifts
+        params_next = self._calculate_params_next(params, shifts)
         # stochastic
         if self.noisy:
             x0s = []
@@ -301,7 +300,6 @@ class ParallelLineSearch(PesSampler):
                 dparams.append(
                     self._calculate_params_next(
                         params,
-                        directions,
                         shifts_this
                     ) - params_next
                 )
@@ -323,15 +321,13 @@ class ParallelLineSearch(PesSampler):
         return self.ls_list[i]
     # end def
 
-    def _calculate_params_next(self, params, directions, shifts):
-        return params + self._calculate_shifts(directions, shifts)
+    def _calculate_params_next(self, params, shifts):
+        directions = self.hessian.get_directions()
+        return params + shifts @ directions
     # end def
 
-    def _calculate_shifts(self, directions, shifts):
-        return shifts @ directions
-    # end def
-
-    def get_shifts(self):
+    @property
+    def shifts(self):
         shifts = []
         for ls in self.ls_list:
             if ls.enabled:

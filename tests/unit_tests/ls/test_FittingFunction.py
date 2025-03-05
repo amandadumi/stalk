@@ -58,4 +58,9 @@ def test_FittingFunction():
     assert len(x0s2) == N
     assert len(y0s2) == N
 
+    # Test __eq__
+    assert fit == FittingFunction(get_min_params, {'pfn': 2})
+    assert fit != []
+    assert fit != FittingFunction(get_min_params, {'pfn': 3})
+
 # end def

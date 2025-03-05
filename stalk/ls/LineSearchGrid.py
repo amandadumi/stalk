@@ -22,28 +22,19 @@ class LineSearchGrid():
         errors=None
     ):
         self._grid = []
-        if offsets is not None:
-            for offset in offsets:
-                self.add_point(offset)
-            # end for
-            if values is not None:
-                self.values = values
-            # end if
-            if errors is not None:
-                self.errors = errors
-            # end if
-        # end for
-    # end def
 
-    def add_point(self, point):
-        if not isinstance(point, LineSearchPoint):
-            point = LineSearchPoint(point)
-        # end if
-        if self.find_point(point) is None:
-            self._grid.append(point)
-            # Keep the grid sorted
-            self._grid.sort()
-        # end if
+        if offsets is not None:
+            if values is None:
+                values = len(offsets) * [None]
+                errors = len(offsets) * [0.0]
+            elif errors is None:
+                errors = len(offsets) * [0.0]
+            # end if
+            for offset, value, error in zip(offsets, values, errors):
+                point = LineSearchPoint(offset, value, error)
+                self.add_point(point)
+            # end for
+        # end for
     # end def
 
     @property
@@ -162,6 +153,17 @@ class LineSearchGrid():
     @property
     def valid(self):
         return len(self.valid_grid) > 1
+    # end def
+
+    def add_point(self, point):
+        if not isinstance(point, LineSearchPoint):
+            point = LineSearchPoint(point)
+        # end if
+        if self.find_point(point) is None:
+            self._grid.append(point)
+            # Keep the grid sorted
+            self._grid.sort()
+        # end if
     # end def
 
     # Get all enabled arrays: (offsets, values, errors)
