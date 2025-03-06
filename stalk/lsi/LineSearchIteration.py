@@ -2,13 +2,11 @@
 '''LineSearchIteration class for treating iteration of subsequent parallel linesearches
 '''
 
-from numpy import array, mean
-
+from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import directorize
-from stalk.params import ParameterSet
-from stalk.params import ParameterHessian
 from stalk.pls import ParallelLineSearch
-from .util import plot_parameter_convergence, plot_energy_convergence, plot_bundled_convergence
+from numpy import array
+from stalk.lsi.util import plot_parameter_convergence, plot_energy_convergence, plot_bundled_convergence
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -18,9 +16,8 @@ __license__ = "BSD-3-Clause"
 # Class for line-search iteration
 class LineSearchIteration():
 
-    pls_list = []  # list of ParallelLineSearch objects
-    path = ''  # base path
-    n_max = None  # TODO
+    _pls_list: list[ParallelLineSearch]  # list of ParallelLineSearch objects
+    _path = ''  # base path
 
     def __init__(
         self,
@@ -28,71 +25,110 @@ class LineSearchIteration():
         surrogate=None,
         structure=None,
         hessian=None,
-        load=True,
-        n_max=0,  # no limit
-        # e.g. windows, noises, targets, units, pes, loader ...
-        **kwargs,
+        pes=None,
+        **pls_args
     ):
-        self.path = directorize(path)
-        self.pls_list = []
-        # try to load pickles
-        if load:
-            self.load_pls()
-        # end if
-        if len(self.pls_list) == 0:  # if no iterations loaded, try to initialize
-            # try to load from surrogate ParallelLineSearch object
+        self.path = path
+        self._pls_list = []
+        # Try to serialized iterations:
+        self.load_pls()
+        if len(self) == 0:  # if no iterations loaded, try to initialize
+            # Try to load from surrogate ParallelLineSearch object
             if surrogate is not None:
-                self.init_from_surrogate(surrogate=surrogate, **kwargs)
+                self.init_from_surrogate(
+                    surrogate=surrogate,
+                    pes=pes,
+                )
             # end if
-            # when present, manually provided mappings, parameters and positions override those from a surrogate
-            if hessian is not None and structure is not None:
+            # When present, manually provided mappings, parameters and positions
+            # override those from a surrogate
+            if hessian is not None:
                 self.init_from_hessian(
-                    structure=structure, hessian=hessian, **kwargs)
+                    hessian,
+                    structure,
+                    **pls_args
+                )
             # end if
         # end if
     # end def
 
-    def init_from_surrogate(self, surrogate, **kwargs):
-        pls = surrogate.copy(path=self._get_pls_path(0), **kwargs)
-        # TODO: only checking after copy, to support unpickling of the surrogate
-        assert isinstance(pls, ParallelLineSearch), 'Surrogate parameter must be a ParallelLineSearch object'
-        self.pls_list = [pls]
+    @property
+    def pls_list(self):
+        return self._pls_list
     # end def
 
-    def init_from_hessian(self, structure, hessian, **kwargs):
-        assert isinstance(
-            structure, ParameterSet), 'Starting structure must be a ParameterSet object'
-        assert isinstance(
-            hessian, ParameterHessian), 'Starting hessian must be a ParameterHessian'
-        pls = ParallelLineSearch(
-            path=self._get_pls_path(0),
-            structure=structure,
-            hessian=hessian,
-            **kwargs
-        )
-        self.pls_list = [pls]
+    @property
+    def path(self):
+        return self._path
+    # end def
+
+    @path.setter
+    def path(self, path):
+        if isinstance(path, str):
+            self._path = directorize(path)
+        else:
+            raise TypeError("path must be a string")
+        # end if
+    # end def
+
+    def init_from_surrogate(
+        self,
+        surrogate: ParallelLineSearch,
+        pes=None,
+    ):
+        if isinstance(surrogate, TargetParallelLineSearch):
+            pls = surrogate.copy(
+                path=self._get_pls_path(0),
+                pes=pes
+            )
+        elif isinstance(surrogate, ParallelLineSearch):
+            pls = surrogate.copy(
+                path=self._get_pls_path(0),
+                pes=pes
+            )
+        else:
+            raise AssertionError('Surrogate parameter must be a ParallelLineSearch object')
+        # end if
+        self.pls_list.append(pls)
+    # end def
+
+    def init_from_hessian(
+        self,
+        hessian,
+        structure=None,
+        pes=None,
+        **pls_args
+    ):
+        if len(self) == 0:
+            pls = ParallelLineSearch(
+                path=self._get_pls_path(0),
+                hessian=hessian,
+                structure=structure,
+                pes=pes,
+                **pls_args
+            )
+            self.pls_list.append(pls)
+        else:
+            pls = self.pls(0)
+            pls.hessian = hessian
+            pls.structure = structure
+        # end if
     # end def
 
     def _get_pls_path(self, i):
         return '{}pls{}/'.format(self.path, i)
     # end def
 
-    def generate_jobs(self, **kwargs):
-        return self._get_current_pls().generate_pls_jobs(**kwargs)
-    # end def
-
-    def load_results(self, **kwargs):
-        self._get_current_pls().load_results(**kwargs)
+    def evaluate(
+        self,
+        add_sigma=False
+    ):
+        return self._get_current_pls().evaluate(add_sigma=add_sigma)
     # end def
 
     def _get_current_pls(self):
-        if len(self.pls_list) == 0:
-            return None
-        if len(self.pls_list) == 1:
-            return self.pls_list[0]
-        else:
-            return self.pls_list[-1]
-        # end if
+        # The list cannot be empty
+        return self.pls_list[-1]
     # end def
 
     def pls(self, i=None):
@@ -106,79 +142,68 @@ class LineSearchIteration():
     # end def
 
     def load_pls(self):
-        pls_list = []
-        load_failed = False
         i = 0
-        while not load_failed:
-            path = '{}data.p'.format(self._get_pls_path(i))
-            pls = ParallelLineSearch(load=path, mode='load')
-            if pls is not None:
-                pls_list.append(pls)
+        while i < 100:
+            path = '{}pls.p'.format(self._get_pls_path(i))
+            try:
+                pls = ParallelLineSearch(load=path)
+                self._pls_list.append(pls)
                 i += 1
-            else:
-                load_failed = True
-            # end if
+            except TypeError:
+                # This means load has failed
+                break
+            # end try
         # end while
-        self.pls_list = pls_list
     # end def
 
-    def propagate(self, i=None, **kwargs):
+    def propagate(
+        self,
+        i=None,
+        write=True,
+        overwrite=True,
+        fname='pls.p',
+        add_sigma=False,
+    ):
+        # Do not propagate if 'i' points to earlier iteration
         if i is not None and i < len(self.pls_list) - 1:
             return
         # end if
-        pls_next = self._get_current_pls().propagate(
-            path=self._get_pls_path(len(self.pls_list)), **kwargs)
+        i = len(self)
+        pls_next = self.pls().propagate(
+            path=self._get_pls_path(i),
+            write=write,
+            overwrite=overwrite,
+            fname=fname,
+            add_sigma=add_sigma,
+        )
         self.pls_list.append(pls_next)
     # end
 
-    def get_params(self, p=None, get_errs=True):
-        params = []
-        params_err = []
-        for pls in self.pls_list:
-            if pls.status.setup:
-                params.append(list(pls.structure.params))
-                params_err.append(list(pls.structure.params_err))
-            # end if
-        # end for
-        # the last part, not (yet) propagated
-        pls = self.pls()
-        if pls.status.analyzed:
-            params.append(list(pls.structure_next.params))
-            params_err.append(list(pls.structure_next.params_err))
-        # end if
-        if p is not None:
-            params = array(params)[:, p]
-            params_err = array(params_err)[:, p]
+    def plot_convergence(
+        self,
+        bundle=True,
+        **kwargs
+    ):
+        if bundle:
+            plot_bundled_convergence(self.pls_list, **kwargs)
         else:
-            params = array(params)
-            params_err = array(params_err)
-        # end if
-        if get_errs:
-            return params, params_err
-        else:
-            return params
-        # end if
+            plot_energy_convergence(self.pls_list, **kwargs)
+            plot_parameter_convergence(
+                self.pls_list, **kwargs)
     # end def
 
-    def get_average_params(self, p=None, get_errs=True, transient=1):
-        params, params_err = self.get_params(p=p, get_errs=True)
-        params_ave = mean(params[transient:], axis=0)
-        params_ave_err = mean(params_err[transient:]**2, axis=0)**0.5
-        if get_errs:
-            return params_ave, params_ave_err
-        else:
-            return params_ave
-        # end if
+    def __len__(self):
+        return len(self.pls_list)
     # end def
 
     def __str__(self):
         string = self.__class__.__name__
         if len(self.pls_list) > 0:
-            fmt = '\n  {:<4d} {}    {:<8f} +/- {:<8f}' + \
+            fmt = '\n  {:<4d}    {:<8f} +/- {:<8f}' + \
                 self.pls().D * '   {:<8f} +/- {:<8f}'
-            fmts = '\n  {:<4s} {}    {:<8s} +/- {:<8s}' + \
+            fmts = '\n  {:<4s}    {:<8s} +/- {:<8s}' + \
                 self.pls().D * '   {:<8s} +/- {:<8s}'
-            plabels = ['pls', 'status', 'Energy', '']
+            plabels = ['pls', 'Energy', '']
             for p in range(self.pls().D):
                 plabels += ['p' + str(p)]
                 plabels += ['']
@@ -192,37 +217,11 @@ class LineSearchIteration():
                     data.append(param)
                     data.append(perr)
                 # end for
-                string += fmt.format(p, pls.status.value(),
-                                     *tuple(array(data).round(5)))
+                string += fmt.format(p, *tuple(array(data).round(5)))
             # end for
         # end if
         # TODO add parameter and energy printouts
         return string
-    # end def
-
-    def pop(self):
-        return self.pls_list.pop()
-    # end def
-
-    def plot_convergence(
-        self,
-        transient=1,
-        target_convergence=True,
-        bundle=True,
-        **kwargs
-    ):
-        if target_convergence:
-            targets = self.get_average_params(
-                transient=transient, get_errs=False)
-        else:
-            targets = None
-        # end if
-        if bundle:
-            plot_bundled_convergence(self.pls_list, targets=targets, **kwargs)
-        else:
-            plot_energy_convergence(self.pls_list, **kwargs)
-            plot_parameter_convergence(
-                self.pls_list, targets=targets, **kwargs)
     # end def
 
 # end class

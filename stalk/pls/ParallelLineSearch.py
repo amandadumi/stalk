@@ -234,6 +234,15 @@ class ParallelLineSearch(PesSampler):
         # end if
         structures, sigmas = self._collect_enabled()
         self._evaluate_energies(structures, sigmas, add_sigma=add_sigma)
+        # Set the eqm energy
+        for ls in self.ls_list:
+            eqm = ls.find_point(0.0)
+            if eqm is not None:
+                self.structure.value = eqm.value
+                self.structure.error = eqm.error
+                break
+            # end if
+        # end for
         self._solve_ls()
         # Calculate next params
         params_next, params_next_err = self.calculate_next_params()  # **kwargs
@@ -277,7 +286,7 @@ class ParallelLineSearch(PesSampler):
             return self.structure.params_err
         # end if
     # end def
-    
+
     def calculate_next_params(
         self,
         N=200,
@@ -292,7 +301,7 @@ class ParallelLineSearch(PesSampler):
         if self.noisy:
             x0s = []
             for ls in self.ls_list:
-                x0s.append(ls.fit_func.get_x0_distribution(N=N, Gs=Gs))
+                x0s.append(ls.settings.fit_func.get_x0_distribution(ls, N=N, Gs=Gs))
             # end if
             x0s = array(x0s).T
             dparams = []
@@ -346,21 +355,26 @@ class ParallelLineSearch(PesSampler):
         structure=None,
         hessian=None,
         windows=None,
-        noises=None
+        noises=None,
+        pes=None
     ):
         structure = structure if structure is not None else self.structure
         hessian = hessian if hessian is not None else self.hessian
         windows = windows if windows is not None else self.windows
         noises = noises if noises is not None else self.noises
+        pes = pes if pes is not None else self.pes
         copy_pls = ParallelLineSearch(
             path=path,
             structure=structure,
             hessian=hessian,
             windows=windows,
             noises=noises,
-            pes=self.pes,
-            no_eval=True
+            no_eval=True,
+            pes=pes
         )
+        for ls, ls_new in zip(self.ls_list, copy_pls.ls_list):
+            ls_new._settings = ls._settings
+        # end for
         return copy_pls
     # end def
 
@@ -369,8 +383,12 @@ class ParallelLineSearch(PesSampler):
         path=None,
         write=True,
         overwrite=True,
+        add_sigma=False,
         fname='pls.p'
     ):
+        if not self.evaluated:
+            self.evaluate(add_sigma=add_sigma)
+        # end if
         path = path if path is not None else self.path + '_next/'
         # Write to disk
         if write:

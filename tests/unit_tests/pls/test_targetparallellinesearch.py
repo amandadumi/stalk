@@ -133,6 +133,13 @@ def test_TargetParallelLineSearch():
     assert match_to_tol(srg.statistical_cost, statcost_ref2)
 
     # Test LS optimization to epsilon_p
+    srg = TargetParallelLineSearch(
+        fit_kind='pf3',
+        pes_func=pes_H2O,
+        structure=structure,
+        hessian=hessian,
+        window_frac=0.2,
+    )
     epsilon_p2 = [0.01, 0.03]
     srg.bracket_target_biases()
     srg.optimize(
@@ -145,8 +152,8 @@ def test_TargetParallelLineSearch():
     )
     assert srg.optimized
     # Hard-coded references are not externally validated
-    windows_ref3 = [0.05172417741906685, 0.12702729166516608]
-    noises_ref3 = [0.003232761088691678, 0.0049171854838128805]
+    windows_ref3 = [0.04525865524168349, 0.12292963709532201]
+    noises_ref3 = [0.003232761088691678, 0.006556247311750508]
     assert match_to_tol(srg.W_opt, windows_ref3)
     assert match_to_tol(srg.sigma_opt, noises_ref3)
     for tls, W, sigma in zip(srg.ls_list, windows_ref3, noises_ref3):

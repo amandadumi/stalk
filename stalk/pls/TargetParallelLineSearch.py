@@ -7,6 +7,7 @@ This is the surrogate model used to inform and optimize a parallel line-search.
 from numpy import argmin, array, isscalar, mean, linspace
 
 from stalk.ls.LineSearchGrid import LineSearchGrid
+from stalk.ls.LsSettings import LsSettings
 from stalk.util import get_fraction_error
 from stalk.ls import TargetLineSearch
 from stalk.pls import ParallelLineSearch
@@ -133,6 +134,13 @@ class TargetParallelLineSearch(ParallelLineSearch):
                 tls.reset_interpolation(interpolate_kind=interpolate_kind)
             # end if
         # end for
+    # end def
+
+    def ls(self, i) -> TargetLineSearch:
+        if i < 0 or i >= len(self.ls_list):
+            raise ValueError("Must choose line-search between 0 and " + str(len(self.ls_list)))
+        # end if
+        return self.ls_list[i]
     # end def
 
     def optimize(
@@ -347,6 +355,11 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # end def
 
         epsilon_d_opt = array(epsilon_d0)
+        # Initial optimization to get statistical cost
+        for tls, epsilon in zip(self.ls_list, epsilon_d0):
+            tls.optimize(epsilon, skip_setup=True)
+        # end for
+
         for it in range(it_max):
             # Squeeze the epsilon_d offset
             old_stat_cost = self.statistical_cost
@@ -420,6 +433,29 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
     def compute_bias_d(self):
         return self._compute_bias()[0]
+    # end def
+
+    def copy(
+        self,
+        **kwargs
+        # path='', pes=None, pes_func=None, pes_args={}
+    ):
+        if not self.optimized:
+            raise AssertionError("Must optimize surrogate before copying")
+        # end if
+        pls = ParallelLineSearch.copy(
+            self,
+            # Copy optimized windows, noises
+            windows=self.W_opt,
+            noises=self.sigma_opt,
+            **kwargs
+            # pes=None, pes_func=None, pes_args={}
+        )
+        # Copy each optimized line-search settings
+        for ls_new, tls in zip(pls.ls_list, self.ls_list):
+            ls_new._settings = LsSettings.copy(tls.target_settings)
+        # end for
+        return pls
     # end def
 
     # Finalize optimization by computing error estimates
