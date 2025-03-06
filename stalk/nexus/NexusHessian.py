@@ -2,8 +2,6 @@
 """NexusHessian class inherits ParameterHessian with Nexus functions.
 """
 
-from numpy import array
-
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.util import directorize
 from stalk.io.PesLoader import PesLoader
@@ -22,7 +20,6 @@ class NexusHessian(ParameterHessian):
     def _evaluate_energies(
         self,
         structure_list: list[NexusStructure],
-        label_list=None,
         path='fdiff',
         pes=None,
         pes_func=None,
@@ -38,22 +35,20 @@ class NexusHessian(ParameterHessian):
             pes = NexusGenerator(pes_func, pes_args)
         # end if
         jobs = []
-        for s, label in zip(structure_list, label_list):
-            dir = '{}{}'.format(directorize(path), label)
+        for s in structure_list:
+            dir = '{}{}'.format(directorize(path), s.label)
             # Make a copy structure for job generation
             jobs += pes.evaluate(s.get_nexus_structure(), dir)
         # end for
         from nexus import run_project
         run_project(jobs)
 
-        loader = PesLoader(load_func, load_args)
-        Es = []
-        for label in label_list:
-            dir = '{}{}'.format(directorize(path), label)
+        loader = PesLoader(loader, load_func, load_args)
+        for s in structure_list:
+            dir = '{}{}'.format(directorize(path), s.label)
             E = loader.load(path=dir).get_value()
-            Es.append(E)
+            s.value = E
         # end for
-        return array(Es)
     # end def
 
 # end class

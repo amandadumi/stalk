@@ -185,13 +185,12 @@ class ParameterHessian():
         eqm = structure if structure is not None else self.structure
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
-        dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
+        dp_list, structure_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
         self._evaluate_energies(
             structure_list=structure_list,
             pes=pes,
             pes_func=pes_func,
             pes_args=pes_args,
-            label_list=label_list,
             **kwargs
         )
         # Pick those displacements and energies that were successfully computed
@@ -265,8 +264,7 @@ class ParameterHessian():
     def _get_fdiff_data(self, structure, dps, dpos_mode=False):
         assert isinstance(structure, ParameterSet)
         dp_list = [0.0 * dps]
-        structure_list = [structure.copy()]
-        label_list = ['eqm']
+        structure_list = [structure.copy(label='eqm')]
 
         def shift_params(id_ls, dp_ls):
             dparams = array(len(dps) * [0.0])
@@ -279,7 +277,7 @@ class ParameterHessian():
                 # end if
                 label += '{}'.format(dp)
             # end for
-            structure_new = structure.copy()
+            structure_new = structure.copy(label=label)
             if isinstance(structure, ParameterStructure):
                 structure_new.shift_params(dparams, dpos_mode=dpos_mode)
             else:
@@ -287,7 +285,6 @@ class ParameterHessian():
             # end if
             structure_list.append(structure_new)
             dp_list.append(dparams)
-            label_list.append(label)
         # end def
 
         for p0, dp0 in enumerate(dps):
@@ -303,7 +300,7 @@ class ParameterHessian():
                 shift_params([p0, p1], [-dp0, -dp1])
             # end for
         # end for
-        return dp_list, structure_list, label_list
+        return dp_list, structure_list
     # end def
 
     def __len__(self):
