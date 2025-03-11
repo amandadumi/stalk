@@ -45,6 +45,7 @@ class LineSearchIteration():
             if surrogate is not None:
                 self.init_from_surrogate(
                     surrogate=surrogate,
+                    structure=structure,
                     pes=pes,
                 )
             # end if
@@ -57,9 +58,6 @@ class LineSearchIteration():
                     pes=pes,
                     **pls_args
                 )
-            elif structure is not None:
-                # Override structure if so requested
-                self.structure = structure
             # end if
         # end if
     # end def
@@ -86,16 +84,19 @@ class LineSearchIteration():
     def init_from_surrogate(
         self,
         surrogate: ParallelLineSearch,
+        structure=None,
         pes=None,
     ):
         if isinstance(surrogate, TargetParallelLineSearch):
             pls = surrogate.copy(
                 path=self._get_pls_path(0),
+                structure=structure,
                 pes=pes
             )
         elif isinstance(surrogate, ParallelLineSearch):
             pls = surrogate.copy(
                 path=self._get_pls_path(0),
+                structure=structure,
                 pes=pes
             )
         else:

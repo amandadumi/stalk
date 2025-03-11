@@ -19,8 +19,8 @@ base_dir = 'morse_3p/'
 #   c: coupling constant of parameters through auxiliary morse potentials
 #   d: eqm displacements
 # returns: energy value, error (= sigma)
-def pes(structure, sigma=None, c=1.0, d=0.0):
-    from numpy import array, exp, random
+def pes(structure, sigma=None, c=1.0, d=0.0, **kwargs):
+    from numpy import array, exp
 
     def morse(p, r):
         return p[2] * ((1 - exp(-(r - p[0]) / p[1]))**2 - 1) + p[3]
@@ -43,10 +43,7 @@ def pes(structure, sigma=None, c=1.0, d=0.0):
     E += c * morse(m01, p0 + p1)
     E += c * morse(m02, p0 + p2)
     E += c * morse(m12, p1 + p2)
-    if sigma is not None:
-        E += sigma * random.randn(1)[0]  # add random noise
-    # end if
-    return E, sigma
+    return E, 0.0
 # end def
 
 
@@ -56,13 +53,13 @@ pes_surrogate = PesFunction(pes, {'c': 1.0, 'd': 0.0})
 
 # Relax numerically in the absence of noise, wrap the function for numerical optimizer
 p_relax = p_init.copy()
-p_relax.relax(pes_surrogate)
+pes_surrogate.relax(p_relax)
 print('Minimum-energy parameters (surrogate):')
 print(p_relax.params)
 
 # Compute the numerical Hessian at the minimum parameters using a finite difference method
 hessian = ParameterHessian(structure=p_relax)
-hessian.compute_fdiff(mode='pes', pes=pes_surrogate)
+hessian.compute_fdiff(pes=pes_surrogate)
 print('Hessian:')
 print(hessian)
 
@@ -70,9 +67,9 @@ print(hessian)
 # Create, or try to load from disk, surrogate TargetParallelLineSearch object
 srg_file = 'surrogate.p'
 surrogate = TargetParallelLineSearch(
-    mode='pes',
+    load=srg_file,
+    fit_kind='pf3',
     path=base_dir + 'surrogate',
-    load=base_dir + 'surrogate/' + srg_file,
     structure=p_relax,
     hessian=hessian,
     pes=pes_surrogate,
@@ -81,22 +78,20 @@ surrogate = TargetParallelLineSearch(
 )
 
 # Optimize the line-search to tolerances
-if not surrogate.optimized:
-    surrogate.optimize(
-        epsilon_p=[0.01, 0.02, 0.03],  # parameter tolerances
-        fit_kind='pf3',
-        # (initial) maximum resampled noise relative to the maximum window
-        noise_frac=0.01,
-        M=7,
-        N=500,  # use as many points for correlated resampling of the error
-    )
-    surrogate.write_to_disk(srg_file)
-# end if
+surrogate.optimize(
+    epsilon_p=[0.01, 0.02, 0.03],
+    fit_kind='pf3',
+    noise_frac=0.05,
+    M=7,
+    N=500,
+    reoptimize=False,
+    write=srg_file
+)
 
 # Define alternative PES
 pes_alt = PesFunction(pes, {'c': 0.9, 'd': 0.3})
 p_alt = p_relax.copy()
-p_alt.relax(pes_alt)
+pes_alt.relax(p_alt)
 print('Minimum-energy parameters (alternative):')
 print(p_alt.params)
 
@@ -106,11 +101,11 @@ lsi = LineSearchIteration(
     path=base_dir + 'lsi',
     surrogate=surrogate,
     pes=pes_alt,
-    mode='pes',
 )
 # Propagate the line-search imax times
 imax = 4
 for i in range(imax):
-    lsi.propagate(i)
+    lsi.propagate(i, add_sigma=True)
 # end for
+lsi.pls().evaluate_eqm(add_sigma=True)
 print(lsi)

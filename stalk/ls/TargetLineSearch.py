@@ -442,7 +442,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         # end if
 
         if yi == 0:
-            result &= self._treat_y_underflow(Y_resolution)
+            result &= self._treat_y_underflow(Y_resolution / 100)
         elif yi == self.E_mat.shape[0] - 1:
             result &= self._treat_y_overflow(yi, Y_resolution)
         else:

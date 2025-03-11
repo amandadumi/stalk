@@ -9,7 +9,8 @@ presub = ''
 qeapp = 'pw.x'
 p2qapp = 'pw2qmcpack.x'
 qmcapp = 'qmcpack'
-scfjob = obj(app=qeapp, cores=cores, ppn=cores, presub=presub)
+pwscfjob = obj(app=qeapp, cores=cores, ppn=cores, presub=presub)
+pyscfjob = obj(app='python3', serial=True)
 p2qjob = obj(app=p2qapp, cores=1, ppn=1, presub=presub)
 optjob = obj(app=qmcapp, cores=cores, ppn=cores, presub=presub)
 dmcjob = obj(app=qmcapp, cores=cores, ppn=cores, presub=presub)

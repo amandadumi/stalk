@@ -12,26 +12,31 @@
 # Computing task: Suitable for institutional clusters
 
 # First, the user must set up Nexus according to their computing environment.
-from stalk.nexus.NexusGenerator import NexusGenerator
-from stalk.nexus.PwscfGeometry import PwscfGeometry
-from stalk.nexus.PwscfPes import PwscfPes
+
+from numpy import mean, array, sin, pi, cos
+
+from nexus import generate_pyscf, generate_qmcpack, job, obj
+from nexus import generate_physical_system, generate_convert4qmc
+from structure import Structure
+
+from stalk.util.util import Bohr
+from stalk.io.FilesLoader import FilesLoader
+from stalk.io.XyzGeometry import XyzGeometry
+from stalk.nexus import NexusStructure
+from stalk.nexus.NexusGeometry import NexusGeometry
+from stalk.nexus.NexusPes import NexusPes
 from stalk.nexus.QmcPes import QmcPes
 from stalk.lsi import LineSearchIteration
-from stalk.nexus import NexusHessian, NexusStructure
-from stalk.pls import TargetParallelLineSearch
-from matplotlib import pyplot as plt
-from numpy import diag, mean, array, sin, pi, cos
-from nexus import generate_pwscf, generate_qmcpack, job
-from nexus import generate_pw2qmcpack, generate_physical_system
-from nxs import scfjob, p2qjob, optjob, dmcjob
+from stalk.params.ParameterHessian import ParameterHessian
+from stalk.params.PesFunction import PesFunction
+from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import EffectiveVariance
+
+from nxs import pyscfjob, optjob, dmcjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)
 base_dir = 'benzene/'
-interactive = False  # want to be interactive or not?
-relaxpseudos = ['C.pbe_v1.2.uspp.F.upf', 'H.pbe_v1.4.uspp.F.upf']
 qmcpseudos = ['C.ccECP.xml', 'H.ccECP.xml']
-scfpseudos = ['C.ccECP.upf', 'H.ccECP.upf']
 
 # Implement the following parametric mappings for benzene
 #   p0: C-C distance
@@ -79,9 +84,6 @@ def forward(pos, **kwargs):
 
 
 # Backward mapping: produce array of atomic positions from parameters
-# axes = array([20, 20, 10])  # simulate in vacuum
-
-
 def backward(params, **kwargs):
     r_CC = params[0]
     r_CH = params[1]
@@ -102,7 +104,6 @@ def backward(params, **kwargs):
 
 
 # Let us initiate a ParameterStructure object that conforms to the above mappings
-axes = array([20., 20., 10.])
 params_init = array([2.651, 2.055])
 elem = 6 * ['C'] + 6 * ['H']
 structure_init = NexusStructure(
@@ -115,35 +116,23 @@ structure_init = NexusStructure(
 
 
 # return a 1-item list of Nexus jobs: SCF relaxation
-def scf_relax_job(structure, path, **kwargs):
-    structure.set_axes(diag(axes))  # periodic box required for PW calculation
+def scf_relax_job(structure: Structure, path, **kwargs):
     system = generate_physical_system(
         structure=structure,
         C=4,
         H=1
     )
-    relax = generate_pwscf(
+    relax = generate_pyscf(
+        template='pyscf_relax.py',
         system=system,
-        job=job(**scfjob),
-        path=path,
-        pseudos=relaxpseudos,
         identifier='relax',
-        calculation='relax',
-        input_type='generic',
-        input_dft='pbe',
-        occupations='smearing',
-        smearing='gaussian',
-        degauss=0.0001,
-        nosym=False,
-        conv_thr=1e-9,
-        mixing_beta=.7,
-        electron_maxstep=1000,
-        ecutwfc=100,
-        ecutrho=300,
-        forc_conv_thr=1e-4,
-        ion_dynamics='bfgs',
-        kgrid=(1, 1, 1),  # needed to run plane-waves with Nexus
-        kshift=(0, 0, 0,),
+        job=job(**pyscfjob),
+        path=path,
+        mole=obj(
+            verbose=5,
+            basis='cc-pvdz',
+            symmetry=False,
+        ),
     )
     return [relax]
 # end def
@@ -152,71 +141,57 @@ def scf_relax_job(structure, path, **kwargs):
 # LINE-SEARCH
 
 # 1) Surrogate: relaxation
-
-# Let us run a macro that computes and returns the relaxed structure
 structure_relax = structure_init.copy()
-structure_relax.relax(
-    pes=NexusGenerator(scf_relax_job),
-    path=base_dir + 'relax/',
-    loader=PwscfGeometry(),
-    loader_args={'suffix': 'relax.in'}
+relax_job = NexusGeometry(
+    scf_relax_job,
+    loader=XyzGeometry({'suffix': 'relax.xyz', 'c_pos': 1.0 / Bohr})
 )
+relax_job.relax(
+    structure_relax,
+    path=base_dir + 'relax/',
+)
+print('Initial params:')
+print(structure_init.params)
+print('Relaxed params:')
+print(structure_relax.params)
 
-# 2 ) Surrogate: Hessian
 
-# Let us use phonon calculation to obtain the surrogate Hessian
-# First, define a 3-item list of Nexus jobs:
-#   1: SCF single-shot calculation
-#   2: SCF phonon calculation
-#   3: Conversion to force-constant matrix
-# Since the phonon calculations are not standard in Nexus, we are providing the
-# inputs manually by using GenericSimulation and input_template classes
-
+# 2) Surrogate: Hessian
 # Let us define an SCF PES job that is consistent with the earlier relaxation
-
-
-def scf_pes_job(structure, path, **kwargs):
-    structure.set_axes(diag(axes))  # periodic box required for PW calculation
+def scf_pes_job(structure: Structure, path, **kwargs):
     system = generate_physical_system(
         structure=structure,
         C=4,
         H=1,
     )
-    scf = generate_pwscf(
+    scf = generate_pyscf(
+        template='pyscf_pes.py',
         system=system,
-        job=job(**scfjob),
-        path=path,
-        pseudos=relaxpseudos,
         identifier='scf',
-        calculation='scf',
-        input_type='generic',
-        input_dft='pbe',
-        occupations='smearing',
-        smearing='gaussian',
-        degauss=0.0001,
-        nosym=False,
-        mixing_beta=.7,
-        forc_conv_thr=1e-4,
-        ecutwfc=100,
-        ecutrho=300,
-        electron_maxstep=1000,
-        kgrid=(1, 1, 1),  # needed to run plane-waves with Nexus
-        kshift=(0, 0, 0,),
+        job=job(**pyscfjob),
+        path=path,
+        mole=obj(
+            verbose=5,
+            basis='cc-pvdz',
+            symmetry=False,
+        ),
     )
     return [scf]
 # end def
 
 
-pes = NexusGenerator(scf_pes_job)
-loader = PwscfPes({'suffix': 'scf.in'})
+pes = NexusPes(
+    func=PesFunction(scf_pes_job),
+    loader=FilesLoader({'suffix': 'energy.dat'})
+)
+
 
 # Finally, use a macro to read the phonon data and convert to parameter
 # Hessian based on the structural mappings
-hessian = NexusHessian(structure=structure_relax)
+hessian = ParameterHessian(structure=structure_relax)
 hessian.compute_fdiff(
     path=base_dir + 'fdiff',
-    pes=pes,
-    loader=loader,
+    pes=pes
 )
 print('Hessian:')
 print(hessian)
@@ -225,66 +200,57 @@ print(hessian)
 # 3) Surrogate: Optimize line-search
 # Use a macro to generate a parallel line-search object that samples the
 # surrogate PES around the minimum along the search directions
+surrogate_file = 'surrogate.p'
 surrogate = TargetParallelLineSearch(
     path=base_dir + 'surrogate/',
-    load=base_dir + 'surrogate/surrogate.p',  # try to load from disk
+    fit_kind='pf3',
+    load=surrogate_file,
     structure=structure_relax,
     hessian=hessian,
     pes=pes,
-    loader=loader,
-    mode='nexus',
-    window_frac=0.25,  # maximum displacement relative to Lambda of each direction
-    # number of points per direction to sample (should be more than finally intended)
-    M=15)
+    window_frac=0.2,  # maximum displacement relative to Lambda of each direction
+    M=15  # number of points per direction to sample
+)
+surrogate.bracket_target_biases()
 
 # Set target parameter error tolerances (epsilon): 0.01 Bohr accuracy for both C-C and C-H bonds.
 # Then, optimize the surrogate line-search to meet the tolerances given the line-search
 #   main input: M, epsilon
 #   main output: windows, noises (per direction to meet all epsilon)
-epsilon_p = [0.02, 0.02]
-if not surrogate.optimized:
-    surrogate.run_jobs(interactive=interactive)
-    surrogate.load_results(set_target=True)
-    surrogate.optimize(
-        epsilon_p=epsilon_p,
-        fit_kind='pf4',
-        # (initial) maximum resampled noise relative to the maximum window
-        noise_frac=0.1,
-        M=7,
-        N=400,  # use as many points for correlated resampling of the error
-    )
-    surrogate.write_to_disk('surrogate.p')
-# end if
-if __name__ == '__main__' and interactive:
-    print(surrogate)
-# end if
+epsilon_p = [0.01, 0.01]
+surrogate.optimize(
+    epsilon_p=epsilon_p,
+    fit_kind='pf3',
+    M=7,
+    N=400,
+    noise_frac=0.05,
+    reoptimize=False,
+    write=surrogate_file,
+)
+print(surrogate)
 
 # The check (optional) the performance, let us simulate a line-search on the surrogate PES.
 # It is cheaper to debug the optimizer here than later on.
 # First, shift parameters for the show
-surrogate_shifted = surrogate.copy()
-surrogate_shifted.structure.shift_params([0.1, -0.1])
+shifted_structure = surrogate.structure.copy()
+shifted_structure.shift_params([0.1, -0.1])
 # Then generate line-search iteration object based on the shifted surrogate
 srg_ls = LineSearchIteration(
-    surrogate=surrogate_shifted,
-    mode='nexus',
+    surrogate=surrogate,
+    structure=shifted_structure,
     path=base_dir + 'srg_ls',
-    pes=pes,  # use the surrogate PES
-    loader=loader,  # use this method to read the data
+    pes=pes,
 )
 # Propagate the parallel line-search (compute values, analyze, then move on) 4 times
 #   add_sigma = True means that target errorbars are used to simulate random noise
 for i in range(4):
-    srg_ls.pls(i).run_jobs(interactive=interactive)
-    srg_ls.pls(i).load_results(add_sigma=True)
-    srg_ls.propagate(i)
+    srg_ls.propagate(i, add_sigma=True)
 # end for
-srg_ls.pls(4).run_jobs(interactive=interactive, eqm_only=True)
-srg_ls.pls(4).load_eqm_results()
-# Diagnose and plot the line-search performance.
-if __name__ == '__main__':
-    print(srg_ls)
-# end if
+# Evaluate the latest eqm structure
+srg_ls.pls().evaluate_eqm(add_sigma=True)
+# Print the line-search performance
+print(srg_ls)
+
 
 # 4-5) Stochastic: Line-search
 # return a simple 4-item DMC workflow for Nexus:
@@ -293,9 +259,14 @@ if __name__ == '__main__':
 #   3: Optimize 2-body Jastrow coefficients
 #   4: Run DMC with enough steps/block to meet the target errorbar sigma
 #     it is important to first characterize the DMC run into var_eff
-
-
-def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs):
+def dmc_pes_job(
+    structure: Structure,
+    path,
+    sigma=None,
+    samples=10,
+    var_eff=None,
+    **kwargs
+):
     # Estimate the relative number of samples needed
     if isinstance(var_eff, EffectiveVariance):
         dmcsteps = var_eff.get_samples(sigma)
@@ -303,55 +274,43 @@ def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs)
         dmcsteps = samples
     # end if
 
-    structure.set_axes(diag(axes))
     # Center the structure for QMCPACK
-    structure.pos += axes / 2
     system = generate_physical_system(
         structure=structure,
         C=4,
         H=1,
     )
-    structure.kpoints = [[0, 0, 0]]
-    scf = generate_pwscf(
+    scf = generate_pyscf(
+        template='pyscf_pes.py',
         system=system,
-        job=job(**scfjob),
-        path=path + '/scf',
-        pseudos=scfpseudos,
         identifier='scf',
-        calculation='scf',
-        input_type='generic',
-        input_dft='pbe',
-        nosym=False,
-        nogamma=True,
-        conv_thr=1e-9,
-        mixing_beta=.7,
-        ecutwfc=300,
-        ecutrho=600,
-        occupations='smearing',
-        smearing='gaussian',
-        degauss=0.0001,
-        electron_maxstep=1000,
-        kgrid=(1, 1, 1),  # needed to run plane-waves with Nexus
-        kshift=(0, 0, 0,),
+        job=job(**pyscfjob),
+        path=path + 'scf',
+        mole=obj(
+            verbose=5,
+            ecp='ccecp',
+            basis='ccpvtz',
+            symmetry=False,
+            cart=True
+        ),
+        save_qmc=True,
     )
-    p2q = generate_pw2qmcpack(
-        identifier='p2q',
-        path=path + '/scf',
-        job=job(**p2qjob),
-        dependencies=[(scf, 'orbitals')],
+    c4q = generate_convert4qmc(
+        identifier='c4q',
+        path=path + 'scf',
+        job=job(cores=1),
+        dependencies=(scf, 'orbitals'),
     )
-    system.bconds = 'nnn'
     opt = generate_qmcpack(
         system=system,
-        path=path + '/opt',
+        path=path + 'opt',
         job=job(**optjob),
-        dependencies=[(p2q, 'orbitals')],
+        dependencies=[(c4q, 'orbitals')],
         cycles=8,
         identifier='opt',
         qmc='opt',
         input_type='basic',
         pseudos=qmcpseudos,
-        bconds='nnn',
         J2=True,
         J1_size=6,
         J1_rcut=6.0,
@@ -360,66 +319,57 @@ def dmc_pes_job(structure, path, sigma=None, samples=10, var_eff=None, **kwargs)
         minmethod='oneshift',
         blocks=200,
         substeps=2,
-        steps=1,
         samples=100000,
         minwalkers=0.1,
-        nonlocalpp=True,
-        use_nonlocalpp_deriv=False,
     )
     dmc = generate_qmcpack(
         system=system,
-        path=path + '/dmc',
+        path=path + 'dmc',
         job=job(**dmcjob),
-        dependencies=[(p2q, 'orbitals'), (opt, 'jastrow')],
+        dependencies=[(c4q, 'orbitals'), (opt, 'jastrow')],
         steps=dmcsteps,
         identifier='dmc',
         qmc='dmc',
         input_type='basic',
         pseudos=qmcpseudos,
-        bconds='nnn',
         jastrows=[],
-        vmc_samples=1000,
+        walkers_per_rank=128,
         blocks=200,
         timestep=0.01,
-        nonlocalmoves=True,
         ntimesteps=1,
     )
-    return [scf, p2q, opt, dmc]
+    return [scf, c4q, opt, dmc]
 # end def
 
 
-# Configure a loader for the DMC PES
+# Configure a job generator and loader for the DMC PES
 # -the suffix points to the correct nexus analyzer
 # -the qmc_idx points to the correct QMC series (0: VMC; 1: DMC)
-qmcloader = QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
+qmcpes = NexusPes(
+    dmc_pes_job,
+    loader=QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
+)
+structure_qmc = structure_relax.copy()
 
-# Run a macro that runs a DMC test job and returns effective variance w.r.t the number of steps/block
-var_eff = structure_relax.get_var_eff(
-    pes=NexusGenerator(dmc_pes_job),
-    loader=qmcloader,
+
+# Run a snapshot job to sample effective variance w.r.t relative DMC samples
+var_eff = qmcpes.get_var_eff(
+    structure_qmc,
     path=base_dir + 'dmc_var_eff',
     samples=10
 )
+qmcpes.args['var_eff'] = var_eff
 
-# Finally, use a macro to generate a parallel line-seach iteration object based on the DMC PES
+# Finally, perform line-search iteration based on surrogate settings and DMC PES
 dmc_ls = LineSearchIteration(
     surrogate=surrogate,
-    c_noises=0.5,  # WIP: convert noises from Ry (SCF) to Ha (QMCPACK)
-    mode='nexus',
     path=base_dir + 'dmc_ls',
-    pes=NexusGenerator(dmc_pes_job, {'var_eff': var_eff}),
-    loader=qmcloader
+    pes=qmcpes
 )
 for i in range(3):
-    dmc_ls.pls(i).run_jobs(interactive=interactive)
-    dmc_ls.pls(i).load_results()
     dmc_ls.propagate(i)
 # end for
-dmc_ls.pls(3).run_jobs(interactive=interactive, eqm_only=True)
-dmc_ls.pls(3).load_eqm_results()
+pes.evaluate(srg_ls.pls().structure)
 
-# Diagnose and plot the line-search performance
-if __name__ == '__main__' and interactive:
-    print(dmc_ls)
-    plt.show()
-# end if
+# Diagnose the line-search performance
+print(dmc_ls)

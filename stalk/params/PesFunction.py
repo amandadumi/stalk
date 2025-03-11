@@ -61,13 +61,14 @@ class PesFunction(FunctionCaller):
         structure: ParameterSet,
         **kwargs
     ):
-
         # Relax numerically using a wrapper around SciPy minimize
-        def relax_aux(structure: ParameterSet):
-            self.evaluate(structure)
-            return structure.value
+        def relax_aux(p):
+            s = structure.copy(params=p)
+            self.evaluate(s)
+            return s.value
         # end def
-        res = minimize(relax_aux, structure, **kwargs)
+        p0 = structure.params
+        res = minimize(relax_aux, p0, **kwargs)
         structure.set_params(res.x)
     # end def
 
