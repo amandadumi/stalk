@@ -13,10 +13,10 @@
 
 # First, the user must set up Nexus according to their computing environment.
 
-from numpy import mean, array, sin, pi, cos
+from numpy import diag, mean, array, sin, pi, cos
 
 from nexus import generate_pyscf, generate_qmcpack, job, obj
-from nexus import generate_physical_system, generate_convert4qmc
+from nexus import generate_physical_system, generate_pw2qmcpack, generate_pwscf
 from structure import Structure
 
 from stalk.util.util import Bohr
@@ -32,11 +32,12 @@ from stalk.params.PesFunction import PesFunction
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import EffectiveVariance
 
-from nxs import pyscfjob, optjob, dmcjob
+from nxs import pyscfjob, optjob, dmcjob, pwscfjob, p2qjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)
 base_dir = 'benzene/'
 qmcpseudos = ['C.ccECP.xml', 'H.ccECP.xml']
+scfpseudos = ['C.ccECP.upf', 'H.ccECP.upf']
 
 # Implement the following parametric mappings for benzene
 #   p0: C-C distance
@@ -129,9 +130,11 @@ def scf_relax_job(structure: Structure, path, **kwargs):
         job=job(**pyscfjob),
         path=path,
         mole=obj(
-            verbose=5,
-            basis='cc-pvdz',
+            verbose=4,
+            ecp='ccecp',
+            basis='ccpvdz',
             symmetry=False,
+            cart=True
         ),
     )
     return [relax]
@@ -171,23 +174,22 @@ def scf_pes_job(structure: Structure, path, **kwargs):
         job=job(**pyscfjob),
         path=path,
         mole=obj(
-            verbose=5,
-            basis='cc-pvdz',
+            verbose=4,
+            ecp='ccecp',
+            basis='ccpvdz',
             symmetry=False,
+            cart=True
         ),
     )
     return [scf]
 # end def
 
 
+# Hessian based on the structural mappings
 pes = NexusPes(
     func=PesFunction(scf_pes_job),
     loader=FilesLoader({'suffix': 'energy.dat'})
 )
-
-
-# Finally, use a macro to read the phonon data and convert to parameter
-# Hessian based on the structural mappings
 hessian = ParameterHessian(structure=structure_relax)
 hessian.compute_fdiff(
     path=base_dir + 'fdiff',
@@ -223,7 +225,6 @@ surrogate.optimize(
     fit_kind='pf3',
     M=7,
     N=400,
-    noise_frac=0.05,
     reoptimize=False,
     write=surrogate_file,
 )
@@ -274,38 +275,50 @@ def dmc_pes_job(
         dmcsteps = samples
     # end if
 
-    # Center the structure for QMCPACK
+    # For QMCPACK, use plane-waves for better performance
+    axes = array([20., 20., 10.])
+    structure.set_axes(diag(axes))
+    structure.pos += axes / 2
+    structure.kpoints = [[0, 0, 0]]
     system = generate_physical_system(
         structure=structure,
         C=4,
         H=1,
     )
-    scf = generate_pyscf(
-        template='pyscf_pes.py',
+    scf = generate_pwscf(
         system=system,
+        job=job(**pwscfjob),
+        path=path + '/scf',
+        pseudos=scfpseudos,
         identifier='scf',
-        job=job(**pyscfjob),
-        path=path + 'scf',
-        mole=obj(
-            verbose=5,
-            ecp='ccecp',
-            basis='ccpvtz',
-            symmetry=False,
-            cart=True
-        ),
-        save_qmc=True,
+        calculation='scf',
+        input_type='generic',
+        input_dft='pbe',
+        nosym=False,
+        nogamma=True,
+        conv_thr=1e-9,
+        mixing_beta=.7,
+        ecutwfc=300,
+        ecutrho=600,
+        occupations='smearing',
+        smearing='gaussian',
+        degauss=0.0001,
+        electron_maxstep=1000,
+        kgrid=(1, 1, 1),  # needed to run plane-waves with Nexus
+        kshift=(0, 0, 0,),
     )
-    c4q = generate_convert4qmc(
-        identifier='c4q',
-        path=path + 'scf',
-        job=job(cores=1),
-        dependencies=(scf, 'orbitals'),
+    p2q = generate_pw2qmcpack(
+        identifier='p2q',
+        path=path + '/scf',
+        job=job(**p2qjob),
+        dependencies=[(scf, 'orbitals')],
     )
+    system.bconds = 'nnn'
     opt = generate_qmcpack(
         system=system,
         path=path + 'opt',
         job=job(**optjob),
-        dependencies=[(c4q, 'orbitals')],
+        dependencies=[(p2q, 'orbitals')],
         cycles=8,
         identifier='opt',
         qmc='opt',
@@ -326,7 +339,7 @@ def dmc_pes_job(
         system=system,
         path=path + 'dmc',
         job=job(**dmcjob),
-        dependencies=[(c4q, 'orbitals'), (opt, 'jastrow')],
+        dependencies=[(p2q, 'orbitals'), (opt, 'jastrow')],
         steps=dmcsteps,
         identifier='dmc',
         qmc='dmc',
@@ -338,7 +351,7 @@ def dmc_pes_job(
         timestep=0.01,
         ntimesteps=1,
     )
-    return [scf, c4q, opt, dmc]
+    return [scf, p2q, opt, dmc]
 # end def
 
 
