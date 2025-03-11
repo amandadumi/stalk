@@ -30,7 +30,7 @@ def test_ParameterStructure_open():
     assert s_empty.params_err is None
     assert s_empty.value is None
     assert s_empty.error == 0.0
-    assert s_empty.label is None
+    assert s_empty.label == ''
     assert s_empty.units == 'B'
     assert not s_empty.consistent
     assert not s_empty.periodic

@@ -17,7 +17,10 @@ __license__ = "BSD-3-Clause"
 def test_linesearchiteration(tmp_path):
 
     # Test empty init
-    lsi = LineSearchIteration()
+    with raises(TypeError):
+        lsi = LineSearchIteration()
+    # end with
+    lsi = LineSearchIteration(pes_func=pes_H2O)
     assert len(lsi) == 0
     assert lsi.path == ''
 
@@ -65,11 +68,11 @@ def test_linesearchiteration(tmp_path):
         fit_kind='pf3',
         hessian=hessian,
         structure=structure,
-        pes=pes_H2O
+        pes_func=pes_H2O
     )
     with raises(AssertionError):
         # Cannot copy before optimized
-        lsi_srg = LineSearchIteration(surrogate=srg)
+        lsi_srg = LineSearchIteration(surrogate=srg, pes_func=pes_H2O)
     # end with
     windows = [0.1, 0.2]
     noises = [0.03, 0.04]
@@ -79,7 +82,7 @@ def test_linesearchiteration(tmp_path):
         windows=windows,
         noises=noises
     )
-    lsi_srg = LineSearchIteration(surrogate=srg)
+    lsi_srg = LineSearchIteration(surrogate=srg, pes_func=pes_H2O)
     # Not the same object but same values
     assert lsi_srg.pls().structure is not srg.structure
     assert match_to_tol(lsi_srg.pls().structure.params, srg.structure.params)

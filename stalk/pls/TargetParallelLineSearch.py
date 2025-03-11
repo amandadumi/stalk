@@ -4,6 +4,7 @@
 This is the surrogate model used to inform and optimize a parallel line-search.
 '''
 
+import warnings
 from numpy import argmin, array, isscalar, mean, linspace
 
 from stalk.ls.LineSearchGrid import LineSearchGrid
@@ -110,6 +111,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
     def __init__(
         self,
+        path='surrogate',
         structure=None,
         hessian=None,
         targets=None,
@@ -121,6 +123,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
     ):
         ParallelLineSearch.__init__(
             self,
+            path=path,
             structure=structure,
             hessian=hessian,
             **pls_args
@@ -154,17 +157,20 @@ class TargetParallelLineSearch(ParallelLineSearch):
         noise_frac=0.1,
         resolution=0.01,
         starting_mix=0.5,
+        write=None,
+        overwrite=False,
         **ls_args
         # M=7, fit_kind=None, fit_func=None, fit_args={}, Gs=None, fraction=0.025
         # bias_mix=0.0, bias_order=1, noise_frac=0.05,
         # W_resolution=0.05, S_resolution=0.05, max_rounds=10
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
+        if self.optimized and not reoptimize:
+            warnings.warn('Already optimized, use reoptimize = True to reoptimize.')
+            return
+        # end if
         if not self.evaluated:
             raise AssertionError('Cannot optimize before data has been evaluated.')
-        # end if
-        if self.optimized and not reoptimize:
-            raise AssertionError('Already optimized, use reoptimize = True to reoptimize.')
         # end if
         if windows is not None and noises is not None:
             self.optimize_windows_noises(
@@ -195,8 +201,8 @@ class TargetParallelLineSearch(ParallelLineSearch):
         else:
             raise AssertionError('Optimizer constraint not identified')
         # end if
-        # Finalize and store the result
-        self._finalize_optimization()
+        # Finalize and store the result, write to disk if requested
+        self._finalize_optimization(write=write, overwrite=overwrite)
     # end def
 
     def optimize_windows_noises(
@@ -437,14 +443,16 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
     def copy(
         self,
+        path='',
         **kwargs
-        # path='', pes=None, pes_func=None, pes_args={}
+        # pes=None, pes_func=None, pes_args={}
     ):
         if not self.optimized:
             raise AssertionError("Must optimize surrogate before copying")
         # end if
         pls = ParallelLineSearch.copy(
             self,
+            path=path,
             # Copy optimized windows, noises
             windows=self.W_opt,
             noises=self.sigma_opt,
@@ -459,10 +467,31 @@ class TargetParallelLineSearch(ParallelLineSearch):
     # end def
 
     # Finalize optimization by computing error estimates
-    def _finalize_optimization(self):
+    def _finalize_optimization(self, write=None, overwrite=False):
         # The errors are calculated strictly based on settings stored in line-searches
         errors = self._resample_errors()
         self.error_d, self.error_p = errors
+
+        print('Optimization complete:')
+        self._print_optimization('d', self.epsilon_d, self.error_d)
+        self._print_optimization('p', self.epsilon_p, self.error_p)
+
+        if isinstance(write, str):
+            self.write_to_disk(fname=write, overwrite=overwrite)
+        # end if
+    # end def
+
+    def _print_optimization(self, label, epsilon, error):
+        # Vertical print
+        fmt = '{:6s}  {:<8.4f} {:<8.4f} {:<8.4f}'
+        if epsilon is None:
+            return
+        # end if
+        print(label + '   target      error      rel. (%)')
+        for d, eps, err in zip(range(len(epsilon)), epsilon, error):
+            rel_err = err / eps
+            print(fmt.format(str(d), eps, err, rel_err * 100))
+        # end for
     # end def
 
     def _resample_errors(self, N=None):

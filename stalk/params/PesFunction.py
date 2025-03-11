@@ -1,67 +1,74 @@
 #!/usr/bin/env python3
 
+from scipy.optimize import minimize
+
+from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesResult import PesResult
+from stalk.util.FunctionCaller import FunctionCaller
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 
-class PesFunction():
-    _func = None
-    _args = None
+class PesFunction(FunctionCaller):
 
-    @property
-    def func(self):
-        return self._func
+    def evaluate(
+        self,
+        structure: ParameterSet,
+        sigma=0.0,
+        add_sigma=False,
+        **kwargs
+    ):
+        res = self._evaluate_structure(structure, sigma=sigma, **kwargs)
+        if add_sigma:
+            res.add_sigma(sigma)
+        # end if
+        structure.value = res.value
+        structure.error = res.error
     # end def
 
-    @func.setter
-    def func(self, func):
-        if callable(func):
-            self._func = func
-        else:
-            raise TypeError("The PES function must be callable!")
+    def evaluate_all(
+        self,
+        structures: list[ParameterSet],
+        sigmas=None,
+        add_sigma=False,
+        **kwargs  # path
+    ):
+        if sigmas is None:
+            sigmas = len(structures) * [0.0]
         # end if
-    # end
-
-    @property
-    def args(self):
-        return self._args
+        for structure, sigma in zip(structures, sigmas):
+            self.evaluate(structure, sigma=sigma, add_sigma=add_sigma, **kwargs)
+        # end for
     # end def
 
-    @args.setter
-    def args(self, args):
-        if isinstance(args, dict):
-            self._args = args
-        elif args is None:
-            self._args = {}
-        else:
-            raise TypeError("The PES arguments must be a dictionary")
-        # end if
-    # end
-
-    def __init__(self, pes=None, pes_func=None, pes_args={}):
-        '''A PES function is constructed from the job-generating function and arguments.'''
-        if isinstance(pes, PesFunction):
-            self.func = pes.func
-            self.args = pes.args
-        elif callable(pes):
-            # Allow construction with: PesFunction(pes_func, pes_args)
-            self.func = pes
-            self.args = pes_func
-        else:
-            self.func = pes_func
-            self.args = pes_args
-        # end if
-    # end def
-
-    def evaluate(self, structure, **kwargs):
+    def _evaluate_structure(
+        self,
+        structure: ParameterSet,
+        sigma=0.0,
+        **kwargs
+    ):
         eval_args = self.args.copy()
         # Override with kwargs
         eval_args.update(**kwargs)
-        value, error = self.func(structure, **eval_args)
+        value, error = self.func(structure, sigma=sigma, **eval_args)
         return PesResult(value, error)
+    # end def
+
+    def relax(
+        self,
+        structure: ParameterSet,
+        **kwargs
+    ):
+
+        # Relax numerically using a wrapper around SciPy minimize
+        def relax_aux(structure: ParameterSet):
+            self.evaluate(structure)
+            return structure.value
+        # end def
+        res = minimize(relax_aux, structure, **kwargs)
+        structure.set_params(res.x)
     # end def
 
 # end class

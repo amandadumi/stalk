@@ -1,36 +1,43 @@
-from numpy import nan, isnan, random
+from numpy import isscalar, nan, isnan, random
 
 
 class PesResult:
     '''Represents a PES evaluation result as value+error pair (float/nan)'''
 
-    value = None
-    error = None
+    _value = nan
+    _error = 0.0
 
-    def __init__(self, value, error=0.0):
-        if not isinstance(value, float):
-            self.value = nan
-            self.error = 0.0
+    @property
+    def value(self):
+        return self._value
+    # end def
+
+    @value.setter
+    def value(self, value):
+        if isscalar(value):
+            self._value = value
         else:
-            self.value = value
-            if isinstance(error, float):
-                self.error = error
-            else:
-                self.error = 0.0
-            # end if
+            raise ValueError("Value must be scalar")
         # end if
     # end def
 
-    def get_value(self):
-        return self.value
+    @property
+    def error(self):
+        return self._error
     # end def
 
-    def get_error(self):
-        return self.error
+    @error.setter
+    def error(self, error):
+        if isscalar(error) and error >= 0.0:
+            self._error = error
+        else:
+            raise ValueError("Error must be scalar and >= 0")
+        # end if
     # end def
 
-    def get_result(self):
-        return self.get_value(), self.get_error()
+    def __init__(self, value, error=0.0):
+        self.value = value
+        self.error = error
     # end def
 
     def add_sigma(self, sigma):

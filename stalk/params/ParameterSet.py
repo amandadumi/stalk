@@ -1,9 +1,9 @@
+#!/usr/bin/env python3
+
 from numpy import array, isscalar
-from scipy.optimize import minimize
 from copy import deepcopy
 
 from stalk.params.LineSearchPoint import LineSearchPoint
-from stalk.params.PesFunction import PesFunction
 from stalk.params.Parameter import Parameter
 
 __author__ = "Juha Tiihonen"
@@ -14,7 +14,7 @@ __license__ = "BSD-3-Clause"
 class ParameterSet(LineSearchPoint):
     """Base class for representing a set of parameters to optimize"""
     _param_list = []  # list of Parameter objects
-    label = None  # label for identification
+    label = ''  # label for identification
 
     def __init__(
         self,
@@ -146,23 +146,6 @@ class ParameterSet(LineSearchPoint):
 
     def check_consistency(self):
         return True
-    # end def
-
-    def relax(
-        self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        **kwargs
-    ):
-        pes = PesFunction(pes, pes_func, pes_args)
-
-        # Relax numerically using a wrapper around SciPy minimize
-        def relax_aux(p):
-            return pes.evaluate(ParameterSet(p)).get_value()
-        # end def
-        res = minimize(relax_aux, self.params, **kwargs)
-        self.set_params(res.x)
     # end def
 
 # end class

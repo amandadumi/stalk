@@ -267,7 +267,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         self,
         epsilon,
         W_resolution=0.025,  # W resolution fraction of the error surface
-        S_resolution=0.025,  # S resolution fraction of the error surface
+        S_resolution=0.0025,  # S resolution fraction of the error surface
         max_rounds=10,  # maximum number of rounds
         skip_setup=False,  # If confident
         **kwargs
@@ -510,10 +510,9 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     # Fix x underflow by adding a new sigma value between the first and second
     def _treat_y_underflow(self, Y_resolution):
-        S_max = self.S_mat[-1, 0]
         S_this = self.S_mat[0, 0]  # should be zero
         S_up = self.S_mat[1, 0] / 2
-        S_diff = (S_up - S_this) / S_max
+        S_diff = (S_up - S_this) / self.W_max
         if S_diff > Y_resolution:
             self.insert_sigma_data(S_up)
             return False
@@ -530,7 +529,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     def _treat_y_overflow(self, S_this, Y_resolution):
         S_this = self.S_mat[-1, 0]
         S_up = max(2 * S_this, self.W_max)
-        S_diff = (S_up - S_this) / S_up
+        S_diff = (S_up - S_this) / self.W_max
         if S_diff > Y_resolution:
             self.insert_sigma_data(S_up)
             return False
@@ -543,16 +542,15 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     def _treat_y_res(self, yi, Y_resolution):
-        S_max = self.S_mat[-1, 0]
         S_this = self.S_mat[yi, 0]
         S_down = self.S_mat[yi - 1, 0]
         S_up = self.S_mat[yi + 1, 0]
         res = True
-        if (S_up - S_this) / S_max / 2 > Y_resolution:
+        if (S_up - S_this) / self.W_max / 2 > Y_resolution:
             self.insert_sigma_data((S_this + S_up) / 2)
             res &= False
         # end if
-        if (S_this - S_down) / S_max / 2 > Y_resolution:
+        if (S_this - S_down) / self.W_max / 2 > Y_resolution:
             self.insert_sigma_data((S_this + S_down) / 2)
             res &= False
         # end if

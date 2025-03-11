@@ -31,7 +31,7 @@ class ParameterStructure(ParameterSet):
         backward_args={},
         value=None,
         error=0.0,
-        label=None,
+        label='',
         units='B',
         dim=3,
         translate=True,  # attempt to translate pos

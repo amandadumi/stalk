@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from pytest import raises
+from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
-from stalk.params.PesResult import PesResult
+from stalk.util.util import match_to_tol
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -12,13 +13,8 @@ __license__ = "BSD-3-Clause"
 def test_PesFunction():
 
     # Minimal function for testing vs callable
-    def pes_func(x, arg=0):
-        return x + arg, x + 1
-    # end def
-
-    # Alternative function
-    def pes_func_alt(x, arg=0):
-        return x + arg, x + 2
+    def pes_func(s: ParameterSet, arg=0, sigma=0.0):
+        return sum(s.params), arg
     # end def
 
     # Test degraded
@@ -26,7 +22,6 @@ def test_PesFunction():
         # Cannot init empty
         PesFunction()
     # end with
-    # Test degraded
     with raises(TypeError):
         # pes_func must be callable
         PesFunction(pes_func=[])
@@ -37,8 +32,8 @@ def test_PesFunction():
     # end with
 
     # Test nominal
-    args = {"arg": 5}
-    pf = PesFunction(pes_func=pes_func, pes_args=args)
+    args = {"arg": 5.0}
+    pf = PesFunction(func=pes_func, args=args)
     assert pf.args is args
     assert pf.func is pes_func
 
@@ -47,28 +42,16 @@ def test_PesFunction():
     assert pf_copy.args is args
     assert pf_copy.func is pes_func
 
-    # Copy takes precedence
-    pf_copy2 = PesFunction(pf, pes_func_alt, {})
-    assert pf_copy2.args is args
-    assert pf_copy2.func is pes_func
+    # Test evaluation add_sigma=False
+    params = [1.0, 2.0, 3.0]
+    sigma = 3.5
+    s = ParameterSet(params)
+    pf.evaluate(s, add_sigma=False, sigma=sigma)
+    assert s.value == sum(params)
+    assert match_to_tol(s.error, args['arg'])
 
-    # Test evaluation (using simple summation)
-    base = 11.0
-    res = pf.evaluate(base)
-    assert isinstance(res, PesResult)
-    assert res.get_value() == pes_func(base, **args)[0]
-    assert res.get_error() == pes_func(base, **args)[1]
-
-    # Test evaluation with overriding kwargs
-    new_args = {"arg": 7}
-    res2 = pf.evaluate(base, **new_args)
-    assert isinstance(res2, PesResult)
-    assert res2.get_value() == pes_func(base, **new_args)[0]
-    assert res2.get_error() == pes_func(base, **new_args)[1]
-
-    # Test alternative constructor
-    pf_alt = PesFunction(pes_func, args)
-    assert pf_alt.args is args
-    assert pf_alt.func is pes_func
+    pf.evaluate(s, add_sigma=True, sigma=sigma)
+    assert s.value != sum(params)
+    assert match_to_tol(s.error, (args['arg']**2 + sigma**2)**0.5)
 
 # end def

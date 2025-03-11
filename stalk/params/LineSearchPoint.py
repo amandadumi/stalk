@@ -46,6 +46,11 @@ class LineSearchPoint():
         return self._value
     # end def
 
+    @property
+    def is_eqm(self):
+        return abs(self.offset) < self.tol
+    # end def
+
     @value.setter
     def value(self, value):
         if isscalar(value) or value is None:

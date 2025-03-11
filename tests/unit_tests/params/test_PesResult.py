@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from pytest import raises
-from numpy import isnan
 from stalk.params.PesResult import PesResult
 
 __author__ = "Juha Tiihonen"
@@ -23,47 +22,38 @@ def test_PesResult():
 
     # test nominal (no error)
     res0 = PesResult(val)
-    assert res0.get_value() == val
-    assert res0.get_error() == err_default
+    assert res0.value == val
+    assert res0.error == err_default
     res0.add_sigma(sigma)
-    assert res0.get_error() == sigma
+    assert res0.error == sigma
     # Only test that value has been changed but not by how much
-    assert res0.get_value() != val
+    assert res0.value != val
 
     # Test nominal (with error)
     res1 = PesResult(val, err)
-    assert res1.get_value() == val
-    assert res1.get_error() == err
+    assert res1.value == val
+    assert res1.error == err
     # Add zero sigma and expect no effect
     res1.add_sigma(0.0)
-    assert res1.get_value() == val
-    assert res1.get_error() == err
-    assert res1.get_result()[0] == val
-    assert res1.get_result()[1] == err
+    assert res1.value == val
+    assert res1.error == err
     res1.add_sigma(sigma)
-    assert res1.get_error() == (err**2 + sigma**2)**0.5
+    assert res1.error == (err**2 + sigma**2)**0.5
     # Only test that value has been changed but not by how much
-    assert res1.get_value() != val
+    assert res1.value != val
 
-    # Test degraded (Nan value)
-    res2 = PesResult(None, err)
-    assert isnan(res2.get_value())
-    assert res2.get_error() == 0.0
-
-    # Test degraded (Nan error, sigma)
-    res2 = PesResult(val, None)
-    assert res2.get_value() == val
-    assert res2.get_error() == 0.0
     with raises(ValueError):
-        res2.add_sigma([])
+        res1.add_sigma([])
     # end with
     with raises(ValueError):
-        res2.add_sigma(-1e-9)
+        res1.add_sigma(-1e-9)
     # end with
 
-    # Test degraded (Nan value/error)
-    res2 = PesResult(None, None)
-    assert isnan(res2.get_value())
-    assert res2.get_error() == 0.0
+    with raises(ValueError):
+        PesResult(0.0, [])
+    # end with
+    with raises(ValueError):
+        PesResult(0.0, -1e-9)
+    # end with
 
 # end def

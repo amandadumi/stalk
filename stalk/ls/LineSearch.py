@@ -7,7 +7,6 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
 from stalk.ls.LineSearchBase import LineSearchBase
-from stalk.params.PesResult import PesResult
 
 
 # Class for PES line-search in structure context
@@ -29,8 +28,6 @@ class LineSearch(LineSearchBase):
         W=None,
         R=None,
         pes=None,
-        pes_func=None,
-        pes_args={},
         **ls_args
         # values=None, errors=None, fraction=0.025, sgn=1
         # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
@@ -50,8 +47,10 @@ class LineSearch(LineSearchBase):
         try:
             self.set_grid(M=M, W=W, R=R, offsets=offsets)
             # Try to evaluate the pes and set the results
-            self.evaluate(pes=pes, pes_func=pes_func, pes_args=pes_args)
-        except (ValueError, TypeError):
+            if isinstance(pes, PesFunction):
+                self.evaluate(pes=pes)
+            # end if
+        except (ValueError):
             # If the grid or pes input values are missing, the grid will be set later
             pass
         # end try
@@ -261,31 +260,16 @@ class LineSearch(LineSearchBase):
 
     def evaluate(
         self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
+        pes: PesFunction = None,
         add_sigma=False,
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
-        pes = PesFunction(pes, pes_func, pes_args)
         results = []
         for point in self._grid:
-            res = pes.evaluate(point, sigma=self.sigma)
-            if add_sigma:
-                res.add_sigma(self.sigma)
-            # end if
-            results.append(res)
-        # end for
-        self._set_results(results)
-        return results
-    # end def
-
-    def _set_results(self, results: list[PesResult]):
-        for res, point in zip(results, self._grid):
-            point.value = res.get_value()
-            point.error = res.get_error()
+            pes.evaluate(point, sigma=self.sigma, add_sigma=add_sigma)
         # end for
         self._search_and_store()
+        return results
     # end def
 
     def get_shifted_params(self):
@@ -354,12 +338,6 @@ class LineSearch(LineSearchBase):
         string = LineSearchBase.__str__(self)
         if self.Lambda is not None:
             string += '\n  Lambda: {:<9f}'.format(self.Lambda)
-        # end if
-        if self.W is not None:
-            string += '\n  W: {:<9f}'.format(self.W)
-        # end if
-        if self.R is not None:
-            string += '\n  R: {:<9f}'.format(self.R)
         # end if
         return string
     # end def

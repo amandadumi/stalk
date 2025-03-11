@@ -3,12 +3,15 @@
 
 from numpy import ndarray, array
 from textwrap import indent
+from dill import dumps, loads
+from os import makedirs, path
 
+from stalk.params.PesFunction import PesFunction
 from stalk.util import get_fraction_error
 from stalk.params import ParameterSet
 from stalk.params import ParameterHessian
 from stalk.ls import LineSearch
-from .PesSampler import PesSampler
+from stalk.util.util import directorize
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -16,13 +19,37 @@ __license__ = "BSD-3-Clause"
 
 
 # Class for a bundle of parallel line-searches
-class ParallelLineSearch(PesSampler):
+class ParallelLineSearch():
 
     ls_type = LineSearch
     _ls_list: list[LineSearch] = []  # list of line-search objects
     _hessian = None  # hessian object
     _structure = None  # eqm structure
     _structure_next = None  # next structure
+    _path = ''
+    _pes: PesFunction = None
+
+    # Try to load the instance from file before ordinary init
+    def __new__(cls, path='', load=None, *args, **kwargs):
+        if load is None:
+            return super().__new__(cls)
+        else:
+            # Try to load a pickle file from disk.
+            try:
+                fname = directorize(path) + load
+                with open(fname, mode='rb') as f:
+                    data = loads(f.read(), ignore=False)
+                # end with
+                if isinstance(data, cls):
+                    return data
+                else:
+                    raise TypeError("The loaded file is not the same kind!")
+                # end if
+            except FileNotFoundError:
+                return super().__new__(cls)
+            # end try
+        # end if
+    # end def
 
     def __init__(
         self,
@@ -35,7 +62,6 @@ class ParallelLineSearch(PesSampler):
         noises=None,
         add_sigma=False,
         no_eval=False,
-        # PesSampler args
         pes=None,
         pes_func=None,
         pes_args={},
@@ -48,13 +74,13 @@ class ParallelLineSearch(PesSampler):
             # Proxies of successful loading from disk
             return
         # end if
-        PesSampler.__init__(
-            self,
-            path=path,
-            pes=pes,
-            pes_func=pes_func,
-            pes_args=pes_args
-        )
+        if isinstance(pes, PesFunction):
+            self.pes = pes
+        else:
+            # If none are provided, raises TypeError
+            self.pes = PesFunction(pes_func, pes_args)
+        # end if
+        self.path = path
         if structure is not None:
             self.structure = structure
         # end if
@@ -75,45 +101,32 @@ class ParallelLineSearch(PesSampler):
         # end if
     # end def
 
-    def initialize(
-        self,
-        windows=None,
-        noises=None,
-        window_frac=None,
-        **ls_args
-        # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
-    ):
-        if windows is None:
-            windows = abs(self.Lambdas)**0.5 * window_frac
-        # end if
-        if noises is None:
-            noises = self.D * [0.0]
-        # end if
-        self._reset_ls_list(windows, noises, **ls_args)
+    @property
+    def pes(self):
+        return self._pes
     # end def
 
-    def _reset_ls_list(
-        self,
-        windows,
-        noises,
-        **ls_args,
-        # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
-    ):
-        ls_list = []
-        for d, window, noise in zip(range(self.D), windows, noises):
-            ls = self.ls_type(
-                structure=self.structure,
-                hessian=self.hessian,
-                d=d,
-                sigma=noise,
-                W=window,
-                **ls_args
-            )
-            ls_list.append(ls)
-        # end for
-        self._ls_list = ls_list
-        # Reset next structure if re-initialized
-        self._structure_next = None
+    @pes.setter
+    def pes(self, pes):
+        if isinstance(pes, PesFunction):
+            self._pes = pes
+        else:
+            raise TypeError("Must provide PES that is inherited from PesFunction.")
+        # end if
+    # end def
+
+    @property
+    def path(self):
+        return self._path
+    # end def
+
+    @path.setter
+    def path(self, path):
+        if isinstance(path, str):
+            self._path = path
+        else:
+            raise ValueError('path must be str')
+        # end if
     # end def
 
     # Return True if the parallel line-search has starting structure and Hessian
@@ -228,12 +241,63 @@ class ParallelLineSearch(PesSampler):
         return [ls.sigma for ls in self.ls_list]
     # end def
 
+    @property
+    def noises_min(self):
+        return array([ls.sigma for ls in self.ls_list]).min()
+    # end def
+
+    def initialize(
+        self,
+        windows=None,
+        noises=None,
+        window_frac=None,
+        **ls_args
+        # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
+    ):
+        if windows is None:
+            windows = abs(self.Lambdas)**0.5 * window_frac
+        # end if
+        if noises is None:
+            noises = self.D * [0.0]
+        # end if
+        self._reset_ls_list(windows, noises, **ls_args)
+    # end def
+
+    def _reset_ls_list(
+        self,
+        windows,
+        noises,
+        **ls_args,
+        # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
+    ):
+        ls_list = []
+        for d, window, noise in zip(range(self.D), windows, noises):
+            ls = self.ls_type(
+                structure=self.structure,
+                hessian=self.hessian,
+                d=d,
+                sigma=noise,
+                W=window,
+                **ls_args
+            )
+            ls_list.append(ls)
+        # end for
+        self._ls_list = ls_list
+        # Reset next structure if re-initialized
+        self._structure_next = None
+    # end def
+
     def evaluate(self, add_sigma=False):
         if not self.shifted:
             raise AssertionError("Must have shifted structures first!")
         # end if
         structures, sigmas = self._collect_enabled()
-        self._evaluate_energies(structures, sigmas, add_sigma=add_sigma)
+        self.pes.evaluate_all(
+            structures,
+            sigmas,
+            add_sigma=add_sigma,
+            path=self.path
+        )
         # Set the eqm energy
         for ls in self.ls_list:
             eqm = ls.find_point(0.0)
@@ -252,12 +316,28 @@ class ParallelLineSearch(PesSampler):
         )
     # end def
 
+    def evaluate_eqm(self, add_sigma=False):
+        self.pes.evaluate(
+            self.structure,
+            sigma=array(self.noises).min(),
+            path=self.path,
+            add_sigma=add_sigma,
+        )
+    # end def
+
     def _collect_enabled(self):
         structures = []
         sigmas = []
+        sigma_eqm = self.noises_min
         for ls in self.enabled_ls:
-            structures += ls.grid
-            sigmas += len(ls) * [ls.sigma]
+            for structure in ls.grid:
+                structures += [structure]
+                if structure.is_eqm:
+                    sigmas += [sigma_eqm]
+                else:
+                    sigmas += [ls.sigma]
+                # end if
+            # end for
         # end for
         return structures, sigmas
     # end def
@@ -375,6 +455,10 @@ class ParallelLineSearch(PesSampler):
         for ls, ls_new in zip(self.ls_list, copy_pls.ls_list):
             ls_new._settings = ls._settings
         # end for
+        # If no new pes was supplied, use the old one
+        if copy_pls.pes is None:
+            copy_pls.pes = self.pes
+        # end if
         return copy_pls
     # end def
 
@@ -400,6 +484,18 @@ class ParallelLineSearch(PesSampler):
             structure=self.structure_next
         )
         return pls_next
+    # end def
+
+    def write_to_disk(self, fname='data.p', overwrite=False):
+        fpath = directorize(self.path) + fname
+        if path.exists(fpath) and not overwrite:
+            print(f'File {fpath} exists. To overwrite, run with overwrite = True')
+            return
+        # end if
+        makedirs(self.path, exist_ok=True)
+        with open(fpath, mode='wb') as f:
+            f.write(dumps(self, byref=True))
+        # end with
     # end def
 
     def plot(

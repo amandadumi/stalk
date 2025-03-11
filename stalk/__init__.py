@@ -18,8 +18,7 @@ from .pls import ParallelLineSearch, TargetParallelLineSearch
 try:
     from . import nexus
     from .nexus import NexusStructure
-    from .nexus import NexusGenerator
-    from .nexus import NexusSurrogate
+    from .nexus import NexusPes
     nexus_enabled = True
 except ModuleNotFoundError:
     # Nexus not found
@@ -44,7 +43,6 @@ __all__ = [
     'ParallelLineSearch',
     'TargetParallelLineSearch',
     'nexus',
-    'NexusGenerator',
+    'NexusPes',
     'NexusStructure',
-    'NexusSurrogate',
 ]

@@ -59,7 +59,7 @@ hessian_real_H2O = array('''
 '''.split(), dtype=float).reshape(9, 9)
 
 
-def pes_H2O(structure, sigma=0.0):
+def pes_H2O(structure, sigma=0.0, path=None):
     if isinstance(structure, (ParameterStructure, NexusStructure)):
         pos = structure.pos
     else:
@@ -93,7 +93,7 @@ def job_H2O_pes(structure, path, sigma, **kwargs):
 
 class H2oLoader(PesLoader):
 
-    def __load__(self, path, job_data=None, **kwargs):
+    def _load(self, path, job_data=None, **kwargs):
         for row in job_data:
             if path == row[0]:
                 return PesResult(*row[1])

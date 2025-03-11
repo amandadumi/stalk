@@ -174,11 +174,9 @@ class ParameterHessian():
 
     def compute_fdiff(
         self,
+        pes: PesFunction,
         structure=None,
         dp=0.01,
-        pes=None,
-        pes_func=None,
-        pes_args={},
         dpos_mode=False,
         **kwargs,
     ):
@@ -186,13 +184,7 @@ class ParameterHessian():
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
         dp_list, structure_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
-        self._evaluate_energies(
-            structure_list=structure_list,
-            pes=pes,
-            pes_func=pes_func,
-            pes_args=pes_args,
-            **kwargs
-        )
+        pes.evaluate_all(structure_list, **kwargs)
         # Pick those displacements and energies that were successfully computed
         energies = []
         pdiffs = []
@@ -241,24 +233,6 @@ class ParameterHessian():
             # end for
         # end if
         self.init_hessian_array(hessian)
-    # end def
-
-    def _evaluate_energies(
-        self,
-        structure_list,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-    ):
-        pes = PesFunction(pes, pes_func, pes_args)
-        for s in structure_list:
-            if isinstance(s, ParameterSet):
-                # Set value, error
-                res = pes.evaluate(s)
-                s.value = res.get_value()
-                s.error = res.get_error()
-            # end if
-        # end for
     # end def
 
     def _get_fdiff_data(self, structure, dps, dpos_mode=False):

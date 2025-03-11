@@ -61,10 +61,20 @@ class TestAnalyzer(SimulationAnalyzer):
 # end class
 
 
+def test_dummy(*args, **kwargs):
+    pass
+# end def
+
+
 # Tailor Nexus analyzer for generic testing
 class TestLoader(PesLoader):
 
-    def __load__(self, path, **kwargs):
+    def __init__(self, func=test_dummy, args={}):
+        self._func = func
+        self._args = {}
+    # end def
+
+    def _load(self, path, **kwargs):
         ai = TestAnalyzer(path, **kwargs)
         ai.analyze()
         return PesResult(ai.value, ai.error)

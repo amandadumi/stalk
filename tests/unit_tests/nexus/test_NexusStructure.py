@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 
-from pytest import raises
-from stalk.io import XyzGeometry
+from structure import Structure
 from stalk.nexus.NexusPes import NexusPes
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.ParameterStructure import ParameterStructure
 from stalk.util.util import match_to_tol
 from ..assets.test_jobs import nxs_generic_pes, TestLoader
 from ..assets.h2o import backward_H2O, elem_H2O, forward_H2O, pes_H2O, pos_H2O
-
-from nexus import Structure, run_project
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -25,7 +22,6 @@ def test_NexusStructure(tmp_path):
     assert not s.analyzed
     assert not s.generated
     assert not s.finished
-    assert s._path == ''
     assert s.jobs is None
     assert isinstance(s.get_nexus_structure(), Structure)
 

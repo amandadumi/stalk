@@ -9,8 +9,20 @@ from .GeometryLoader import GeometryLoader
 
 class XyzGeometry(GeometryLoader, GeometryWriter):
 
-    def __load__(self, path, suffix='relax.xyz', c_pos=1.0):
-        el, x, y, z = loadtxt('{}/{}'.format(path, suffix), dtype=str, unpack=True, skiprows=2)
+    def __init__(
+        self,
+        args={}
+    ):
+        self.args = args
+    # end def
+
+    def _load(self, path, suffix='relax.xyz', c_pos=1.0):
+        el, x, y, z = loadtxt(
+            '{}/{}'.format(path, suffix),
+            dtype=str,
+            unpack=True,
+            skiprows=2
+        )
         pos = array([x, y, z], dtype=float).T * c_pos
         return GeometryResult(pos, axes=None, elem=el)
     # end def
@@ -24,7 +36,13 @@ class XyzGeometry(GeometryLoader, GeometryWriter):
         for el, pos in zip(structure.elem, structure.pos * c_pos):
             output.append([el, fmt.format(pos[0]), fmt.format(pos[1]), fmt.format(pos[2])])
         # end for
-        savetxt('{}/{}'.format(path, suffix), array(output), header=header, fmt='%s', comments='')
+        savetxt(
+            '{}/{}'.format(path, suffix),
+            array(output),
+            header=header,
+            fmt='%s',
+            comments=''
+        )
     # end def
 
 # end class

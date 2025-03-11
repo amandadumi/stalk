@@ -14,13 +14,9 @@ __license__ = "BSD-3-Clause"
 def test_PesLoader(tmp_path):
 
     # Test empty init
-    pl = PesLoader()
-    assert len(pl.args) == 0
-    with raises(NotImplementedError):
-        # __load__ not implemented in abstract class
-        pl.load('path')
+    with raises(TypeError):
+        pl = PesLoader()
     # end with
-
     with raises(TypeError):
         # args must be dict or None
         PesLoader(args=[])
@@ -38,25 +34,25 @@ def test_PesLoader(tmp_path):
     path = "12345"
     res = pl.load(path)
     assert isinstance(res, PesResult)
-    assert res.get_value() == 7.0
-    assert res.get_error() == 0.0
+    assert res.value == 7.0
+    assert res.error == 0.0
 
     # Test overriding arg
     res2 = pl.load(path, arg=3)
     assert isinstance(res2, PesResult)
-    assert res2.get_value() == 8.0
-    assert res2.get_error() == 0.0
+    assert res2.value == 8.0
+    assert res2.error == 0.0
 
     # Test loading add_sigma > 0
     sigma = 1.23
     res_sigma = pl.load(path, sigma=sigma)
     assert isinstance(res_sigma, PesResult)
-    assert res_sigma.get_value() != 5.0
-    assert res_sigma.get_error() == sigma
+    assert res_sigma.value != 5.0
+    assert res_sigma.error == sigma
 
     # Test copy constructor
     pl_copy = PesLoader(pl)
-    assert pl_copy.__load__ is pl.__load__
+    assert pl_copy.func is pl.func
     assert pl_copy.args is pl.args
 
 # end def

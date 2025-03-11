@@ -2,6 +2,7 @@
 '''LineSearchIteration class for treating iteration of subsequent parallel linesearches
 '''
 
+from stalk.params.PesFunction import PesFunction
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import directorize
 from stalk.pls import ParallelLineSearch
@@ -26,13 +27,20 @@ class LineSearchIteration():
         structure=None,
         hessian=None,
         pes=None,
+        pes_func=None,
+        pes_args={},
         **pls_args
     ):
         self.path = path
         self._pls_list = []
         # Try to serialized iterations:
         self.load_pls()
-        if len(self) == 0:  # if no iterations loaded, try to initialize
+        # if no iterations loaded, try to initialize
+        if len(self) == 0 or not self.pls(0).evaluated:
+            if not isinstance(pes, PesFunction):
+                # If none are provided, raises TypeError
+                pes = PesFunction(pes_func, pes_args)
+            # end if
             # Try to load from surrogate ParallelLineSearch object
             if surrogate is not None:
                 self.init_from_surrogate(
@@ -46,8 +54,12 @@ class LineSearchIteration():
                 self.init_from_hessian(
                     hessian,
                     structure,
+                    pes=pes,
                     **pls_args
                 )
+            elif structure is not None:
+                # Override structure if so requested
+                self.structure = structure
             # end if
         # end if
     # end def
@@ -89,7 +101,7 @@ class LineSearchIteration():
         else:
             raise AssertionError('Surrogate parameter must be a ParallelLineSearch object')
         # end if
-        self.pls_list.append(pls)
+        self._pls_list = [pls]
     # end def
 
     def init_from_hessian(
@@ -147,6 +159,10 @@ class LineSearchIteration():
             path = '{}pls.p'.format(self._get_pls_path(i))
             try:
                 pls = ParallelLineSearch(load=path)
+                if not pls.setup:
+                    # Means loading failed
+                    break
+                # end if
                 self._pls_list.append(pls)
                 i += 1
             except TypeError:
