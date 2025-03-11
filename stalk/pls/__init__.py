@@ -6,10 +6,8 @@ __license__ = "BSD-3-Clause"
 
 from stalk.pls.ParallelLineSearch import ParallelLineSearch
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
-from stalk.pls.PesSampler import PesSampler
 
 __all__ = [
     'ParallelLineSearch',
     'TargetParallelLineSearch',
-    'PesSampler'
 ]

@@ -7,7 +7,12 @@ from ..io.PesLoader import PesLoader
 
 class PwscfPes(PesLoader):
 
-    def __load__(self, path, suffix='scf.in', **kwargs):
+    def __init__(self, args={}):
+        self._func = None
+        self.args = args
+    # end def
+
+    def _load(self, path, suffix='scf.in', **kwargs):
         ai = PwscfAnalyzer('{}/{}'.format(path, suffix), **kwargs)
         ai.analyze()
         E = ai.E

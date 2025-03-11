@@ -7,7 +7,12 @@ from ..io.PesLoader import PesLoader
 
 class QmcPes(PesLoader):
 
-    def __load__(self, path, qmc_idx=1, suffix='dmc/dmc.in.xml', **kwargs):
+    def __init__(self, args={}):
+        self._func = None
+        self.args = args
+    # end def
+
+    def _load(self, path, qmc_idx=1, suffix='dmc/dmc.in.xml', **kwargs):
         ai = QmcpackAnalyzer('{}/{}'.format(path, suffix), **kwargs)
         ai.analyze()
         LE = ai.qmc[qmc_idx].scalars.LocalEnergy

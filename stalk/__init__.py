@@ -19,8 +19,11 @@ try:
     from . import nexus
     from .nexus import NexusStructure
     from .nexus import NexusGenerator
+    from .nexus import NexusSurrogate
+    nexus_enabled = True
 except ModuleNotFoundError:
     # Nexus not found
+    nexus_enabled = False
     pass
 # end try
 
@@ -43,4 +46,5 @@ __all__ = [
     'nexus',
     'NexusGenerator',
     'NexusStructure',
+    'NexusSurrogate',
 ]

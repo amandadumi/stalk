@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
 
-from stalk.io.PesLoader import PesLoader
-from stalk.util import EffectiveVariance
 from structure import Structure
-from nexus import run_project
 from simulation import Simulation
 
-from stalk.io.GeometryLoader import GeometryLoader
 from stalk.params.ParameterStructure import ParameterStructure
-from stalk.util.util import directorize
-
-from .NexusGenerator import NexusGenerator
 
 
 class NexusStructure(ParameterStructure):
-    # List of Nexus jobs to reproduce PES
-    _jobs: None | list[Simulation] = None
-    _job_path = ''
+    _jobs: list[Simulation] = None
 
     @property
     def jobs(self):
@@ -52,78 +43,6 @@ class NexusStructure(ParameterStructure):
         return self.generated and all(job.finished for job in self._jobs)
     # end def
 
-    def generate_jobs(
-        self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        path='',
-        sigma=None,
-        eqm_jobs=None,
-    ):
-        pes = NexusGenerator(pes, pes_func, pes_args)
-        self._job_path = self._make_job_path(path)
-        jobs = pes.evaluate(
-            self.get_nexus_structure(),
-            self._job_path,
-            sigma=sigma,
-            eqm_jobs=eqm_jobs
-        )
-        self._jobs = jobs
-    # end def
-
-    def analyze_pes(
-        self,
-        loader=None,
-        load_func=None,
-        load_args={},
-        sigma=0.0
-    ):
-        if not self.generated:
-            raise AssertionError('The pes jobs must be generated before analyzing.')
-        # end if
-        loader = PesLoader(loader, load_func, load_args)
-        # Sigma will be added automatically
-        if self.enabled:
-            res = loader.load(self._job_path, sigma=sigma)
-            self.value = res.get_value()
-            self.error = res.get_error()
-        else:
-            print("The point in " + self._job_path + " has been disabled. Not analyzing.")
-        # end if
-    # end def
-
-    def _make_job_path(self, path):
-        return '{}{}'.format(directorize(path), self.label)
-    # end def
-
-    def relax(
-        self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        path='relax',
-        loader=None,
-        loader_args={},
-        **kwargs,
-    ):
-        if not isinstance(pes, NexusGenerator):
-            # Generate jobs
-            pes = NexusGenerator(pes_func, pes_args)
-        # end if
-        # Make a copy structure for job generation
-        relax_jobs = pes.evaluate(self.get_nexus_structure(), directorize(path))
-        # Run project
-        run_project(relax_jobs)
-
-        # Load results
-        if isinstance(loader, GeometryLoader):
-            # returns pos, axes
-            pos, axes = loader.load(path, **loader_args).get_result()
-            self.set_position(pos, axes)
-        # end if
-    # end def
-
     def get_nexus_structure(
         self,
         kshift=(0, 0, 0),
@@ -145,27 +64,6 @@ class NexusStructure(ParameterStructure):
         return Structure(**kwargs)
     # end def
 
-    def get_var_eff(
-        self,
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        loader=None,
-        loader_args={},
-        samples=10,
-        path='path'
-    ):
-        if not isinstance(pes, NexusGenerator):
-            pes = NexusGenerator(pes_func, pes_args)
-        # end if
-        jobs = pes.evaluate(self.get_nexus_structure(), path, sigma=None, samples=samples)
-        run_project(jobs)
-
-        Err = loader.load(path, **loader_args).get_error()
-        var_eff = EffectiveVariance(samples, Err)
-        return var_eff
-    # end def
-
     def reset_value(self):
         super().reset_value()
         # Reset jobs upon value change
@@ -178,14 +76,11 @@ class NexusStructure(ParameterStructure):
         # params=None, params_err=None, label=None, pos=None, axes=None, offset=None
     ):
         tmp_jobs = self._jobs
-        tmp_job_path = self._job_path
         # Put jobs lists aside during copy
         self._jobs = None
-        self._jobs_path = ''
         result = super().copy(**kwargs)
         # Recover jobs lists
         self._jobs = tmp_jobs
-        self._job_path = tmp_job_path
         return result
     # end def
 
