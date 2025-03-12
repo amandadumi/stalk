@@ -4,6 +4,8 @@
 
 from numpy import isscalar, abs, isnan
 
+from stalk.util.util import FF, FFS, FU
+
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
@@ -105,13 +107,17 @@ class LineSearchPoint():
         return isinstance(other, LineSearchPoint) and self.offset < other.offset
     # end def
 
-    # str of grid
     def __str__(self):
-        fmt = '{:9s} {:9s} {:9s}'
+        string = FF.format(self.offset)
         if self.value is None:
-            string = fmt.format(str(self.offset), '-', '-')
+            string += FFS.format('-')
         else:
-            string = fmt.format(str(self.offset), str(self.value), str(self.error))
+            string += FF.format(self.value)
+        # end if
+        if self.error > 0:
+            string += FU.format(self.error)
+        else:
+            string += FFS.format('-')
         # end if
         return string
     # end def

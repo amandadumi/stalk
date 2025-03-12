@@ -7,6 +7,7 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
 from stalk.ls.LineSearchBase import LineSearchBase
+from stalk.util.util import FF, SL
 
 
 # Class for PES line-search in structure context
@@ -243,18 +244,16 @@ class LineSearch(LineSearchBase):
         # end if
     # end def
 
-    def _shift_structure(self, shift, roundi=4):
-        shift_rnd = round(shift, roundi)
-        params_this = self.structure.params
-        if shift_rnd == 0.0:
-            label = 'eqm'
-            params = params_this.copy()
+    def _shift_structure(self, shift):
+        structure = self.structure.copy(offset=shift)
+        if structure.is_eqm:
+            # i.e. abs(offset) < threshold
+            structure.label = 'eqm'
         else:
-            sgn = '' if shift_rnd < 0 else '+'
-            label = 'd{}_{}{}'.format(self.d, sgn, shift_rnd)
-            params = params_this + shift * self.direction
+            label = SL.format(self.d, shift)
+            structure.label = label
+            structure.shift_params(shift * self.direction)
         # end if
-        structure = self.structure.copy(params=params, label=label, offset=shift)
         return structure
     # end def
 
@@ -335,9 +334,10 @@ class LineSearch(LineSearchBase):
     # end def
 
     def __str__(self):
-        string = LineSearchBase.__str__(self)
+        string = '#{} '.format(self.d)
+        string += LineSearchBase.__str__(self)
         if self.Lambda is not None:
-            string += '\n  Lambda: {:<9f}'.format(self.Lambda)
+            string += ('\n  Lambda: ' + FF).format(self.Lambda)
         # end if
         return string
     # end def

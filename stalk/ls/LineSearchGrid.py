@@ -5,6 +5,7 @@
 from numpy import array, all
 
 from stalk.params.LineSearchPoint import LineSearchPoint
+from stalk.util.util import FFS
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -228,13 +229,13 @@ class LineSearchGrid():
 
     # str of grid
     def __str__(self):
-        if self.grid is None:
-            string = '\n  data: no grid'
+        string = self.__class__.__name__
+        if len(self) == 0:
+            string += '\nGrid: not set.'
         else:
-            string = '\n  data:'
-            string += '\n    {:9s} {:9s} {:9s}'.format('grid', 'value', 'error')
-            for point in zip(self.grid):
-                string += str(point)
+            string += '\n  ' + (FFS + FFS + FFS).format('offset', 'value', 'error')
+            for point in self.grid:
+                string += '\n  ' + LineSearchPoint.__str__(point)
             # end for
         # end if
         return string

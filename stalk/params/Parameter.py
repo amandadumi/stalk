@@ -5,6 +5,8 @@
 
 from numpy import isscalar
 
+from stalk.util.util import FF, FLL, FU
+
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
@@ -14,8 +16,8 @@ class Parameter():
     """Base class for representing an optimizable parameter"""
     _value: float
     _error: float = 0.0
-    label: str = None
-    unit: str = None
+    label: str = ''
+    unit: str = ''
 
     def __init__(
         self,
@@ -67,15 +69,12 @@ class Parameter():
         # end if
     # end def
 
-    def print_value(self):
-        if self.error is None:
-            print('{:<8.6f}             '.format(self.value))
-        else:
-            print('{:<8.6f} +/- {:<8.6f}'.format(self.value, self.error))
-        # end if
-    # end def
-
     def __str__(self):
-        return '{:>10s}: {:<10f} {:6s}'.format(self.label, self.value, self.unit)
+        string = (FLL + FF).format(self.label, self.value)
+        if self.error > 0:
+            string += FU.format(self.error)
+        # end if
+        string += FLL.format(self.unit)
+        return string
     # end def
 # end class

@@ -59,6 +59,6 @@ def test_Parameter():
     print(p)
     sys.stdout = sys.__stdout__
     param_str = test_stdout.getvalue()
-    param_str_ref = '     label: 4.000000   unit  \n'
+    param_str_ref = 'label         4.0000 unit       \n'
     assert param_str == param_str_ref
 # end def

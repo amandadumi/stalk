@@ -1,4 +1,5 @@
 from nexus import PwscfAnalyzer
+from stalk.util.util import PL
 
 from ..io.GeometryLoader import GeometryLoader
 from stalk.params.GeometryResult import GeometryResult
@@ -12,7 +13,7 @@ class PwscfGeometry(GeometryLoader):
     # end def
 
     def _load(self, path, suffix='relax.in', c_pos=1.0, **kwargs):
-        ai = PwscfAnalyzer('{}/{}'.format(path, suffix), **kwargs)
+        ai = PwscfAnalyzer(PL.format(path, suffix), **kwargs)
         ai.analyze()
         pos = ai.structures[len(ai.structures) - 1].positions * c_pos
         try:

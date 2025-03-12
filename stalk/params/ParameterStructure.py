@@ -2,6 +2,7 @@ from numpy import array, isscalar, random, diag
 from copy import deepcopy
 
 from stalk.util import match_to_tol, get_fraction_error, directorize
+from stalk.util.util import FF
 from .ParameterSet import ParameterSet
 
 
@@ -333,62 +334,6 @@ class ParameterStructure(ParameterSet):
         # end if
     # end def
 
-    def __str__(self):
-        string = self.__class__.__name__
-        if self.label is not None:
-            string += ' ({})'.format(self.label)
-        # end if
-        if self.forward_func is None:
-            string += '\n  forward mapping: not set'
-        else:
-            string += '\n  forward mapping: {}'.format(self.forward_func)
-        # end if
-        if self.backward_func is None:
-            string += '\n  backward mapping: not set'
-        else:
-            string += '\n  backward mapping: {}'.format(self.backward_func)
-        # end if
-        if self.consistent:
-            string += '\n  consistent: yes'
-        else:
-            string += '\n  consistent: no'
-        # end if
-        # params
-        if self.params is None:
-            string += '\n  params: not set'
-        else:
-            string += '\n  params:'
-            for param in self.params:
-                string += '\n    {:<10f}'.format(param)  # TODO: ParameterBase
-            # end for
-        # end if
-        # pos
-        if self.pos is None:
-            string += '\n  pos: not set'
-        else:
-            string += '\n  pos ({:d} atoms)'.format(len(self.pos))
-            for elem, pos in zip(self.elem, self.pos):
-                string += '\n    {:2s} {:<6f} {:<6f} {:<6f}'.format(
-                    elem, pos[0], pos[1], pos[2])
-            # end for
-        # end if
-        if self.periodic:
-            string += '\n  periodic: yes'
-            if self.axes is None:
-                string += '\n  axes: not set'
-            else:
-                string += '\n  axes:'
-                for axes in self.axes:
-                    string += '\n    {:<6f} {:<6f} {:<6f}'.format(
-                        axes[0], axes[1], axes[2])
-                # end for
-            # end if
-        else:
-            string += '\n  periodic: no'
-        # end if
-        return string
-    # end def
-
     def load(
         self,
         path='relax',
@@ -425,6 +370,41 @@ class ParameterStructure(ParameterSet):
             print('Position difference')
             print(pos_diff.reshape(-1, 3))
         # end if
+    # end def
+
+    def __str__(self):
+        string = self.__class__.__name__
+        string += ParameterSet.__str__(self)
+        if self.consistent:
+            string += '\n  consistent: yes'
+        else:
+            string += '\n  consistent: no'
+        # end if
+        # pos
+        if self.pos is None:
+            string += '\n  pos: not set'
+        else:
+            string += '\n  pos ({:d} atoms)'.format(len(self.pos))
+            for elem, pos in zip(self.elem, self.pos):
+                string += '\n    {:2s} ' + (FF + FF + FF).format(
+                    elem, pos[0], pos[1], pos[2])
+            # end for
+        # end if
+        if self.periodic:
+            string += '\n  periodic: yes'
+            if self.axes is None:
+                string += '\n  axes: not set'
+            else:
+                string += '\n  axes:'
+                for axes in self.axes:
+                    string += '\n    ' + (FF + FF + FF).format(
+                        axes[0], axes[1], axes[2])
+                # end for
+            # end if
+        else:
+            string += '\n  periodic: no'
+        # end if
+        return string
     # end def
 
 # end class

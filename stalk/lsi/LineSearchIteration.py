@@ -8,6 +8,7 @@ from stalk.util import directorize
 from stalk.pls import ParallelLineSearch
 from numpy import array
 from stalk.lsi.util import plot_parameter_convergence, plot_energy_convergence, plot_bundled_convergence
+from stalk.util.util import FF, FFS, FI, FIS, FU
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -216,16 +217,17 @@ class LineSearchIteration():
     def __str__(self):
         string = self.__class__.__name__
         if len(self.pls_list) > 0:
-            fmt = '\n  {:<4d}    {:<8f} +/- {:<8f}' + \
-                self.pls().D * '   {:<8f} +/- {:<8f}'
-            fmts = '\n  {:<4s}    {:<8s} +/- {:<8s}' + \
-                self.pls().D * '   {:<8s} +/- {:<8s}'
+            fmt = '\n  ' + FI + FF + FU + self.pls().D * (FF + FU)
+            fmts = '\n  ' + FIS + FFS + FFS + self.pls().D * (FFS + FFS)
+
+            # Labels row
             plabels = ['pls', 'Energy', '']
-            for p in range(self.pls().D):
-                plabels += ['p' + str(p)]
-                plabels += ['']
+            for param in self.pls().structure.params_list:
+                plabels += [param.label, '']
             # end for
             string += fmts.format(*tuple(plabels))
+
+            # Data rows
             for p, pls in enumerate(self.pls_list):
                 data = [pls.structure.value, pls.structure.error]
                 data[0] = data[0] if not data[0] is None else 0.0
@@ -234,10 +236,9 @@ class LineSearchIteration():
                     data.append(param)
                     data.append(perr)
                 # end for
-                string += fmt.format(p, *tuple(array(data).round(5)))
+                string += fmt.format(p, *tuple(array(data)))
             # end for
         # end if
-        # TODO add parameter and energy printouts
         return string
     # end def
 

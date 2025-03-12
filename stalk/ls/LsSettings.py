@@ -117,6 +117,19 @@ class LsSettings():
         self._fit_func = fit_func
     # end def
 
+    def __str__(self):
+        # TODO: assumes polyfit
+        pfn = self.fit_func.args['pfn']
+        fit_str = 'pf' + str(pfn)        
+        string = 'Fit: {}, N: {}, fraction: {}, sgn: {}'. format(
+            fit_str,
+            self.N,
+            self.fraction,
+            self.sgn
+        )
+        return string
+    # end def
+
     # Return true if the settings of self and other are consistent
     def __eq__(
         self,

@@ -6,6 +6,7 @@ from numpy import linspace
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.LsSettings import LsSettings
+from stalk.util.util import FF, FU
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -122,21 +123,23 @@ class LineSearchBase(LineSearchGrid):
     # end def
 
     def __str__(self):
-        string = self.__class__.__name__
-        string += str(self.offsets)
-        if self.fit_res.x0 is None:
+        string = LineSearchGrid.__str__(self)
+        string += '\n  ' + str(self.settings)
+        if self.x0 is None:
             string += '\n  x0: not set'
         else:
-            x0_err = '' if self.fit_res.x0_err is None else ' +/- {: <8f}'.format(
-                self.fit_res.x0_err)
-            string += '\n  x0: {: <8f} {:s}'.format(self.fit_res.x0, x0_err)
+            string += '\n  x0: ' + FF.format(self.x0)
+            if self.fit_res.x0_err > 0:
+                string += FU.format(self.x0_err)
+            # end if
         # end if
-        if self.fit_res.y0 is None:
+        if self.y0 is None:
             string += '\n  y0: not set'
         else:
-            y0_err = '' if self.fit_res.y0_err is None else ' +/- {: <8f}'.format(
-                self.fit_res.y0_err)
-            string += '\n  y0: {: <8f} {:s}'.format(self.fit_res.y0, y0_err)
+            string += '\n  y0: ' + FF.format(self.y0)
+            if self.y0_err > 0:
+                string += FU.format(self.y0_err)
+            # end if
         # end if
         return string
     # end def

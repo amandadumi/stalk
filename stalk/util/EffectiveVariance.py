@@ -18,7 +18,7 @@ class EffectiveVariance():
     def get_samples(self, errorbar):
         assert errorbar > 0, 'The requested errorbar must be > 0.'
         samples = self.samples * self.errorbar**2 * errorbar**-2
-        return max(1, samples)
+        return max(1, int(samples))
     # end def
 
     def get_errorbar(self, samples):

@@ -12,6 +12,7 @@ from stalk.ls.LsSettings import LsSettings
 from stalk.util import get_fraction_error
 from stalk.ls import TargetLineSearch
 from stalk.pls import ParallelLineSearch
+from stalk.util.util import FF, FFS, FI, FIS, FP, FPS
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -472,9 +473,11 @@ class TargetParallelLineSearch(ParallelLineSearch):
         errors = self._resample_errors()
         self.error_d, self.error_p = errors
 
-        print('Optimization complete:')
+        print('  Optimization complete:')
         self._print_optimization('d', self.epsilon_d, self.error_d)
-        self._print_optimization('p', self.epsilon_p, self.error_p)
+        if self.epsilon_p is not None:
+            self._print_optimization('p', self.epsilon_p, self.error_p)
+        # end if
 
         if isinstance(write, str):
             self.write_to_disk(fname=write, overwrite=overwrite)
@@ -483,14 +486,13 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
     def _print_optimization(self, label, epsilon, error):
         # Vertical print
-        fmt = '{:6s}  {:<8.4f} {:<8.4f} {:<8.4f}'
         if epsilon is None:
             return
         # end if
-        print(label + '   target      error      rel. (%)')
+        print(('    ' + FIS + FFS + FFS + FPS).format(label, 'target', 'error', 'rel. '))
         for d, eps, err in zip(range(len(epsilon)), epsilon, error):
             rel_err = err / eps
-            print(fmt.format(str(d), eps, err, rel_err * 100))
+            print(('    ' + FI + FF + FF + FP).format(d, eps, err, rel_err * 100))
         # end for
     # end def
 

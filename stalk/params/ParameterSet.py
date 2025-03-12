@@ -13,8 +13,27 @@ __license__ = "BSD-3-Clause"
 
 class ParameterSet(LineSearchPoint):
     """Base class for representing a set of parameters to optimize"""
-    _param_list = []  # list of Parameter objects
+    _param_list: list[Parameter] = []
     label = ''  # label for identification
+
+    @property
+    def params_list(self):
+        return [p for p in self._param_list if isinstance(p, Parameter)]
+    # end def
+
+    @property
+    def params(self):
+        if len(self) > 0:
+            return array([p.value for p in self.params_list])
+        # end if
+    # end def
+
+    @property
+    def params_err(self):
+        if len(self) > 0:
+            return array([p.error for p in self.params_list])
+        # end if
+    # end def
 
     def __init__(
         self,
@@ -90,29 +109,6 @@ class ParameterSet(LineSearchPoint):
         self.reset_value()
     # end def
 
-    @property
-    def params_list(self):
-        return [p for p in self._param_list if isinstance(p, Parameter)]
-    # end def
-
-    @property
-    def params(self):
-        if len(self) > 0:
-            return array([p.value for p in self.params_list])
-        # end if
-    # end def
-
-    @property
-    def params_err(self):
-        if len(self) > 0:
-            return array([p.error for p in self.params_list])
-        # end if
-    # end def
-
-    def __len__(self):
-        return len(self.params_list)
-    # end def
-
     def shift_params(self, shifts):
         if len(shifts) != len(self):
             raise ValueError('Shifts has wrong dimensions!')
@@ -146,6 +142,25 @@ class ParameterSet(LineSearchPoint):
 
     def check_consistency(self):
         return True
+    # end def
+
+    def __str__(self):
+        string = self.__class__.__name__
+        if self.label is not None:
+            string += ' ({})'.format(self.label)
+        # end if
+        if self.params is None:
+            string += '\n  params: not set'
+        else:
+            string += '\n  params:'
+            for param in self.params_list:
+                string += '\n    ' + str(param)
+            # end for
+        # end if
+    # end def
+
+    def __len__(self):
+        return len(self.params_list)
     # end def
 
 # end class
