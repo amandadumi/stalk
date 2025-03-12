@@ -2,6 +2,8 @@
 '''Class for containing a 1D grid of points, values and errorbars
 '''
 
+import warnings
+from matplotlib import pyplot as plt
 from numpy import array, all
 
 from stalk.params.LineSearchPoint import LineSearchPoint
@@ -221,6 +223,24 @@ class LineSearchGrid():
         if point is not None:
             point.enabled = False
         # end if
+    # end def
+
+    def plot(
+        self,
+        ax=None,
+        color='tab:blue',
+        **kwargs
+    ):
+        if not self.valid:
+            warnings.warn("Cannot plot without valid data.")
+            return
+        # end if
+        if ax is None:
+            f, ax = plt.subplots()
+        # end if
+        for point in self.grid:
+            point.plot(ax, color=color, **kwargs)
+        # end for
     # end def
 
     def __len__(self):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from numpy import array, linspace, polyval, sign, equal, isscalar
+import warnings
+from numpy import array, polyval, sign, isscalar
 from matplotlib import pyplot as plt
 
 from stalk.params.ParameterHessian import ParameterHessian
@@ -261,12 +262,14 @@ class LineSearch(LineSearchBase):
         self,
         pes: PesFunction = None,
         add_sigma=False,
+        **kwargs,  # path=''
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
         pes.evaluate_all(
             self._grid,
             sigmas=len(self) * [self.sigma],
-            add_sigma=add_sigma
+            add_sigma=add_sigma,
+            **kwargs
         )
         self._search_and_store()
     # end def
@@ -282,54 +285,30 @@ class LineSearch(LineSearchBase):
     def plot(
         self,
         ax=None,
-        figsize=(4, 3),
         color='tab:blue',
-        linestyle='-',
-        marker='.',
-        return_ax=False,
-        c_lambda=1.0,  # FIXME: replace with unit conversions
         **kwargs
     ):
+        if not self.valid:
+            warnings.warn("Cannot plot without valid data.")
+            return
+        # end if
         if ax is None:
             f, ax = plt.subplots()
         # end if
-        xdata = self.grid
-        ydata = self.values
-        xmin = xdata.min()
-        xmax = xdata.max()
-        ymin = ydata.min()
-        xlen = xmax - xmin
-        xlims = [xmin - xlen / 8, xmax + xlen / 8]
-        xllims = [xmin + xlen / 8, xmax - xlen / 8]
-        xgrid = linspace(xlims[0], xlims[1], 201)
-        xlgrid = linspace(xllims[0], xllims[1], 201)
-        ydata = self.values
-        edata = self.errors
-        x0 = self.x0 if self.x0 is not None else 0
-        y0 = self.y0 if self.x0 is not None else ymin
-        x0e = self.x0_err
-        y0e = self.y0_err
-        # plot lambda
+        LineSearchBase.plot(self, ax=ax, **kwargs)
         if self.Lambda is not None:
-            a = self.sgn * self.Lambda / 2 * c_lambda
+            a = 0.5 * self.sgn * self.Lambda
+            x0 = self.fit_res.x0
+            y0 = self.fit_res.y0
             pfl = [a, -2 * a * x0, y0 + a * x0**2]
-            stylel_args = {'color': color, 'linestyle': ':'}  # etc
-            ax.plot(xlgrid, polyval(pfl, xlgrid), **stylel_args)
-        # end if
-        # plot the line-search data
-        style1_args = {'color': color,
-                       'linestyle': 'None', 'marker': marker}  # etc
-        style2_args = {'color': color,
-                       'linestyle': linestyle, 'marker': 'None'}
-        if edata is None or all(equal(array(edata), None)):
-            ax.plot(xdata, ydata, **style1_args)
-        else:
-            ax.errorbar(xdata, ydata, edata, **style1_args)
-        # end if
-        ax.errorbar(x0, y0, y0e, xerr=x0e, marker='x', color=color)
-        ax.plot(xgrid, self.val_data(xgrid), **style2_args)
-        if return_ax:
-            return ax
+            xgrid = self._get_plot_grid(0.0)
+            ygrid = polyval(pfl, xgrid)
+            ax.plot(
+                xgrid,
+                ygrid,
+                color=color,
+                linestyle=':'
+            )
         # end if
     # end def
 

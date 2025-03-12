@@ -2,6 +2,7 @@
 '''Class for containing grid, value and error of a single point of line-search
 '''
 
+from matplotlib.axes import Axes
 from numpy import isscalar, abs, isnan
 
 from stalk.util.util import FF, FFS, FU
@@ -95,6 +96,36 @@ class LineSearchPoint():
     def reset_value(self):
         self.value = None
         self.error = 0.0
+    # end def
+
+    def plot(
+        self,
+        ax: Axes,
+        color='tab:blue',
+        marker='o',
+        linestyle='none',
+        **kwargs
+    ):
+        if self.error > 0:
+            ax.errorbar(
+                self.offset,
+                self.value,
+                self.error,
+                color=color,
+                marker=marker,
+                linestyle=linestyle,
+                **kwargs
+            )
+        else:
+            ax.plot(
+                self.offset,
+                self.value,
+                color=color,
+                marker=marker,
+                linestyle=linestyle,
+                **kwargs
+            )
+        # end if
     # end def
 
     # Compare equality of two grid points

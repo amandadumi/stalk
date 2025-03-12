@@ -2,7 +2,9 @@
 '''Generic classes for 1-dimensional line-searches
 '''
 
-from numpy import linspace
+import warnings
+from matplotlib import pyplot as plt
+from numpy import linspace, polyval
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.LsSettings import LsSettings
@@ -120,6 +122,50 @@ class LineSearchBase(LineSearchGrid):
         # end if
         offsets = linspace(-R, R, M)
         return offsets
+    # end def
+
+    def plot(
+        self,
+        ax=None,
+        color='tab:blue',
+        **kwargs
+    ):
+        if not self.valid:
+            warnings.warn("Cannot plot without valid data.")
+            return
+        # end if
+        if ax is None:
+            f, ax = plt.subplots()
+        # end if
+        LineSearchGrid.plot(self, ax=ax, color=color, **kwargs)
+        if self.fit_res is not None:
+            ax.errorbar(
+                self.fit_res.x0,
+                self.fit_res.y0,
+                self.fit_res.y0_err,
+                xerr=self.fit_res.x0_err,
+                linestyle='none',
+                marker='x',
+                color=color,
+                label='Minimum'
+            )
+            xgrid = self._get_plot_grid()
+            # NOTE: hard-coded to polyval
+            ygrid = polyval(self.fit_res.fit, xgrid)
+            ax.plot(
+                xgrid,
+                ygrid,
+                linestyle='--',
+                color=color,
+                label='Fit'
+            )
+        # end if
+    # end def
+
+    def _get_plot_grid(self, fraction=0.1):
+        w = (self.offsets.max() - self.offsets.min()) * fraction
+        grid = linspace(self.offsets.min() - w, self.offsets.max() + w, 201)
+        return grid
     # end def
 
     def __str__(self):
