@@ -263,12 +263,12 @@ class LineSearch(LineSearchBase):
         add_sigma=False,
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
-        results = []
-        for point in self._grid:
-            pes.evaluate(point, sigma=self.sigma, add_sigma=add_sigma)
-        # end for
+        pes.evaluate_all(
+            self._grid,
+            sigmas=len(self) * [self.sigma],
+            add_sigma=add_sigma
+        )
         self._search_and_store()
-        return results
     # end def
 
     def get_shifted_params(self):
