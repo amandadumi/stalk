@@ -18,6 +18,7 @@ class PesFunction(FunctionCaller):
         structure: ParameterSet,
         sigma=0.0,
         add_sigma=False,
+        interactive=False,  # catch interactive
         **kwargs
     ):
         res = self._evaluate_structure(structure, sigma=sigma, **kwargs)
@@ -33,6 +34,7 @@ class PesFunction(FunctionCaller):
         structures: list[ParameterSet],
         sigmas=None,
         add_sigma=False,
+        interactive=False,  # catch interactive
         **kwargs  # path
     ):
         if sigmas is None:

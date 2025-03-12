@@ -287,7 +287,7 @@ class ParallelLineSearch():
         self._structure_next = None
     # end def
 
-    def evaluate(self, add_sigma=False):
+    def evaluate(self, add_sigma=False, interactive=False):
         if not self.shifted:
             raise AssertionError("Must have shifted structures first!")
         # end if
@@ -296,7 +296,8 @@ class ParallelLineSearch():
             structures,
             sigmas,
             add_sigma=add_sigma,
-            path=self.path
+            path=self.path,
+            interactive=interactive,
         )
         # Set the eqm energy
         for ls in self.ls_list:
@@ -316,12 +317,13 @@ class ParallelLineSearch():
         )
     # end def
 
-    def evaluate_eqm(self, add_sigma=False):
+    def evaluate_eqm(self, add_sigma=False, interactive=False):
         self.pes.evaluate(
             self.structure,
             sigma=array(self.noises).min(),
             path=self.path,
             add_sigma=add_sigma,
+            interactive=interactive,
         )
     # end def
 
@@ -468,10 +470,11 @@ class ParallelLineSearch():
         write=True,
         overwrite=True,
         add_sigma=False,
-        fname='pls.p'
+        fname='pls.p',
+        interactive=False,
     ):
         if not self.evaluated:
-            self.evaluate(add_sigma=add_sigma)
+            self.evaluate(add_sigma=add_sigma, interactive=interactive)
         # end if
         path = path if path is not None else self.path + '_next/'
         # Write to disk

@@ -38,6 +38,7 @@ from nxs import pyscfjob, optjob, dmcjob, pwscfjob, p2qjob
 base_dir = 'benzene/'
 qmcpseudos = ['C.ccECP.xml', 'H.ccECP.xml']
 scfpseudos = ['C.ccECP.upf', 'H.ccECP.upf']
+interactive = False
 
 # Implement the following parametric mappings for benzene
 #   p0: C-C distance
@@ -152,6 +153,7 @@ relax_job = NexusGeometry(
 relax_job.relax(
     structure_relax,
     path=base_dir + 'relax/',
+    interactive=interactive,
 )
 print('Initial params:')
 print(structure_init.params)
@@ -193,7 +195,8 @@ pes = NexusPes(
 hessian = ParameterHessian(structure=structure_relax)
 hessian.compute_fdiff(
     path=base_dir + 'fdiff',
-    pes=pes
+    pes=pes,
+    interactive=interactive,
 )
 print('Hessian:')
 print(hessian)
@@ -213,13 +216,12 @@ surrogate = TargetParallelLineSearch(
     window_frac=0.2,  # maximum displacement relative to Lambda of each direction
     M=15  # number of points per direction to sample
 )
-surrogate.bracket_target_biases()
 
-# Set target parameter error tolerances (epsilon): 0.01 Bohr accuracy for both C-C and C-H bonds.
+# Set target parameter error tolerances (epsilon): 0.02 Bohr accuracy for both C-C and C-H bonds.
 # Then, optimize the surrogate line-search to meet the tolerances given the line-search
 #   main input: M, epsilon
 #   main output: windows, noises (per direction to meet all epsilon)
-epsilon_p = [0.01, 0.01]
+epsilon_p = [0.02, 0.02]
 surrogate.optimize(
     epsilon_p=epsilon_p,
     fit_kind='pf3',
@@ -245,10 +247,10 @@ srg_ls = LineSearchIteration(
 # Propagate the parallel line-search (compute values, analyze, then move on) 4 times
 #   add_sigma = True means that target errorbars are used to simulate random noise
 for i in range(4):
-    srg_ls.propagate(i, add_sigma=True)
+    srg_ls.propagate(i, add_sigma=True, interactive=interactive)
 # end for
 # Evaluate the latest eqm structure
-srg_ls.pls().evaluate_eqm(add_sigma=True)
+srg_ls.pls().evaluate_eqm(add_sigma=True, interactive=interactive)
 # Print the line-search performance
 print(srg_ls)
 
@@ -369,7 +371,8 @@ structure_qmc = structure_relax.copy()
 var_eff = qmcpes.get_var_eff(
     structure_qmc,
     path=base_dir + 'dmc_var_eff',
-    samples=10
+    samples=10,
+    interactive=interactive,
 )
 qmcpes.args['var_eff'] = var_eff
 
@@ -382,7 +385,10 @@ dmc_ls = LineSearchIteration(
 for i in range(3):
     dmc_ls.propagate(i)
 # end for
-pes.evaluate(srg_ls.pls().structure)
+pes.evaluate(
+    srg_ls.pls().structure,
+    interactive=interactive,
+)
 
 # Diagnose the line-search performance
 print(dmc_ls)

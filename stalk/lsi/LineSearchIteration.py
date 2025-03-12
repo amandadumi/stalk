@@ -181,6 +181,7 @@ class LineSearchIteration():
         overwrite=True,
         fname='pls.p',
         add_sigma=False,
+        interactive=False,
     ):
         # Do not propagate if 'i' points to earlier iteration
         if i is not None and i < len(self.pls_list) - 1:
@@ -193,6 +194,7 @@ class LineSearchIteration():
             overwrite=overwrite,
             fname=fname,
             add_sigma=add_sigma,
+            interactive=interactive,
         )
         self.pls_list.append(pls_next)
     # end

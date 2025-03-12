@@ -588,6 +588,22 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         return xi, yi
     # end def
 
+    def to_settings(self):
+        # TODO: assumes polyfit
+        result = {
+            'd': self.d,
+            'fraction': self.target_settings.fraction,
+            'fit_kind': 'pf' + str(self.target_settings.fit_func.args['pfn']),
+            'sgn': self.target_settings.sgn,
+            'M': self.target_settings.M,
+            'W': self.W_opt,
+            'sigma': self.sigma_opt,
+            'hessian': self.hessian,
+            'structure': self.structure,
+        }
+        return result
+    # end def
+
     def statistical_cost(self):
         """Return statistical cost based on sigma and M"""
         if not self.optimized:

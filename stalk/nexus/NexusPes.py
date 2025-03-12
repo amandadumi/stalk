@@ -41,6 +41,7 @@ class NexusPes(PesFunction):
         add_sigma=False,
         eqm_jobs=None,
         path='',
+        interactive=False,
         **kwargs
     ):
         job_path = self._job_path(path, structure.label)
@@ -51,6 +52,9 @@ class NexusPes(PesFunction):
             eqm_jobs=eqm_jobs,
             **kwargs
         )
+        if interactive:
+            self._prompt([structure])
+        # end if
         run_project(structure._jobs)
         res = self.loader.load(job_path)
         if add_sigma:
@@ -67,6 +71,7 @@ class NexusPes(PesFunction):
         sigmas=None,
         add_sigma=False,
         path='',
+        interactive=False,
         **kwargs
     ):
         if sigmas is None:
@@ -106,6 +111,9 @@ class NexusPes(PesFunction):
             )
             jobs += structure.jobs
         # end for
+        if interactive:
+            self._prompt(structures)
+        # end if
         run_project(jobs)
 
         # Then, load
@@ -145,13 +153,33 @@ class NexusPes(PesFunction):
         structure.jobs = jobs
     # end def
 
+    def _prompt(self, structures: list[NexusStructure]):
+        print("About to submit the following jobs:")
+        for structure in structures:
+            for job in structure._jobs:
+                print('  {} {}'.format(job.path, job.identifier))
+            # end for
+        # end for
+        proceed = input("Proceed (Y/n)? ")
+        if proceed == 'n':
+            exit("")
+        # end if
+    # end def
+
     def get_var_eff(
         self,
         structure: NexusStructure,
         path='path',
         samples=10,
+        interactive=False,
     ):
-        self.evaluate(structure, path=path, sigma=None, samples=samples)
+        self.evaluate(
+            structure,
+            path=path,
+            sigma=None,
+            samples=samples,
+            interactive=interactive,
+        )
         var_eff = EffectiveVariance(samples, structure.error)
         return var_eff
     # end def
