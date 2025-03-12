@@ -38,6 +38,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         W=None,
         R=None,
         pes=None,
+        bracket=True,
         # kwargs related to TargetLineSearchBase
         bias_order=1,
         bias_mix=0.0,
@@ -74,6 +75,9 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         # Finally, attempt to reset interpolation
         if self.valid:
             self.reset_interpolation(interpolate_kind=interpolate_kind)
+            if bracket:
+                self.bracket_target_bias()
+            # end if
         # end if
     # end def
 
