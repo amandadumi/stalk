@@ -115,8 +115,13 @@ def test_TlsSettings():
         M=M,
         N=N,
     )
-    # Same number of samples is not considered equal, must have same Gs
-    assert ls1 != ls1.copy(Gs=None, M=M, N=N)
+    # Same number of samples results in same Gs
+    assert ls1 == ls1.copy(Gs=None, M=M, N=N)
+    # Supplying Gs takes precedence
+    assert ls1 == ls1.copy(Gs=ls1.Gs)
+    # Different M or N are not equal
+    assert ls1 != ls1.copy(Gs=None, M=(M + 1), N=N)
+    assert ls1 != ls1.copy(Gs=None, M=M, N=(N + 1))
     # Override with different values is not equal
     assert ls1 != ls1.copy(fraction=fraction + 0.01)  # LsSettings unequal
     assert ls1 != ls1.copy(bias_mix=2 * bias_mix)

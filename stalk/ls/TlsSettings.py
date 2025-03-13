@@ -141,7 +141,7 @@ class TlsSettings(LsSettings):
             # Reset to None
             self.Gs = None
         elif Gs is not None:
-            # If Gs provided, try to insert them and ignore other arguments, return False
+            # If Gs provided, try to insert them and ignore other arguments
             self.Gs = Gs
         else:
             # Check if M or N change; if so, regenerate Gs accordingly or raise error
@@ -157,6 +157,8 @@ class TlsSettings(LsSettings):
     def copy(
         self,
         Gs=None,
+        M=None,
+        N=None,
         **ls_overrides
     ):
         Gs = Gs if Gs is not None else self.Gs
@@ -166,8 +168,16 @@ class TlsSettings(LsSettings):
             'fit_func': self.fit_func,
             'bias_mix': self.bias_mix,
             'bias_order': self.bias_order,
-            'Gs': Gs
+            'Gs': Gs,
         }
+        M = M if M is not None else self.M
+        N = N if N is not None else self.N
+        # If no Gs/M/N are supplied, copy Gs from previous
+        if M != self.M or N != self.N:
+            ls_args['Gs'] = None
+            ls_args['M'] = M
+            ls_args['N'] = N
+        # end if
         ls_args.update(**ls_overrides)
         settings = TlsSettings(**ls_args)
         settings._interp = self.interp

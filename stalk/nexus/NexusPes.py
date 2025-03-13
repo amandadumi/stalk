@@ -45,6 +45,7 @@ class NexusPes(PesFunction):
         **kwargs
     ):
         job_path = self._job_path(path, structure.label)
+        # TODO: try to load first, to assess whether to regenerate or not
         self._evaluate_structure(
             structure,
             job_path,
@@ -113,6 +114,7 @@ class NexusPes(PesFunction):
                 jobs += structure.jobs
             # end if
         # end for
+        # TODO: try to load first, to assess whether to regenerate or not
         if interactive:
             self._prompt(structures)
         # end if

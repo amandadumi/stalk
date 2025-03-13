@@ -152,8 +152,8 @@ def test_TargetParallelLineSearch():
     )
     assert srg.optimized
     # Hard-coded references are not externally validated
-    windows_ref3 = [0.04525865524168349, 0.12292963709532201]
-    noises_ref3 = [0.003232761088691678, 0.006556247311750508]
+    windows_ref3 = [0.04525865524168349, 0.11883198252547794]
+    noises_ref3 = [0.0025862088709533424, 0.0061464818547661]
     assert match_to_tol(srg.W_opt, windows_ref3)
     assert match_to_tol(srg.sigma_opt, noises_ref3)
     for tls, W, sigma in zip(srg.ls_list, windows_ref3, noises_ref3):

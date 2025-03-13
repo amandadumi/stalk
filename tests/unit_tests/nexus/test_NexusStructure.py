@@ -46,7 +46,6 @@ def test_NexusStructure(tmp_path):
     assert s.generated
     assert len(s.jobs) == 1
     assert s.finished
-    assert s.finished
     assert s.analyzed
     E_original = pes_H2O(pos_H2O)[0]
     assert match_to_tol(s.value, E_original)
@@ -54,15 +53,15 @@ def test_NexusStructure(tmp_path):
 
     # 2b: Test analyzing of jobs (sigma)
     sigma = 0.1
-    pes.evaluate(s, path=str(tmp_path) + '/sigma', sigma=sigma, add_sigma=True)
+    s2 = s.copy()  # copying resets the jobs
+    assert s2.jobs is None
+    assert not s2.generated
+    assert not s2.analyzed
+    pes.evaluate(s2, path=str(tmp_path) + '/sigma', sigma=sigma, add_sigma=True)
     # The value must have shifted
-    assert not match_to_tol(s.value, E_original)
-    assert match_to_tol(s.error, 0.1)
+    assert not match_to_tol(s2.value, E_original)
+    assert match_to_tol(s2.error, 0.1)
 
-    # Test copy
-    s_copy = s.copy()
-    assert s_copy.jobs is None
-    assert not s_copy.generated
-    assert not s_copy.analyzed
+    # TODO: test evaluate_all
 
 # end def
