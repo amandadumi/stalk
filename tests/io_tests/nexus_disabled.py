@@ -20,7 +20,7 @@ def disable_nexus():
 
 
 # Test Nexus being disabled
-def test_nexus_disabled():
+if __name__ == '__main__':
     disable_nexus()
     from stalk import nexus
     assert not nexus.nexus_enabled
@@ -29,4 +29,5 @@ def test_nexus_disabled():
         from stalk.nexus import NexusPes
         NexusPes()
     # end with
-# end def
+    print("All clear!")
+# end if
