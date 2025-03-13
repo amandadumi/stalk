@@ -65,6 +65,7 @@ class ParallelLineSearch():
         pes=None,
         pes_func=None,
         pes_args={},
+        interactive=False,
         load=None,  # eliminate loading arg
         # LineSearch args
         **ls_args
@@ -96,7 +97,7 @@ class ParallelLineSearch():
             )
             if self.shifted and not no_eval:
                 # Successful evaluation leads to estimation of next structure
-                self.evaluate(add_sigma=add_sigma)
+                self.evaluate(add_sigma=add_sigma, interactive=interactive)
             # end if
         # end if
     # end def

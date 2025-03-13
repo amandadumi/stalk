@@ -74,7 +74,9 @@ class Parameter():
         if self.error > 0:
             string += FU.format(self.error)
         # end if
-        string += FLL.format(self.unit)
+        if self.unit is not None:
+            string += FLL.format(self.unit)
+        # end if
         return string
     # end def
 # end class

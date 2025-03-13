@@ -157,6 +157,7 @@ class ParameterSet(LineSearchPoint):
                 string += '\n    ' + str(param)
             # end for
         # end if
+        return string
     # end def
 
     def __len__(self):

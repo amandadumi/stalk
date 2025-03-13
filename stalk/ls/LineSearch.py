@@ -13,10 +13,10 @@ from stalk.util.util import FF, SL
 
 # Class for PES line-search in structure context
 class LineSearch(LineSearchBase):
-    _structure: ParameterSet | None = None  # The equilibrium structure
-    _hessian: ParameterHessian | None = None  # The equilibrium full Hessian
+    _structure: ParameterSet = None  # The equilibrium structure
+    _hessian: ParameterHessian = None  # The equilibrium full Hessian
     _sigma = 0.0  # Target errorbar
-    _d: int | None = None  # direction count
+    _d: int = None  # direction count
     _enabled = True  # whether enabled or not
 
     def __init__(

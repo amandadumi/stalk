@@ -373,8 +373,7 @@ class ParameterStructure(ParameterSet):
     # end def
 
     def __str__(self):
-        string = self.__class__.__name__
-        string += ParameterSet.__str__(self)
+        string = ParameterSet.__str__(self)
         if self.consistent:
             string += '\n  consistent: yes'
         else:
@@ -386,7 +385,7 @@ class ParameterStructure(ParameterSet):
         else:
             string += '\n  pos ({:d} atoms)'.format(len(self.pos))
             for elem, pos in zip(self.elem, self.pos):
-                string += '\n    {:2s} ' + (FF + FF + FF).format(
+                string += ('\n    {:2s} ' + FF + FF + FF).format(
                     elem, pos[0], pos[1], pos[2])
             # end for
         # end if

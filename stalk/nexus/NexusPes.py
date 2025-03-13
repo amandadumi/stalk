@@ -102,14 +102,16 @@ class NexusPes(PesFunction):
             # end if
             # Make a copy structure for job generation
             job_path = self._job_path(path, structure.label)
-            self._evaluate_structure(
-                structure,
-                job_path,
-                sigma=sigma,
-                eqm_jobs=eqm_jobs,
-                **kwargs,
-            )
-            jobs += structure.jobs
+            if not structure.analyzed:
+                self._evaluate_structure(
+                    structure,
+                    job_path,
+                    sigma=sigma,
+                    eqm_jobs=eqm_jobs,
+                    **kwargs,
+                )
+                jobs += structure.jobs
+            # end if
         # end for
         if interactive:
             self._prompt(structures)
@@ -140,6 +142,10 @@ class NexusPes(PesFunction):
         sigma=0.0,
         **kwargs
     ):
+        # Do not redo jobs
+        if structure.generated:
+            return
+        # end if
         eval_args = self.args.copy()
         # Override with kwargs
         eval_args.update(**kwargs)
@@ -156,9 +162,11 @@ class NexusPes(PesFunction):
     def _prompt(self, structures: list[NexusStructure]):
         print("About to submit the following jobs:")
         for structure in structures:
-            for job in structure._jobs:
-                print('  {} {}'.format(job.path, job.identifier))
-            # end for
+            if structure.generated:
+                for job in structure.jobs:
+                    print('  {} {}'.format(job.path, job.identifier))
+                # end for
+            # end if
         # end for
         proceed = input("Proceed (Y/n)? ")
         if proceed == 'n':

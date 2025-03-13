@@ -18,7 +18,7 @@ class TlsSettings(LsSettings):
     _bias_mix: float
     _bias_order: int
     _target: FittingResult
-    _interp = None | CubicHermiteSpline  # Interpolant
+    _interp = CubicHermiteSpline  # Interpolant
 
     def __init__(
         self,
@@ -156,15 +156,17 @@ class TlsSettings(LsSettings):
 
     def copy(
         self,
+        Gs=None,
         **ls_overrides
     ):
+        Gs = Gs if Gs is not None else self.Gs
         ls_args = {
             'fraction': self.fraction,
             'sgn': self.sgn,
             'fit_func': self.fit_func,
             'bias_mix': self.bias_mix,
             'bias_order': self.bias_order,
-            'Gs': self.Gs,
+            'Gs': Gs
         }
         ls_args.update(**ls_overrides)
         settings = TlsSettings(**ls_args)

@@ -19,7 +19,7 @@ __license__ = "BSD-3-Clause"
 class LineSearchBase(LineSearchGrid):
 
     _settings: LsSettings
-    fit_res: FittingResult | None
+    fit_res: FittingResult
 
     def __init__(
         self,

@@ -18,7 +18,7 @@ __license__ = "BSD-3-Clause"
 # Class for error scan line-search
 class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
-    _Gs: None | ndarray = None  # N x M set of correlated random fluctuations for the grid
+    _Gs: ndarray = None  # N x M set of correlated random fluctuations for the grid
     _epsilon = None  # optimized target error
     _W_opt = None  # W to meet epsilon
     _sigma_opt = None  # sigma to meet epsilon

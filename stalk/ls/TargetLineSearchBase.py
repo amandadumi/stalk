@@ -169,7 +169,12 @@ class TargetLineSearchBase(LineSearchBase):
             return nan
         # end if
         settings = self.target_settings.copy(**ls_overrides)
-        bias_x, bias_y = self._compute_xy_bias(grid, settings)
+        try:
+            bias_x, bias_y = self._compute_xy_bias(grid, settings)
+        except AssertionError:
+            # If fitting altogether fails, assign maximum bias
+            bias_x, bias_y = 1e100, 1e100
+        # end try
         bias_tot = abs(bias_x) + settings.bias_mix * abs(bias_y)
         return bias_tot
     # end def
@@ -185,10 +190,11 @@ class TargetLineSearchBase(LineSearchBase):
         x_min = settings.interp.x.min()
         x_max = settings.interp.x.max()
         # Begin from target
-        x0 = settings.target.x0
+        offsets0 = grid.offsets.copy()
+        x0 = 0.0
         # Repeat search 'bias_order' times to simulate how bias is self-induced
         for i in range(settings.bias_order):
-            offsets = grid.offsets + x0
+            offsets = offsets0 + x0
             offsets[where(offsets < x_min)] = x_min
             offsets[where(offsets > x_max)] = x_max
             grid = LineSearchGrid(offsets)
