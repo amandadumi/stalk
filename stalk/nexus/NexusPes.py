@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from numpy import isnan
+
 from nexus import run_project
 
 from stalk.io.PesLoader import PesLoader
@@ -16,6 +18,7 @@ __license__ = "BSD-3-Clause"
 class NexusPes(PesFunction):
     '''A wrapper class for generating Nexus functions to produce and represent a PES.'''
     loader = None
+    disable_failed = False
 
     def __init__(
         self,
@@ -24,8 +27,10 @@ class NexusPes(PesFunction):
         loader=None,
         load_func=None,
         load_args={},
+        disable_failed=False
     ):
         super().__init__(func, args)
+        self.disable_failed = disable_failed
         if isinstance(loader, PesLoader):
             self.loader = loader
         else:
@@ -58,6 +63,10 @@ class NexusPes(PesFunction):
         # end if
         run_project(structure._jobs)
         res = self.loader.load(job_path)
+        # Treat failure
+        if isnan(res.value) and self.disable_failed:
+            structure.enabled = False
+        # end if
         if add_sigma:
             res.add_sigma(sigma)
         # end if
@@ -124,6 +133,10 @@ class NexusPes(PesFunction):
         for structure, sigma in zip(structures, sigmas):
             job_path = self._job_path(path, structure.label)
             res = self.loader.load(job_path)
+            # Treat failure
+            if isnan(res.value) and self.disable_failed:
+                structure.enabled = False
+            # end if
             if add_sigma:
                 res.add_sigma(sigma)
             # end if
