@@ -120,7 +120,7 @@ class LsSettings():
     def __str__(self):
         # TODO: assumes polyfit
         pfn = self.fit_func.args['pfn']
-        fit_str = 'pf' + str(pfn)        
+        fit_str = 'pf' + str(pfn)
         string = 'Fit: {}, N: {}, fraction: {}, sgn: {}'. format(
             fit_str,
             self.N,

@@ -12,7 +12,9 @@ def test_PwscfGeometry():
 
     # Use XyzLoader for reference
     pos_ref = XyzGeometry().load(
-        'tests/unit_tests/assets/pwscf_relax', suffix='relax_bohr.xyz')
+        'tests/unit_tests/assets/pwscf_relax',
+        suffix='relax_bohr.xyz'
+    )
 
     # default suffix: relax.in; only path is needed
     res0 = pes.load('tests/unit_tests/assets/pwscf_relax')

@@ -78,7 +78,7 @@ class TargetLineSearchBase(LineSearchBase):
     @property
     def target_interp(self):
         if hasattr(self, 'target_settings'):
-            return self.target_settings.interp    
+            return self.target_settings.interp
         # end if
     # end def
 
