@@ -19,7 +19,7 @@ Hartree = 27.211386024367243  # eV
 # Floating-point format (signed)
 FF = '{:> 9.4f} '
 # Floating-point format (for errors)
-FU = '+/- {:<5.2f} '
+FU = '+/- {:<5.4f} '
 # String format for float fields (right-aligned)
 FFS = '{:>9s} '
 # String format for float fields (left-aligned)
