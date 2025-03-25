@@ -51,7 +51,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
     @property
     def x_targets(self):
-        return all([tls.target_settings.target.x0 for tls in self.ls_list])
+        return [tls.target_settings.target.x0 for tls in self.ls_list]
     # end def
 
     @x_targets.setter

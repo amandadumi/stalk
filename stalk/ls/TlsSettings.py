@@ -176,7 +176,9 @@ class TlsSettings(LsSettings):
         if M != self.M or N != self.N:
             ls_args['Gs'] = None
             ls_args['M'] = M
-            ls_args['N'] = N
+            if N > 0:
+                ls_args['N'] = N
+            # end if
         # end if
         ls_args.update(**ls_overrides)
         settings = TlsSettings(**ls_args)
