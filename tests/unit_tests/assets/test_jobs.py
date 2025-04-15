@@ -2,10 +2,14 @@
 
 import os
 import numpy as np
+from numpy import nan
 from pathlib import Path
 from nexus import obj, job, settings, generate_physical_system, input_template
 from simulation import GenericSimulation, SimulationAnalyzer, Simulation
+from stalk.io.GeometryLoader import GeometryLoader
 from stalk.io.PesLoader import PesLoader
+from stalk.io.XyzGeometry import XyzGeometry
+from stalk.params.GeometryResult import GeometryResult
 from stalk.params.PesResult import PesResult
 
 # Add nexus tester to path
@@ -13,6 +17,8 @@ app_path = os.path.dirname(__file__) + "/../../nxs_tester.py"
 
 # The hard-coded energy file name
 efilename = 'test_energy.dat'
+xyzfilename = 'relax.xyz'
+axesfilename = 'axes.dat'
 
 # First, the user must set up Nexus according to their computing environment.
 testjob = obj(app_command=app_path + ' nxs_test.in', cores=1, ppn=1, serial=True)
@@ -28,10 +34,22 @@ nx_settings = obj(
 )
 
 
+# Dummy simulation class to suppress actual identifier check-ups in testing
+class DummySimulation(Simulation):
+    finished = False
+
+    def __init__(self):
+        pass
+    # end def
+# end class
+
+
 # Tailor Nexus analyzer for generic testing
 class TestAnalyzer(SimulationAnalyzer):
     value = None
     error = 0.0
+    pos = None
+    axes = None
 
     def __init__(
         self,
@@ -48,15 +66,24 @@ class TestAnalyzer(SimulationAnalyzer):
         e_file = Path(self.path + "/" + efilename)
         if e_file.exists():
             res = np.loadtxt(e_file)
+            if len(res) == 1:
+                self.value = res[0]
             if len(res) > 1:
                 self.value = res[0]
                 self.error = res[1]
-            else:
-                self.value = res[0]
             # end if
         else:
             raise AssertionError('The job has not run yet!')
         # end if
+        xyz_file = Path(self.path + "/" + xyzfilename)
+        axes_file = Path(self.path + "/" + axesfilename)
+        if xyz_file.exists():
+            res = XyzGeometry({'suffix': xyzfilename}).load(str(self.path))
+            if axes_file.exists():
+                res.axes = np.loadtxt(axes_file)
+            # end if
+            self.pos = res.get_pos()
+            self.axes = res.get_axes()
     # end def
 # end class
 
@@ -71,13 +98,38 @@ class TestLoader(PesLoader):
 
     def __init__(self, func=test_dummy, args={}):
         self._func = func
-        self._args = {}
+        self._args = args
     # end def
 
-    def _load(self, path, **kwargs):
+    def _load(self, path, produce_fail=False, **kwargs):
         ai = TestAnalyzer(path, **kwargs)
         ai.analyze()
-        return PesResult(ai.value, ai.error)
+        if produce_fail:
+            return PesResult(nan, 0.0)
+        else:
+            return PesResult(ai.value, ai.error)
+        # end if
+    # end def
+
+# end class
+
+
+# Tailor Nexus analyzer for generic testing
+class TestGeometryLoader(GeometryLoader):
+
+    def __init__(self, func=test_dummy, args={}):
+        self._func = func
+        self._args = args
+    # end def
+
+    def _load(self, path, produce_fail=False, **kwargs):
+        ai = TestAnalyzer(path, **kwargs)
+        ai.analyze()
+        if produce_fail:
+            return GeometryResult(None, None)
+        else:
+            return GeometryResult(ai.pos, ai.axes)
+        # end if
     # end def
 
 # end class

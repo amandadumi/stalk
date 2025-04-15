@@ -17,7 +17,7 @@ class PwscfGeometry(GeometryLoader):
         ai.analyze()
         pos = ai.structures[len(ai.structures) - 1].positions * c_pos
         try:
-            axes = ai.structures[len(ai.structures) - 1].axes
+            axes = ai.structures[len(ai.structures) - 1].axes * c_pos
         except AttributeError:
             # In case axes is not present in the relaxation
             axes = None

@@ -105,7 +105,7 @@ class ParameterStructure(ParameterSet):
         self.pos = array(pos).reshape(-1, self.dim)
         if axes is not None:
             # Set axes without mapping checks or moves
-            self.axes = self.set_axes(axes, check=False)
+            self.set_axes(axes, check=False)
         # end if
 
         # If forward_func has been given, update params (but not positions)
@@ -137,7 +137,10 @@ class ParameterStructure(ParameterSet):
         # Skip parameter updates and checks if they are expected later
         if check:
             # If forward_func has been given, update params; if not, return None
-            self.set_params(self.map_forward(self.pos, self.axes))
+            params = self.map_forward(self.pos, self.axes)
+            if params is not None:
+                self.set_params()
+            # end if
             self.reset_value()  # setting axes will reset value
         # end if
     # end def

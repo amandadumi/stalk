@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from stalk.nexus.PwscfGeometry import PwscfGeometry
 from stalk.io.XyzGeometry import XyzGeometry
 from stalk.params import GeometryResult

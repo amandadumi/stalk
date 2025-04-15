@@ -5,22 +5,14 @@ import numpy as np
 
 from stalk.io import XyzGeometry
 from stalk.params.ParameterStructure import ParameterStructure
-from unit_tests.assets.test_jobs import efilename
+
+from unit_tests.assets.test_jobs import efilename, xyzfilename, axesfilename
 from unit_tests.assets.h2o import pes_H2O, pos_H2O, elem_H2O
+from unit_tests.assets.diamond import pos_diamond, axes_diamond, elem_diamond, pes_diamond
 
-
-def evaluate_pes(pos, pes_variable):
-    res1, res2 = 0.0, 0.0
-    if pes_variable == 'h2o':
-        res1, res2 = pes_H2O(pos)
-    if pes_variable == 'relax_h2o':
-        res1 = pos_H2O
-        res2 = elem_H2O
-    else:  # default: dummy
-        pass
-    # end if
-    return res1, res2
-# end def
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 
 if __name__ == '__main__':
@@ -31,17 +23,27 @@ if __name__ == '__main__':
             pos = XyzGeometry({'suffix': struct_name}).load('.').get_pos()
             # The second line points to one the hardcoded pes functions
             pes_variable = fhandle.readline().replace("\n", "")
-            # Evaluate
-            res1, res2 = evaluate_pes(pos, pes_variable)
         # end with
-        if np.isscalar(res1):
-            # Write energy and errorbar to disk
-            np.savetxt(efilename, np.array([[res1, res2]]))
-        else:
-            # Write pos+elem to the disk
-            structure = ParameterStructure(pos=res1, elem=res2)
-            writer = XyzGeometry({'suffix': 'relax.xyz'})
+        # Evaluate according to preset modes
+        if pes_variable == 'h2o':
+            # If evaluating PES, write energy and errorbar to disk
+            value, error = pes_H2O(pos)
+            np.savetxt(efilename, [value, error])
+        elif pes_variable == 'relax_h2o':
+            value, error = pes_H2O(pos)
+            np.savetxt(efilename, [value, error])
+            structure = ParameterStructure(pos=pos_H2O, elem=elem_H2O)
+            writer = XyzGeometry({'suffix': xyzfilename})
             writer.write(structure, '.')
+        elif pes_variable == 'relax_diamond':
+            value, error = pes_diamond(axes_diamond[0, 0])
+            np.savetxt(efilename, [value, error])
+            structure = ParameterStructure(pos=pos_diamond, elem=elem_diamond)
+            writer = XyzGeometry({'suffix': xyzfilename})
+            writer.write(structure, '.')
+            np.savetxt(axesfilename, axes_diamond)
+        else:  # default: dummy
+            pass
         # end if
     # end if
 # end if

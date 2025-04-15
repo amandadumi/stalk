@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
+import warnings
+
+from nexus import run_project
+
 from stalk.io.GeometryLoader import GeometryLoader
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.util.FunctionCaller import FunctionCaller
 from stalk.util.util import directorize
-from nexus import run_project
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -53,7 +56,11 @@ class NexusGeometry(FunctionCaller):
 
         # Load results and update the structure
         res = self.loader.load(path)
-        structure.set_position(res.get_pos(), res.get_axes())
+        if res.get_pos() is not None:
+            structure.set_position(res.get_pos(), res.get_axes())
+        else:
+            warnings.warn("Running or loading of the relaxation result was unsuccessful!", UserWarning)
+        # end if
     # end def
 
 # end class

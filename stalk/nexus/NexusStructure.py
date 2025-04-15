@@ -34,13 +34,13 @@ class NexusStructure(ParameterStructure):
     # end def
 
     @property
-    def analyzed(self):
-        return self.generated and self.value is not None
+    def finished(self):
+        return self.generated and all(job.finished for job in self._jobs)
     # end def
 
     @property
-    def finished(self):
-        return self.generated and all(job.finished for job in self._jobs)
+    def analyzed(self):
+        return self.finished and self.value is not None
     # end def
 
     def get_nexus_structure(

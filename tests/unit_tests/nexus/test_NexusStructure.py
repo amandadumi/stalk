@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 from structure import Structure
-from stalk.nexus.NexusPes import NexusPes
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.ParameterStructure import ParameterStructure
-from stalk.util.util import match_to_tol
-from ..assets.test_jobs import nxs_generic_pes, TestLoader
-from ..assets.h2o import backward_H2O, elem_H2O, forward_H2O, pes_H2O, pos_H2O
+
+from ..assets.h2o import backward_H2O, elem_H2O, forward_H2O, pos_H2O
+from ..assets.test_jobs import DummySimulation
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -36,32 +35,28 @@ def test_NexusStructure(tmp_path):
     )
     assert isinstance(s.get_nexus_structure(), Structure)
 
-    # 1: Test generation of jobs
-    pes = NexusPes(
-        nxs_generic_pes,
-        args={'pes_variable': 'h2o'},
-        loader=TestLoader()
-    )
-    pes.evaluate(s, path=str(tmp_path) + '/nosigma', sigma=0.0)
+    # Test resetting of jobs and value
+    job1 = DummySimulation()
+    job2 = DummySimulation()
+    s.jobs = [job1, job2]
     assert s.generated
-    assert len(s.jobs) == 1
+    # Not finished until all jobs are finished
+    assert not s.finished
+    job1.finished = True
+    assert not s.finished
+    job2.finished = True
     assert s.finished
+    # check analyzed and reset value
+    assert not s.analyzed
+    s.value = 1.0
     assert s.analyzed
-    E_original = pes_H2O(pos_H2O)[0]
-    assert match_to_tol(s.value, E_original)
-    assert match_to_tol(s.error, 0.0)
+    s.reset_value()
+    assert s.jobs is None
+    assert s.value is None
 
-    # 2b: Test analyzing of jobs (sigma)
-    sigma = 0.1
-    s2 = s.copy()  # copying resets the jobs
-    assert s2.jobs is None
-    assert not s2.generated
-    assert not s2.analyzed
-    pes.evaluate(s2, path=str(tmp_path) + '/sigma', sigma=sigma, add_sigma=True)
-    # The value must have shifted
-    assert not match_to_tol(s2.value, E_original)
-    assert match_to_tol(s2.error, 0.1)
-
-    # TODO: test evaluate_all
+    # Test copy
+    s.jobs = [job1, job2]
+    s_copy = s.copy()
+    assert s_copy.jobs is None
 
 # end def
