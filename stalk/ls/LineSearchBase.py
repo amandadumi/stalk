@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-'''Generic classes for 1-dimensional line-searches
-'''
+'''Class for line-search along direction in abstract context'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 import warnings
 from matplotlib import pyplot as plt
@@ -10,14 +13,8 @@ from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.LsSettings import LsSettings
 from stalk.util.util import FF, FU
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
-
-# Class for line-search along direction in abstract context
 class LineSearchBase(LineSearchGrid):
-
     _settings: LsSettings
     fit_res: FittingResult
 

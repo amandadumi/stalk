@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Various utility functions and constants commonly needed in line-search workflows
-"""
-
-from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan
-from numpy import meshgrid, linalg, linspace
+"""Various utility functions and constants commonly needed in line-search workflows"""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
+
+from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan
+from numpy import meshgrid, linalg, linspace
 
 
 Bohr = 0.5291772105638411  # A

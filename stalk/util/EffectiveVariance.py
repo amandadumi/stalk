@@ -1,6 +1,12 @@
-class EffectiveVariance():
-    '''Class to produce relative number of samples to meet an error target.'''
+#!/usr/bin/env python3
+'''Class to produce relative number of samples to meet an error target.'''
 
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
+
+class EffectiveVariance():
     samples = None
     errorbar = None
 
@@ -24,6 +30,14 @@ class EffectiveVariance():
     def get_errorbar(self, samples):
         assert samples > 0, 'The requested samples must be > 0'
         return self.errorbar * (float(self.samples) / samples)**0.5
+    # end def
+
+    def __str__(self):
+        if self.errorbar is None or self.samples is None:
+            return "Effective variances not set."
+        else:
+            return f"Effective variance: {(self.errorbar * self.samples)**2}"
+        # end if
     # end def
 
 # end class

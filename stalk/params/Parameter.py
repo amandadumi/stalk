@@ -1,19 +1,16 @@
 #!/usr/bin/env python
-"""Base class for representing an optimizable parameters.
-"""
-
-
-from numpy import isscalar
-
-from stalk.util.util import FF, FLL, FU
+"""Base class for representing an optimizable parameters."""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from numpy import isscalar
+
+from stalk.util.util import FF, FLL, FU
+
 
 class Parameter():
-    """Base class for representing an optimizable parameter"""
     _value: float
     _error: float = 0.0
     label: str = ''

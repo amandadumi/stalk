@@ -1,13 +1,19 @@
+#!/usr/bin/env python3
+"""Base class for representing a mapping between reducible positions (pos, axes) and irreducible parameters."""
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 from numpy import array, isscalar, random, diag
 from copy import deepcopy
 
 from stalk.util import match_to_tol, get_fraction_error, directorize
 from stalk.util.util import FF
-from .ParameterSet import ParameterSet
+from stalk.params.ParameterSet import ParameterSet
 
 
 class ParameterStructure(ParameterSet):
-    """Base class for representing a mapping between reducible positions (pos, axes) and irreducible parameters."""
     forward_func = None  # mapping function from pos to params
     backward_func = None  # mapping function from params to pos
     forward_args = None  # kwargs for the forward mapping

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Base class for representing a set of parameters to optimize"""
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import array, isscalar
 from copy import deepcopy
@@ -6,13 +11,8 @@ from copy import deepcopy
 from stalk.params.LineSearchPoint import LineSearchPoint
 from stalk.params.Parameter import Parameter
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
-
 
 class ParameterSet(LineSearchPoint):
-    """Base class for representing a set of parameters to optimize"""
     _param_list: list[Parameter] = []
     label = ''  # label for identification
 

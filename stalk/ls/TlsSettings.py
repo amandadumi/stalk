@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-'''Target line-search settings
-'''
+'''Target line-search settings'''
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -13,7 +12,6 @@ from stalk.ls.LsSettings import LsSettings
 
 
 class TlsSettings(LsSettings):
-
     _Gs: ndarray = None
     _bias_mix: float
     _bias_order: int

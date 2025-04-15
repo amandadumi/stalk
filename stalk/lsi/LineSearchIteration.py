@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-'''LineSearchIteration class for treating iteration of subsequent parallel linesearches
-'''
-
-from stalk.params.PesFunction import PesFunction
-from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
-from stalk.util import directorize
-from stalk.pls import ParallelLineSearch
-from numpy import array
-from stalk.lsi.util import plot_parameter_convergence, plot_energy_convergence, plot_bundled_convergence
-from stalk.util.util import FF, FFS, FI, FIS, FU
+'''LineSearchIteration class for treating iteration of subsequent parallel linesearches'''
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from numpy import array
 
-# Class for line-search iteration
+from stalk.params.PesFunction import PesFunction
+from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
+from stalk.util import directorize
+from stalk.pls import ParallelLineSearch
+from stalk.lsi.util import plot_energy_convergence
+from stalk.lsi.util import plot_bundled_convergence
+from stalk.lsi.util import plot_parameter_convergence
+from stalk.util.util import FF, FFS, FI, FIS, FU
+
+
 class LineSearchIteration():
-
     _pls_list: list[ParallelLineSearch]  # list of ParallelLineSearch objects
     _path = ''  # base path
 

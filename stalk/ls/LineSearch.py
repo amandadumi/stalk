@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Class for PES line-search in structure context"""
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 import warnings
 from numpy import array, polyval, sign, isscalar
@@ -11,7 +16,6 @@ from stalk.ls.LineSearchBase import LineSearchBase
 from stalk.util.util import FF, SL
 
 
-# Class for PES line-search in structure context
 class LineSearch(LineSearchBase):
     _structure: ParameterSet = None  # The equilibrium structure
     _hessian: ParameterHessian = None  # The equilibrium full Hessian

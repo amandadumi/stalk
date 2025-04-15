@@ -1,11 +1,16 @@
+#!/usr/bin/env python3
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 from numpy import loadtxt, savetxt, array
 
 from stalk.params.ParameterStructure import ParameterStructure
-
+from stalk.io.GeometryWriter import GeometryWriter
+from stalk.io.GeometryLoader import GeometryLoader
 from stalk.params.GeometryResult import GeometryResult
 from stalk.util.util import PL
-from .GeometryWriter import GeometryWriter
-from .GeometryLoader import GeometryLoader
 
 
 class XyzGeometry(GeometryLoader, GeometryWriter):

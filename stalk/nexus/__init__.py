@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Surrogate Hessian accelerated parallel line-search: Nexus additions"""
 
 __author__ = "Juha Tiihonen"
@@ -5,6 +6,7 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 try:
+    from .NexusGeometry import NexusGeometry
     from .NexusStructure import NexusStructure
     from .NexusPes import NexusPes
     from .PwscfGeometry import PwscfGeometry
@@ -17,9 +19,10 @@ except ModuleNotFoundError:
 # end try
 
 __all__ = [
+    'NexusGeometry',
     'NexusStructure',
     'NexusPes',
+    'PwscfGeometry',
     'PwscfPes',
     'QmcPes',
-    'PwscfGeometry',
 ]

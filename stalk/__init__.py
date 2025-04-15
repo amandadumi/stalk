@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Surrogate Hessian accelerated parallel line-search."""
 
 __author__ = "Juha Tiihonen"
@@ -5,20 +6,24 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 __version__ = "0.2.0a1"
 
-from . import util
-from . import params
-from . import ls
-from . import pls
-from . import lsi
-from . import io
-from .params import ParameterSet, ParameterStructure, ParameterHessian
-from .lsi import LineSearchIteration
-from .ls import LineSearch, TargetLineSearch
-from .pls import ParallelLineSearch, TargetParallelLineSearch
+from stalk import io
+from stalk import ls
+from stalk import lsi
+from stalk import params
+from stalk import pls
+from stalk import util
+from stalk.params import ParameterHessian
+from stalk.params import ParameterSet
+from stalk.params import ParameterStructure
+from stalk.lsi import LineSearchIteration
+from stalk.ls import LineSearch
+from stalk.ls import TargetLineSearch
+from stalk.pls import ParallelLineSearch
+from stalk.pls import TargetParallelLineSearch
 try:
-    from . import nexus
-    from .nexus import NexusStructure
-    from .nexus import NexusPes
+    from stalk import nexus
+    from stalk.nexus import NexusStructure
+    from stalk.nexus import NexusPes
     nexus_enabled = True
 except ModuleNotFoundError:
     # Nexus not found
@@ -28,14 +33,14 @@ except ModuleNotFoundError:
 
 
 __all__ = [
-    'util',
-    'params',
-    'ls',
-    'pls',
-    'lsi',
     'io',
-    'ParameterSet',
+    'ls',
+    'lsi',
+    'params',
+    'pls',
+    'util',
     'ParameterHessian',
+    'ParameterSet',
     'ParameterStructure',
     'LineSearchIteration',
     'LineSearch',

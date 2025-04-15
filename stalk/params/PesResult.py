@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+'''PesResult represents a PES evaluation result as value+error pair (float/nan)'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 from numpy import isscalar, nan, isnan, random
 
 
 class PesResult:
-    '''Represents a PES evaluation result as value+error pair (float/nan)'''
-
     _value = nan
     _error = 0.0
 

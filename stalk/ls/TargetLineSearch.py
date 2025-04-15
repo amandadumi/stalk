@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-'''TargetLineSearch classes for the assessment and evaluation of fitting errors
-'''
+'''TargetLineSearch classes for the assessment and evaluation of fitting errors'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import array, argsort, isscalar, linspace, append, nan, isnan, where
 from numpy import argmin, ndarray
@@ -10,14 +13,9 @@ from stalk.ls.TlsSettings import TlsSettings
 from .LineSearch import LineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
-
 
 # Class for error scan line-search
 class TargetLineSearch(TargetLineSearchBase, LineSearch):
-
     _Gs: ndarray = None  # N x M set of correlated random fluctuations for the grid
     _epsilon = None  # optimized target error
     _W_opt = None  # W to meet epsilon

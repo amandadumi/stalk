@@ -203,7 +203,7 @@ print(hessian)
 
 
 # 3) Surrogate: Optimize line-search
-# Use a macro to generate a parallel line-search object that samples the
+# Generate a parallel line-search object that samples the
 # surrogate PES around the minimum along the search directions
 surrogate_file = 'surrogate.p'
 surrogate = TargetParallelLineSearch(
@@ -281,7 +281,7 @@ def dmc_pes_job(
     axes = array([20., 20., 10.])
     structure.set_axes(diag(axes))
     structure.pos += axes / 2
-    structure.kpoints = [[0, 0, 0]]
+    structure.kpoints = array([[0, 0, 0]])
     system = generate_physical_system(
         structure=structure,
         C=4,
@@ -290,7 +290,7 @@ def dmc_pes_job(
     scf = generate_pwscf(
         system=system,
         job=job(**pwscfjob),
-        path=path + '/scf',
+        path=path + 'scf',
         pseudos=scfpseudos,
         identifier='scf',
         calculation='scf',
@@ -311,7 +311,7 @@ def dmc_pes_job(
     )
     p2q = generate_pw2qmcpack(
         identifier='p2q',
-        path=path + '/scf',
+        path=path + 'scf',
         job=job(**p2qjob),
         dependencies=[(scf, 'orbitals')],
     )

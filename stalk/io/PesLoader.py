@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from stalk.params.PesResult import PesResult
-from stalk.util.FunctionCaller import FunctionCaller
-
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
+
+from stalk.params.PesResult import PesResult
+from stalk.util.FunctionCaller import FunctionCaller
 
 
 class PesLoader(FunctionCaller):

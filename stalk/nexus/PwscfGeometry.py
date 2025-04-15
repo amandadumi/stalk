@@ -1,7 +1,13 @@
-from nexus import PwscfAnalyzer
-from stalk.util.util import PL
+#!/usr/bin/env python3
 
-from ..io.GeometryLoader import GeometryLoader
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
+from nexus import PwscfAnalyzer
+
+from stalk.util.util import PL
+from stalk.io.GeometryLoader import GeometryLoader
 from stalk.params.GeometryResult import GeometryResult
 
 

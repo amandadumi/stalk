@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+'''A wrapper class for generating Nexus functions to produce and represent a PES.'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import isnan
 
@@ -10,13 +15,8 @@ from stalk.params.PesFunction import PesFunction
 from stalk.util.EffectiveVariance import EffectiveVariance
 from stalk.util.util import directorize
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
-
 
 class NexusPes(PesFunction):
-    '''A wrapper class for generating Nexus functions to produce and represent a PES.'''
     loader = None
     disable_failed = False
 

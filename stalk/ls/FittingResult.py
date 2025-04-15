@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-'''Generic class for curve minimum and error bars
-'''
+'''Generic class for curve minimum and error bars'''
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"

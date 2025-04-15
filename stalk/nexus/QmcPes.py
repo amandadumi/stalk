@@ -1,8 +1,13 @@
+#!/usr/bin/env python3
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from nexus import QmcpackAnalyzer
 
 from stalk.params.PesResult import PesResult
-from ..io.PesLoader import PesLoader
+from stalk.io.PesLoader import PesLoader
 
 
 class QmcPes(PesLoader):

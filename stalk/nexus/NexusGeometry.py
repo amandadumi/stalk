@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+'''A wrapper class for generating Nexus functions to produce and represent a PES.'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 import warnings
 
@@ -9,13 +14,8 @@ from stalk.nexus.NexusStructure import NexusStructure
 from stalk.util.FunctionCaller import FunctionCaller
 from stalk.util.util import directorize
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
-
 
 class NexusGeometry(FunctionCaller):
-    '''A wrapper class for generating Nexus functions to produce and represent a PES.'''
     loader = None
 
     def __init__(

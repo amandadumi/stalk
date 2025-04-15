@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 '''ParallelLineSearch class for simultaneous linesearches along conjugate directions'''
 
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 from numpy import ndarray, array
 from textwrap import indent
 from dill import dumps, loads
@@ -13,14 +17,8 @@ from stalk.params import ParameterHessian
 from stalk.ls import LineSearch
 from stalk.util.util import directorize
 
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
-
-# Class for a bundle of parallel line-searches
 class ParallelLineSearch():
-
     ls_type = LineSearch
     _ls_list: list[LineSearch] = []  # list of line-search objects
     _hessian = None  # hessian object

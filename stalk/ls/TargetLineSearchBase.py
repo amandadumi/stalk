@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-'''TargetLineSearch classes for the assessment and evaluation of fitting errors
-'''
+'''TargetLineSearch classes for the assessment and evaluation of fitting errors'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import array, isscalar, nan, where
 from scipy.interpolate import CubicSpline, PchipInterpolator
@@ -8,10 +11,6 @@ from scipy.interpolate import CubicSpline, PchipInterpolator
 from stalk.ls.LineSearchBase import LineSearchBase
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.TlsSettings import TlsSettings
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 # Class for line-search with resampling and bias assessment against target

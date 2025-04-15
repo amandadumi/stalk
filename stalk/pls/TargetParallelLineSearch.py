@@ -4,6 +4,10 @@
 This is the surrogate model used to inform and optimize a parallel line-search.
 '''
 
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 import warnings
 from numpy import argmin, array, isscalar, mean, linspace
 
@@ -13,10 +17,6 @@ from stalk.util import get_fraction_error
 from stalk.ls import TargetLineSearch
 from stalk.pls import ParallelLineSearch
 from stalk.util.util import FF, FFS, FI, FIS, FP, FPS
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 class TargetParallelLineSearch(ParallelLineSearch):

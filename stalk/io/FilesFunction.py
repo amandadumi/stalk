@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
+
 class FilesFunction():
     func = None
     args = None

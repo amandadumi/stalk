@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-"""ParameterHessian class to consider Hessians according to a ParameterSet mapping.
-"""
+"""ParameterHessian class to consider Hessians according to a ParameterSet mapping."""
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
 
 from stalk.params.ParameterStructure import ParameterStructure
 from stalk.params.PesFunction import PesFunction
 from stalk.util import Ry, Hartree, Bohr, bipolyfit
-from .ParameterSet import ParameterSet
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
+from stalk.params.ParameterSet import ParameterSet
 
 
 class ParameterHessian():
-    """ParameterHessian class to consider Hessians according to a ParameterSet mapping.
-    """
     hessian = None  # always stored in (Ry/A)**2
     Lambda = None
     structure = None

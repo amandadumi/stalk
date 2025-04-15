@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-'''Class for fitting for curve minimum
-'''
+'''Class for fitting for curve minimum'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from numpy import random, array
 
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.util import get_fraction_error
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 class FittingFunction():

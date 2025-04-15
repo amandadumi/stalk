@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Surrogate Hessian accelerated parallel line-search: parallel line-search"""
 
 __author__ = "Juha Tiihonen"

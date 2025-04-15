@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-'''Class for containing a 1D grid of points, values and errorbars
-'''
+'''Class for containing a 1D grid of points, values and errorbars'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 import warnings
 from matplotlib import pyplot as plt
@@ -8,10 +11,6 @@ from numpy import array, all
 
 from stalk.params.LineSearchPoint import LineSearchPoint
 from stalk.util.util import FFS
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 class LineSearchGrid():

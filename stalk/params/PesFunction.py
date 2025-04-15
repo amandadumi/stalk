@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
 from scipy.optimize import minimize
 
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesResult import PesResult
 from stalk.util.FunctionCaller import FunctionCaller
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 class PesFunction(FunctionCaller):

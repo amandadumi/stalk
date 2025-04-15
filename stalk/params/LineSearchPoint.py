@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-'''Class for containing grid, value and error of a single point of line-search
-'''
+'''Class for containing grid, value and error of a single point of line-search'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
 
 from matplotlib.axes import Axes
 from numpy import isscalar, abs, isnan
 
 from stalk.util.util import FF, FFS, FU
-
-__author__ = "Juha Tiihonen"
-__email__ = "tiihonen@iki.fi"
-__license__ = "BSD-3-Clause"
 
 
 class LineSearchPoint():

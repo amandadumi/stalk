@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-'''Line-search settings
-'''
+'''Line-search settings'''
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
