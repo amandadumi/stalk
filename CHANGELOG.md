@@ -1,4 +1,4 @@
-## v0.2.0a1 - Current
+## v0.2.0 - 15 Apr 2025
 
 - Comprehensive code refactorization, as overviewed in the following:
 - PyPI support
