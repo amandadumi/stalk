@@ -1,50 +1,75 @@
-from numpy import array
-from scipy.optimize import minimize
+#!/usr/bin/env python3
+"""Base class for representing a set of parameters to optimize"""
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
+from numpy import array, isscalar
 from copy import deepcopy
 
-from .Parameter import Parameter
-from .PesFunction import PesFunction
+from stalk.params.LineSearchPoint import LineSearchPoint
+from stalk.params.Parameter import Parameter
 
 
-class ParameterSet():
-    """Base class for representing a set of parameters to optimize"""
-    p_list = []  # list of Parameter objects
-    value = None  # energy value
-    error = None  # errorbar
-    label = None  # label for identification
+class ParameterSet(LineSearchPoint):
+    _param_list: list[Parameter] = []
+    label = ''  # label for identification
 
-    def __init__(
-        self,
-        params=None,
-        value=None,
-        error=None,
-        label=None,
-        **kwargs,  # params_err, units, kinds
-    ):
-        self.label = label
-        if params is not None:
-            self.init_params(params, **kwargs)
-        # end if
-        if value is not None:
-            self.set_value(value, error)
+    @property
+    def params_list(self):
+        return [p for p in self._param_list if isinstance(p, Parameter)]
+    # end def
+
+    @property
+    def params(self):
+        if len(self) > 0:
+            return array([p.value for p in self.params_list])
         # end if
     # end def
 
-    def init_params(self, params, params_err=None, units=None, labels=None, kinds=None, **kwargs):
-        if params_err is None:
-            params_err = len(params) * [params_err]
+    @property
+    def params_err(self):
+        if len(self) > 0:
+            return array([p.error for p in self.params_list])
+        # end if
+    # end def
+
+    def __init__(
+        self,
+        params=None,  # List of scalars or Parameter objects
+        params_err=None,
+        units=None,
+        value=None,
+        error=0.0,
+        label=None,
+        labels=None
+    ):
+        self.label = label
+        if params is not None:
+            self.init_params(
+                params,
+                errors=params_err,
+                units=units,
+                labels=labels
+            )
+        # end if
+        if value is not None:
+            self.value = value
+            self.error = error
+        # end if
+    # end def
+
+    def init_params(self, params, errors=None, units=None, labels=None):
+        if errors is None:
+            errors = len(params) * [errors]
         else:
-            assert len(params_err) == len(params)
+            assert len(errors) == len(params)
         # end if
         if units is None or isinstance(units, str):
             units = len(params) * [units]
         else:
             assert len(units) == len(params)
-        # end if
-        if kinds is None or isinstance(kinds, str):
-            kinds = len(params) * [kinds]
-        else:
-            assert len(kinds) == len(params)
         # end if
         if labels is None:
             labels = len(params) * [labels]
@@ -52,67 +77,47 @@ class ParameterSet():
             assert len(labels) == len(labels)
         # end if
         p_list = []
-        for p, (param, param_err, unit, label, kind) in enumerate(zip(params, params_err, units, labels, kinds)):
-            lab = label if label is not None else 'p{}'.format(p)
-            parameter = Parameter(
-                param, param_err, unit=unit, label=lab, kind=kind)
+        for p, (param, error, unit, label) in enumerate(zip(params, errors, units, labels)):
+            if isinstance(param, Parameter):
+                parameter = param
+            elif isscalar(param):
+                lab = label if label is not None else 'p{}'.format(p)
+                parameter = Parameter(param, error, unit=unit, label=lab)
+            else:
+                raise ValueError('Parameter is unsupported type: ' + str(param))
+            # end if
             p_list.append(parameter)
         # end for
-        self.p_list = p_list
+        self._param_list = p_list
     # end def
 
-    def set_params(self, params, params_err=None):
-        if params is None:
-            return
+    def set_params(self, params, errors=None):
+        # If params have not been initiated yet, do it now without extra info
+        if len(self) > 0:
+            assert len(params) == len(self)
+        else:
+            self.init_params(params, errors)
         # end if
-        if self.params is None:
-            self.init_params(params, params_err)
+        if errors is None:
+            errors = len(params) * [0.0]
         # end if
-        if params_err is None:
-            params_err = len(params) * [0.0]
-        # end if
-        for sparam, param, param_err in zip(self.p_list, params, params_err):
+        for sparam, param, error in zip(self.params_list, params, errors):
+            assert isinstance(sparam, Parameter)
             sparam.value = param
-            sparam.error = param_err
+            sparam.error = error
         # end for
-        self.unset_value()
+        self.reset_value()
     # end def
 
-    def set_value(self, value, error=None):
-        assert self.params is not None, 'Cannot assign value to abstract structure, set params first'
-        self.value = value
-        self.error = error
-    # end def
-
-    def unset_value(self):
-        self.value = None
-        self.error = None
-    # end def
-
-    @property
-    def params(self):
-        if self.p_list == []:
-            return None
-        else:
-            return array([p.value for p in self.p_list])
+    def shift_params(self, shifts):
+        if len(shifts) != len(self):
+            raise ValueError('Shifts has wrong dimensions!')
         # end if
-    # end def
-
-    @property
-    def params_err(self):
-        if self.p_list == []:
-            return None
-        else:
-            return array([p.param_err for p in self.p_list])
-        # end if
-    # end def
-
-    def shift_params(self, dparams):
-        assert not self.p_list == [], 'params has not been set'
-        for p, d in zip(self.p_list, dparams):
-            p.value += d
+        for param, shift in zip(self.params_list, shifts):
+            assert isinstance(param, Parameter)
+            param.shift(shift)
         # end for
-        self.unset_value()
+        self.reset_value()
     # end def
 
     def copy(
@@ -120,35 +125,43 @@ class ParameterSet():
         params=None,
         params_err=None,
         label=None,
-        **kwargs,
+        offset=None
     ):
-        structure = deepcopy(self)
+        paramset = deepcopy(self)
+        if offset is not None:
+            paramset.offset = offset
+        # end if
         if params is not None:
-            structure.set_params(params, params_err)
+            paramset.set_params(params, params_err)
         # end if
         if label is not None:
-            structure.label = label
+            paramset.label = label
         # end if
-        return structure
+        return paramset
     # end def
 
     def check_consistency(self):
         return True
     # end def
 
-    def relax(
-        self,
-        pes,
-        **kwargs
-    ):
-        assert isinstance(pes, PesFunction), "Must provide PES as a PesFunction instance."
+    def __str__(self):
+        string = self.__class__.__name__
+        if self.label is not None:
+            string += ' ({})'.format(self.label)
+        # end if
+        if self.params is None:
+            string += '\n  params: not set'
+        else:
+            string += '\n  params:'
+            for param in self.params_list:
+                string += '\n    ' + str(param)
+            # end for
+        # end if
+        return string
+    # end def
 
-        # Relax numerically using a wrapper around SciPy minimize
-        def relax_aux(p):
-            return pes.evaluate(ParameterSet(p)).get_value()
-        # end def
-        res = minimize(relax_aux, self.params, **kwargs)
-        self.set_params(res.x)
+    def __len__(self):
+        return len(self.params_list)
     # end def
 
 # end class

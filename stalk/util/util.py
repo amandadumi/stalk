@@ -1,20 +1,44 @@
 #!/usr/bin/env python3
-"""Various utility functions and constants commonly needed in line-search workflows
-"""
-
-from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan, linalg, linspace
-from numpy import meshgrid
-
-from .EffectiveVariance import EffectiveVariance
+"""Various utility functions and constants commonly needed in line-search workflows"""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan
+from numpy import meshgrid, linalg, linspace
+
 
 Bohr = 0.5291772105638411  # A
 Ry = 13.605693012183622  # eV
 Hartree = 27.211386024367243  # eV
+
+# Print formats
+
+# Floating-point format (signed)
+FF = '{:> 9.4f} '
+# Floating-point format (for errors)
+FU = '+/- {:<5.4f} '
+# String format for float fields (right-aligned)
+FFS = '{:>9s} '
+# String format for float fields (left-aligned)
+FFSL = '{:<9s} '
+# Integer format
+FI = '{:>4d} '
+# String format for integer fields
+FIS = '{:>4s} '
+# Percentage format (unsigned)
+FP = '{:>5.3f}% '
+# String format for percentage fields
+FPS = '{:>6s} '
+# Path+label format
+PL = '{}/{}'
+# Label format (right-aligned)
+FL = '{:>10s} '
+# Label format (left-aligned)
+FLL = '{:<10s} '
+# structure label format
+SL = 'd{}_{:+5.4f}'
 
 
 def get_min_params(x_n, y_n, pfn=3):
@@ -145,21 +169,4 @@ def directorize(path):
         path += '/'
     # end if
     return path
-# end def
-
-
-def get_var_eff(
-    structure,
-    pes,
-    loader,
-    samples=10,
-    path='path',
-    **kwargs
-):
-    jobs = pes.generate(structure, path, sigma=None, samples=samples)
-    from nexus import run_project
-    run_project(jobs)
-    Err = loader.load(path).get_error()
-    var_eff = EffectiveVariance(samples, Err)
-    return var_eff
 # end def

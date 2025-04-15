@@ -1,4 +1,6 @@
-from stalk.io.PwscfGeometry import PwscfGeometry
+#!/usr/bin/env python3
+
+from stalk.nexus.PwscfGeometry import PwscfGeometry
 from stalk.io.XyzGeometry import XyzGeometry
 from stalk.params import GeometryResult
 from stalk.util.util import match_to_tol
@@ -6,14 +8,18 @@ from stalk.util.util import match_to_tol
 
 def test_PwscfGeometry():
     # Test with empty args
-    loader = PwscfGeometry()
+    pes = PwscfGeometry()
+    assert pes.func is None
+    assert len(pes.args) == 0
 
     # Use XyzLoader for reference
     pos_ref = XyzGeometry().load(
-        'tests/unit_tests/assets/pwscf_relax', suffix='relax_bohr.xyz')
+        'tests/unit_tests/assets/pwscf_relax',
+        suffix='relax_bohr.xyz'
+    )
 
     # default suffix: relax.in; only path is needed
-    res0 = loader.load('tests/unit_tests/assets/pwscf_relax')
+    res0 = pes.load('tests/unit_tests/assets/pwscf_relax')
     assert isinstance(res0, GeometryResult)
     assert res0.get_axes() is None
     assert res0.get_elem() is None

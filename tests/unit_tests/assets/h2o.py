@@ -5,6 +5,9 @@ from numpy import array, sin, cos, pi
 from numpy.random import randn
 
 from stalk.io.PesLoader import PesLoader
+from stalk import ParameterHessian
+from stalk import ParameterStructure
+from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params import PesFunction
 from stalk.params.PesResult import PesResult
 from .helper import harmonic_a, morse, mean_distances, bond_angle
@@ -56,8 +59,15 @@ hessian_real_H2O = array('''
 '''.split(), dtype=float).reshape(9, 9)
 
 
-def pes_H2O(structure, sigma=0.0):
-    r, a = tuple(structure.params)
+def pes_H2O(structure, sigma=0.0, path=None):
+    if isinstance(structure, (ParameterStructure, NexusStructure)):
+        pos = structure.pos
+    else:
+        # In testing, pos may be passed directly
+        pos = structure
+    # end if
+    a = bond_angle(pos[1], pos[0], pos[2])
+    r = mean_distances([(pos[0], pos[1]), (pos[0], pos[1])])
     V = sigma * randn(1)[0]
     V += morse([0.95789707, 0.5, 0.5, 0.0], r)
     V += harmonic_a([104.119, 0.5], a)
@@ -66,14 +76,12 @@ def pes_H2O(structure, sigma=0.0):
 
 
 def get_structure_H2O():
-    from stalk import ParameterStructure
     return ParameterStructure(forward=forward_H2O, backward=backward_H2O, pos=pos_H2O, elem=elem_H2O)
 # end def
 
 
 def get_hessian_H2O():
-    from stalk import ParameterHessian
-    return ParameterHessian(hessian=hessian_H2O)
+    return ParameterHessian(hessian=hessian_H2O, structure=get_structure_H2O())
 # end def
 
 
@@ -85,7 +93,7 @@ def job_H2O_pes(structure, path, sigma, **kwargs):
 
 class H2oLoader(PesLoader):
 
-    def __load__(self, path, job_data=None, **kwargs):
+    def _load(self, path, job_data=None, **kwargs):
         for row in job_data:
             if path == row[0]:
                 return PesResult(*row[1])

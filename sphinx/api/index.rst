@@ -13,4 +13,5 @@ Not all methods are fully documented yet. The API is organized by modules as fol
    pls
    lsi
    io
+   nexus
    util

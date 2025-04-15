@@ -1,43 +1,59 @@
-from numpy import nan, random
+#!/usr/bin/env python3
+'''PesResult represents a PES evaluation result as value+error pair (float/nan)'''
+
+__author__ = "Juha Tiihonen"
+__email__ = "tiihonen@iki.fi"
+__license__ = "BSD-3-Clause"
+
+from numpy import isscalar, nan, isnan, random
 
 
 class PesResult:
-    '''Represents a PES evaluation result as value+error pair (float/nan)'''
+    _value = nan
+    _error = 0.0
 
-    value = None
-    error = None
+    @property
+    def value(self):
+        return self._value
+    # end def
 
-    def __init__(self, value, error=0.0):
-        if not isinstance(value, float):
-            self.value = nan
-            self.error = 0.0
+    @value.setter
+    def value(self, value):
+        if isscalar(value):
+            self._value = value
         else:
-            self.value = value
-            if isinstance(error, float):
-                self.error = error
-            else:
-                self.error = 0.0
-            # end if
+            raise ValueError("Value must be scalar")
         # end if
     # end def
 
-    def get_value(self):
-        return self.value
+    @property
+    def error(self):
+        return self._error
     # end def
 
-    def get_error(self):
-        return self.error
+    @error.setter
+    def error(self, error):
+        if isscalar(error) and error >= 0.0:
+            self._error = error
+        else:
+            raise ValueError("Error must be scalar and >= 0")
+        # end if
     # end def
 
-    def get_result(self):
-        return self.get_value(), self.get_error()
+    def __init__(self, value, error=0.0):
+        self.value = value
+        self.error = error
     # end def
 
     def add_sigma(self, sigma):
         '''Add artificial white noise to the result for error resampling purposes.'''
-        if sigma is not None and sigma > 0.0:
+        if isinstance(sigma, float) and sigma >= 0.0:
             self.error = (self.error**2 + sigma**2)**0.5
-            self.value = sigma * random.randn(1)[0]
+            if not isnan(self.value):
+                self.value += sigma * random.randn(1)[0]
+            # end if
+        else:
+            raise ValueError('Tried to add poor sigma: ' + str(sigma))
         # end if
     # end def
 

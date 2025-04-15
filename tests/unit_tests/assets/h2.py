@@ -1,4 +1,6 @@
 from numpy import array
+from stalk import ParameterStructure
+from stalk import ParameterHessian
 
 from .helper import distance, morse
 
@@ -10,19 +12,32 @@ pos_H2 = array('''
 elem_H2 = 'H H'.split()
 
 
-def forward_H2(pos):
+def forward_H2(pos, **kwargs):
     r = distance(pos[0], pos[1])
     return [r]
 # end def
 
 
-def backward_H2(params):
+def backward_H2(params, **kwargs):
     H1 = params[0] * array([0.0, 0.0, 0.5])
     H2 = params[0] * array([0.0, 0.0, -0.5])
     return array([H1, H2])
-
-
 # end def
+
+
+def forward_H2_alt(pos, factor=2.0, **kwargs):
+    r = distance(pos[0], pos[1]) / factor
+    return [r]
+# end def
+
+
+def backward_H2_alt(params, factor=2.0, **kwargs):
+    H1 = params[0] * array([0.0, 0.0, 0.5 * factor])
+    H2 = params[0] * array([0.0, 0.0, -0.5 * factor])
+    return array([H1, H2])
+# end def
+
+
 hessian_H2 = array([[1.0]])
 
 
@@ -43,12 +58,10 @@ def alt_pes_H2(params):  # inaccurate; for testing
 
 
 def get_structure_H2():
-    from stalk import ParameterStructure
     return ParameterStructure(forward=forward_H2, backward=backward_H2, pos=pos_H2, elem=elem_H2)
 # end def
 
 
 def get_hessian_H2():
-    from stalk import ParameterHessian
     return ParameterHessian(hessian=hessian_H2)
 # end def

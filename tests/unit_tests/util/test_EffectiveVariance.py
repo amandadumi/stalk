@@ -15,7 +15,7 @@ def test_EffectiveVariance():
     # Test that half the errorbar needs quadruple samples
     assert ev.get_samples(errorbar / 2) == 4 * samples
     # Test that twice the samples results in 1/sqrt(2) errorbar
-    match_to_tol(ev.get_errorbar(2 * samples) == errorbar * 2**-0.5, 0.1)
+    assert match_to_tol(ev.get_errorbar(2 * samples), errorbar * 2**-0.5, 0.1)
     # Test that samples is always > 0
     assert ev.get_samples(1e10) == 1
 

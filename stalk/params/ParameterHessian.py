@@ -1,30 +1,25 @@
 #!/usr/bin/env python3
-"""ParameterHessian class to consider Hessians according to a ParameterSet mapping.
-"""
-
-from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
-
-from stalk.util import Ry, Hartree, Bohr, directorize, bipolyfit
-from stalk.io.PesLoader import PesLoader
-from stalk.io.NexusGenerator import NexusGenerator
-from .ParameterSet import ParameterSet
+"""ParameterHessian class to consider Hessians according to a ParameterSet mapping."""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
+
+from stalk.params.ParameterStructure import ParameterStructure
+from stalk.params.PesFunction import PesFunction
+from stalk.util import Ry, Hartree, Bohr, bipolyfit
+from stalk.params.ParameterSet import ParameterSet
+
 
 class ParameterHessian():
-    """ParameterHessian class to consider Hessians according to a ParameterSet mapping.
-    """
     hessian = None  # always stored in (Ry/A)**2
     Lambda = None
     structure = None
     U = None
     P = None
     D = None
-    # flag whether hessian is set (True) or just initialized (False)
-    hessian_set = False
 
     def __init__(
         self,
@@ -61,7 +56,6 @@ class ParameterHessian():
         ), 'Provided ParameterStructure is incomplete or inconsistent'
         hessian = diag(len(structure.params) * [1.0])
         self._set_hessian(hessian)
-        self.hessian_set = False  # this is not an appropriate hessian
     # end def
 
     def init_hessian_real(self, hessian_real, structure=None):
@@ -105,7 +99,6 @@ class ParameterHessian():
         self.hessian = array(hessian)
         self.P, self.D = P, D
         self.Lambda, self.U = Lambda, U
-        self.hessian_set = True
     # end def
 
     def get_directions(self, d=None):
@@ -153,6 +146,11 @@ class ParameterHessian():
         return self._convert_hessian(self.hessian, **kwargs)
     # end def
 
+    @property
+    def hessian_set(self):
+        return self.hessian is not None
+    # end def
+
     def __str__(self):
         string = self.__class__.__name__
         if self.hessian_set:
@@ -173,59 +171,32 @@ class ParameterHessian():
 
     def compute_fdiff(
         self,
+        pes: PesFunction,
         structure=None,
         dp=0.01,
-        mode=None,
-        path='fdiff',
-        pes=None,
-        pes_func=None,
-        pes_args={},
-        loader=None,
-        load_func=None,
-        load_args={},
+        dpos_mode=False,
         **kwargs,
     ):
         eqm = structure if structure is not None else self.structure
         P = len(eqm.params)
         dps = array(P * [dp]) if isscalar(dp) else array(dp)
-        dp_list, structure_list, label_list = self._get_fdiff_data(eqm, dps)
-        if mode == 'pes':
-            Es = [pes.evaluate(s).get_value() for s in structure_list]
-        elif mode == 'nexus':
-            # Generate jobs
-            if not isinstance(pes, NexusGenerator):
-                # Checks are made in the wrapper class
-                pes = NexusGenerator(pes_func, pes_args)
+        dp_list, structure_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
+        pes.evaluate_all(structure_list, **kwargs)
+        # Pick those displacements and energies that were successfully computed
+        energies = []
+        pdiffs = []
+        for dp, s in zip(dp_list, structure_list):
+            if s.value is not None:
+                pdiffs.append(dp)
+                energies.append(s.value)
             # end if
-            jobs = []
-            for s, label in zip(structure_list, label_list):
-                dir = '{}{}'.format(directorize(path), label)
-                # Make a copy structure for job generation
-                jobs += pes.generate(s.copy(), dir)
-            # end for
-            from nexus import run_project
-            run_project(jobs)
+        # end for
+        pdiffs = array(pdiffs)
+        energies = array(energies)
 
-            # Load jobs
-            if not isinstance(loader, PesLoader):
-                # Try to instantiate PesLoader class in the hopes that load_func conforms
-                loader = PesLoader(load_args)
-                loader.__load__ = load_func
-            # end if
-            Es = []
-            for label in label_list:
-                dir = '{}{}'.format(directorize(path), label)
-                E = loader.load(path=dir).get_value()
-                Es.append(E)
-            # end for
-        else:
-            raise (AssertionError, 'Mode {} not supported'.format(mode))
-        # end if
-        Es = array(Es)
         params = eqm.params
-        pdiffs = array(dp_list)
         if P == 1:  # for 1-dimensional problems
-            pf = polyfit(pdiffs[:, 0], Es, 2)
+            pf = polyfit(pdiffs[:, 0], energies, 2)
             hessian = array([[pf[0]]])
         else:
             hessian = zeros((P, P))
@@ -244,7 +215,7 @@ class ParameterHessian():
                         ids = ids & (abs(pdiffs[:, p]) < 1e-10)
                     # end for
                     XY = pdiffs[where(ids)]
-                    E = array(Es)[where(ids)]
+                    E = energies[where(ids)]
                     X = XY[:, p0]
                     Y = XY[:, p1]
                     pf = bipolyfit(X, Y, E, 2, 2)
@@ -261,10 +232,10 @@ class ParameterHessian():
         self.init_hessian_array(hessian)
     # end def
 
-    def _get_fdiff_data(self, structure, dps):
+    def _get_fdiff_data(self, structure, dps, dpos_mode=False):
+        assert isinstance(structure, ParameterSet)
         dp_list = [0.0 * dps]
-        structure_list = [structure.copy()]
-        label_list = ['eqm']
+        structure_list = [structure.copy(label='eqm')]
 
         def shift_params(id_ls, dp_ls):
             dparams = array(len(dps) * [0.0])
@@ -277,12 +248,16 @@ class ParameterHessian():
                 # end if
                 label += '{}'.format(dp)
             # end for
-            structure_new = structure.copy()
-            structure_new.shift_params(dparams)
+            structure_new = structure.copy(label=label)
+            if isinstance(structure, ParameterStructure):
+                structure_new.shift_params(dparams, dpos_mode=dpos_mode)
+            else:
+                structure_new.shift_params(dparams)
+            # end if
             structure_list.append(structure_new)
             dp_list.append(dparams)
-            label_list.append(label)
         # end def
+
         for p0, dp0 in enumerate(dps):
             shift_params([p0], [+dp0])
             shift_params([p0], [-dp0])
@@ -296,7 +271,11 @@ class ParameterHessian():
                 shift_params([p0, p1], [-dp0, -dp1])
             # end for
         # end for
-        return dp_list, structure_list, label_list
+        return dp_list, structure_list
+    # end def
+
+    def __len__(self):
+        return self.D
     # end def
 
 # end class
