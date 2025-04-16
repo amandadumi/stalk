@@ -145,7 +145,7 @@ class ParameterStructure(ParameterSet):
             # If forward_func has been given, update params; if not, return None
             params = self.map_forward(self.pos, self.axes)
             if params is not None:
-                self.set_params()
+                self.set_params(params)
             # end if
             self.reset_value()  # setting axes will reset value
         # end if
