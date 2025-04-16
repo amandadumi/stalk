@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stalk"
+dynamic = ["version"]
+dependencies = [
+  "numpy>=2.0.1",
+  "scipy>=1.14.1",
+  "matplotlib>=3.9.2",
+  "dill>=0.3.9",
+]
+[tool.hatch.version]
+path = "stalk/__init__.py"
+requires-python = ">= 3.9"
+authors = [
+  {name = "Juha Tiihonen", email = "tiihonen@iki.fi"},
+]
+maintainers = [
+  {name = "Juha Tiihonen", email = "tiihonen@iki.fi"},
+]
+description = "Surrogate Theory Accelerated Line-search Kit"
+readme = "README.md"
+license = "GPL v3.0"
+license-files = ["LICENSE"]
