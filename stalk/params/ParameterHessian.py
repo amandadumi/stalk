@@ -186,7 +186,7 @@ class ParameterHessian():
         energies = []
         pdiffs = []
         for dp, s in zip(dp_list, structure_list):
-            if s.value is not None:
+            if s.value is not None and s.enabled:
                 pdiffs.append(dp)
                 energies.append(s.value)
             # end if
