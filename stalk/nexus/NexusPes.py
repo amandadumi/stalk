@@ -7,7 +7,7 @@ __license__ = "BSD-3-Clause"
 
 from numpy import isnan
 
-from nexus import run_project
+from nexus import run_project, bundle
 
 from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
@@ -19,6 +19,7 @@ from stalk.util.util import directorize
 class NexusPes(PesFunction):
     loader = None
     disable_failed = False
+    bundle_jobs = False
 
     def __init__(
         self,
@@ -27,10 +28,12 @@ class NexusPes(PesFunction):
         loader=None,
         load_func=None,
         load_args={},
-        disable_failed=False
+        disable_failed=False,
+        bundle_jobs=False
     ):
         super().__init__(func, args)
         self.disable_failed = disable_failed
+        self.bundle_jobs = bundle_jobs
         if isinstance(loader, PesLoader):
             self.loader = loader
         else:
@@ -127,7 +130,11 @@ class NexusPes(PesFunction):
         if interactive:
             self._prompt(structures)
         # end if
-        run_project(jobs)
+        if self.bundle_jobs:
+            run_project(bundle(jobs))
+        else:
+            run_project(jobs)
+        # end if
 
         # Then, load
         for structure, sigma in zip(structures, sigmas):

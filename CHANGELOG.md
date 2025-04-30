@@ -1,3 +1,6 @@
+## v0.2.1 - Current
+- Add Nexus job bundle feature
+
 ## v0.2.0 - 15 Apr 2025
 
 - Comprehensive code refactorization, as overviewed in the following:

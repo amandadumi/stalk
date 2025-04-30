@@ -36,6 +36,7 @@ def test_NexusPes(tmp_path):
         loader=TestLoader()
     )
     assert not pes.disable_failed
+    assert not pes.bundle_jobs
     pes.evaluate(s, path=str(tmp_path) + '/nosigma', sigma=0.0)
     assert s.generated
     assert len(s.jobs) == 1
@@ -83,5 +84,27 @@ def test_NexusPes(tmp_path):
     # TODO: not sure if this behavior is good
     assert not structures[-1].generated
     assert not structures[-1].analyzed
+
+    # 3: Test bundle
+    sigmas = [0.1, 0.2]
+    pes_bundle = NexusPes(
+        nxs_generic_pes,
+        args={'pes_variable': 'fail'},
+        loader=TestLoader(),
+        bundle_jobs=True
+    )
+    assert pes_bundle.bundle_jobs
+    s1 = s.copy(pos=pos_H2O * 0.9, label='bundle1')
+    s2 = s.copy(pos=pos_H2O * 1.1, label='bundle2')
+    structures_bundle = [s1, s2]
+    pes.evaluate_all(
+        structures_bundle,
+        path=str(tmp_path) + '/bundle',
+        sigmas=sigmas,
+        add_sigma=True
+    )
+    assert all([s.generated for s in structures_bundle])
+    assert all([s.analyzed for s in structures_bundle])
+    assert match_to_tol([s.error for s in structures_bundle], sigmas)
 
 # end def
