@@ -5,9 +5,10 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array, argsort, isscalar, linspace, append, nan, isnan, where
-from numpy import argmin, ndarray
+from numpy import array, isscalar, linspace, nan
+from numpy import ndarray
 
+from stalk.ls.ErrorSurface import ErrorSurface
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.TlsSettings import TlsSettings
 from .LineSearch import LineSearch
@@ -20,9 +21,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     _epsilon = None  # optimized target error
     _W_opt = None  # W to meet epsilon
     _sigma_opt = None  # sigma to meet epsilon
-    E_mat = None  # resampled W-sigma matrix of errors
-    W_mat = None  # resampled W-mesh
-    S_mat = None  # resampled sigma-mesh
+    _error_surface: ErrorSurface = None  # Error surface
 
     def __init__(
         self,
@@ -96,7 +95,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         else:
             self._target_settings = target_settings
             # Clear the error surface when new settings are introduced
-            self._reset_resampling()
+            self._error_surface = None
         # end if
     # end def
 
@@ -107,8 +106,11 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     @sigma_opt.setter
     def sigma_opt(self, sigma_opt):
-        if isscalar(sigma_opt) and sigma_opt > 0.0:
+        if isscalar(sigma_opt) and sigma_opt > 0.0 or sigma_opt is None:
             self._sigma_opt = sigma_opt
+        else:
+            raise ValueError("sigma_opt must be > 0.0 but " + str(sigma_opt) + " was given.")
+        # end if
     # end def
 
     @property
@@ -118,8 +120,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     @W_opt.setter
     def W_opt(self, W_opt):
-        if isscalar(W_opt) and W_opt > 0.0:
+        if isscalar(W_opt) and W_opt > 0.0 or W_opt is None:
             self._W_opt = W_opt
+        else:
+            raise ValueError("W_opt must be > 0.0 but " + str(W_opt) + " was given.")
         # end if
     # end def
 
@@ -130,10 +134,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     @epsilon.setter
     def epsilon(self, epsilon):
-        if isscalar(epsilon) and epsilon > 0.0:
+        if isscalar(epsilon) and epsilon > 0.0 or epsilon is None:
             self._epsilon = epsilon
         else:
-            raise ValueError("Epsilon must be > 0.0 but " + str(epsilon) + "was given.")
+            raise ValueError("Epsilon must be > 0.0 but " + str(epsilon) + " was given.")
         # end if
     # end def
 
@@ -157,26 +161,8 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     @property
-    def Ws(self):
-        if self.resampled:
-            return self.W_mat[0]
-        else:
-            return None
-        # end if
-    # end def
-
-    @property
-    def sigmas(self):
-        if self.resampled:
-            return self.S_mat[:, 0]
-        else:
-            return None
-        # end if
-    # end def
-
-    @property
     def resampled(self):
-        return self.E_mat is not None
+        return isinstance(self._error_surface, ErrorSurface)
     # end def
 
     @property
@@ -191,8 +177,8 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     @Gs.setter
     def Gs(self, Gs):
-        self.settings.Gs = Gs
-        self._reset_resampling()
+        self.target_settings.Gs = Gs
+        self._error_surface = None
     # end def
 
     @property
@@ -201,12 +187,8 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     @property
-    def T_mat(self):
-        if self.W_mat is None:
-            return None
-        else:
-            return self.W_mat >= self.S_mat
-        # end if
+    def error_surface(self):
+        return self._error_surface
     # end def
 
     def compute_bias_of(
@@ -268,11 +250,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     def optimize(
         self,
         epsilon,
-        W_resolution=0.025,  # W resolution fraction of the error surface
-        S_resolution=0.0025,  # S resolution fraction of the error surface
         max_rounds=10,  # maximum number of rounds
         skip_setup=False,  # If confident
         **kwargs
+        # W_resolution=0.1, S_resolution=0.1, verbosity=1
         # fit_kind=None, fit_func=None, fit_args={}, fraction=None,
         # generate_args: W_num, W_max, sigma_num, sigma_max, noise_frac, M, N, Gs
         # bias_mix, bias_order
@@ -284,12 +265,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         if not isscalar(epsilon) or epsilon <= 0.0:
             raise ValueError("Must provide epsilon > 0.")
         # end if
-        if W_resolution >= 1.0 or W_resolution <= 0.0:
-            raise ValueError('W resolution must be 0.0 < W_resolution < 1.0')
-        # end if
-        if S_resolution >= 1.0 or S_resolution <= 0.0:
-            raise ValueError('S resolution must be 0.0 < S_resolution < 1.0')
-        # end if
         if max_rounds <= 0:
             raise ValueError('Must provide max_rounds > 0')
         # end if
@@ -298,20 +273,38 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         if not self.optimized or not skip_setup:
             self.setup_optimization(**kwargs)
         # end if
-        try:
-            # Find W and sigma that maximize sigma
-            for round in range(max_rounds):
-                xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
-                if self._treat_errors(xi, yi, epsilon, W_resolution, S_resolution):
-                    break
-                # end if
-            # end while
-            self.W_opt = self.W_mat[yi, xi]
-            self.sigma_opt = self.S_mat[yi, xi]
+        # Find W and sigma that maximize sigma
+        for round in range(max_rounds):
+            # Probe accuracy requests from ErrorSurface
+            W_vals, sigma_vals = self.error_surface.request_points(epsilon)
+            if len(W_vals) == 0 and len(sigma_vals) == 0:
+                # Break when no more accuracy can be requested
+                break
+            else:
+                # Insert x-cols and y-rows
+                for W_val in W_vals:
+                    self.insert_W_data(W_val)
+                # end for
+                for sigma_val in sigma_vals:
+                    self.insert_sigma_data(sigma_val)
+                # end for
+            # end if
+        # end while
+
+        W_opt, sigma_opt = self.error_surface.evaluate_target(epsilon)
+        if W_opt == 0.0 or sigma_opt == 0.0:
+            msg = f"Warning! Optimization to epsilon={epsilon} resulted in "
+            msg += f"W_opt={W_opt} and sigma_opt={sigma_opt} which is numerically "
+            msg += "unfeasible. Check the error surface or epsilon!"
+            print(msg)
+            self.W_opt = None
+            self.sigma_opt = None
+            self.epsilon = None
+        else:
+            self.W_opt = W_opt
+            self.sigma_opt = sigma_opt
             self.epsilon = epsilon
-        except AssertionError:
-            print('Optimization failed!')
-        # end try
+        # end if
     # end def
 
     def setup_optimization(
@@ -321,6 +314,9 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         sigma_num=3,
         sigma_max=None,
         noise_frac=0.05,
+        W_resolution=0.1,
+        S_resolution=0.1,
+        verbosity=1,
         **ls_overrides
         # fit_kind=None, fit_func=None, fit_args={}, fraction=0.025, Gs=None,
         # M=None, N=None, bias_mix=0.0, bias_order=1
@@ -335,13 +331,16 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             self.target_settings = target_settings
         # end if
         # Make sure error surface is generated
-        if self.E_mat is None:
+        if not self.resampled:
             self.generate_error_surface(
                 W_num=W_num,
                 W_max=W_max,
                 sigma_num=sigma_num,
                 sigma_max=sigma_max,
-                noise_frac=noise_frac
+                noise_frac=noise_frac,
+                W_resolution=W_resolution,
+                S_resolution=S_resolution,
+                verbosity=verbosity
             )
         # end if
     # end def
@@ -355,11 +354,20 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         sigma_num=3,
         sigma_max=None,
         noise_frac=0.05,
+        W_resolution=0.1,
+        S_resolution=0.1,
+        verbosity=1
     ):
         if not self.valid_target:
             raise AssertionError("Must have valid target data before generating error.")
         elif not self.setup:
             raise AssertionError("Must setup target line-search with M > 2")
+        # end if
+        if W_resolution >= 0.5 or W_resolution <= 0.0:
+            raise ValueError('W resolution must be 0.0 < W_resolution < 0.5')
+        # end if
+        if S_resolution >= 0.5 or S_resolution <= 0.0:
+            raise ValueError('S resolution must be 0.0 < S_resolution < 0.5')
         # end if
 
         W_max = W_max if W_max is not None else self.W_max
@@ -373,14 +381,21 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         # end if
 
         # Initial W and sigma grids
-        Ws = linspace(0.0, W_max, W_num)
-        sigmas = linspace(0.0, sigma_max, sigma_num)
+        self._error_surface = ErrorSurface(
+            X_res=W_resolution,
+            Y_res=S_resolution,
+            verbosity=verbosity
+        )
         # Start from adding the first row: sigma=0 -> plain bias
-        E0_row = [self._compute_target_error(W, sigmas[0]) for W in Ws]
-        self.E_mat = array([E0_row])
-        self.W_mat = array([Ws])
-        self.S_mat = array([W_num * [sigmas[0]]])
+        Ws = linspace(0.0, W_max, W_num)
+        for W in Ws:
+            if W > 0.0:
+                self.insert_W_data(W)
+            # end if
+        # end for
+
         # Then, append the noisy rows
+        sigmas = linspace(0.0, sigma_max, sigma_num)
         for sigma in sigmas[1:]:
             self.insert_sigma_data(sigma)
         # end for
@@ -390,29 +405,16 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         if not (self.resampled and isscalar(sigma) and sigma > 0):
             raise AssertionError('Must have resampled data and scalar sigma > 0')
         # end if
-        E_row = [self._compute_target_error(W, sigma) for W in self.Ws]
-        W_mat = append(self.W_mat, [self.Ws], axis=0)
-        S_mat = append(self.S_mat, [len(self.Ws) * [sigma]], axis=0)
-        E_mat = append(self.E_mat, [E_row], axis=0)
-        idx = argsort(S_mat[:, 0])
-        self.W_mat = W_mat[idx]
-        self.S_mat = S_mat[idx]
-        self.E_mat = E_mat[idx]
+        E_row = [self._compute_target_error(W, sigma) for W in self.error_surface.Xs]
+        self.error_surface.insert_row(sigma, E_row)
     # end def
 
     def insert_W_data(self, W):
-        if not (self.resampled and isscalar(W) and W > 0 and W < self.W_max):
-            raise AssertionError('Must have resampled data and scalar 0 < W < W_max')
+        if not (self.resampled and isscalar(W) and W > 0 and W <= self.W_max):
+            raise AssertionError(f'Must have resampled data and scalar 0 < W <= W_max, W_max={self.W_max}')
         # end if
-        sigmas = self.S_mat[:, 0]
-        E_col = [self._compute_target_error(W, sigma) for sigma in sigmas]
-        W_mat = append(self.W_mat, array([len(sigmas) * [W]]).T, axis=1)
-        S_mat = append(self.S_mat, array([sigmas]).T, axis=1)
-        E_mat = append(self.E_mat, array([E_col]).T, axis=1)
-        idx = argsort(W_mat[0])
-        self.W_mat = W_mat[:, idx]
-        self.S_mat = S_mat[:, idx]
-        self.E_mat = E_mat[:, idx]
+        E_col = [self._compute_target_error(W, sigma) for sigma in self.error_surface.Ys]
+        self.error_surface.insert_col(W, E_col)
     # end def
 
     # Compute fitting bias and error using consistent parameters
@@ -423,167 +425,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         grid = LineSearchGrid(offsets=offsets, values=values, errors=errors)
         error = self.compute_error(grid)
         return error
-    # end def
-
-    # Treat various accuracy errors by adding resolution inside boundaries
-    # When new points are added, the opeations return False; if none are added
-    # the operations return True and the loop breaks.
-    def _treat_errors(self, xi, yi, epsilon, X_resolution, Y_resolution):
-        if isnan(xi) or isnan(yi):
-            msg = 'Could not find the target error. '
-            msg += f'The smallest epsilon is {self.E_mat.min()} and {epsilon} was requested.'
-            raise AssertionError(msg)
-        # end if
-        result = True
-        if xi == 0:
-            result &= self._treat_x_underflow(X_resolution)
-        elif xi == self.E_mat.shape[1] - 1:
-            result &= self._treat_x_overflow(xi, X_resolution)
-        else:
-            result &= self._treat_x_res(xi, X_resolution)
-        # end if
-
-        if yi == 0:
-            result &= self._treat_y_underflow(Y_resolution / 100)
-        elif yi == self.E_mat.shape[0] - 1:
-            result &= self._treat_y_overflow(yi, Y_resolution)
-        else:
-            result &= self._treat_y_res(yi, Y_resolution)
-        # end if
-        return result
-    # end def
-
-    # Fix x underflow by adding a new W value between the first and second
-    def _treat_x_underflow(self, X_resolution):
-        W_max = self.W_mat[0, -1]
-        # The first W is (almost) zero
-        W_this = self.W_mat[0, 0]
-        W_right = (self.W_mat[0, 0] + self.W_mat[0, 1]) / 2
-        W_diff = (W_right - W_this) / W_max
-        if W_diff > X_resolution:
-            self.insert_W_data(W_right)
-            return False
-        else:
-            # Else, print a recommendation
-            msg = f'Persistent W-underflow in tls{self.d}:'
-            msg += f' To improve performance, sample low W near {W_this}'
-            print(msg)
-            return True
-        # end if
-    # end def
-
-    def _treat_x_overflow(self, xi, X_resolution):
-        W_max = self.W_mat[0, -1]
-        W_this = self.W_mat[0, xi]
-        W_left = self.W_mat[0, xi - 1]
-        W_diff = (W_this - W_left) / W_max
-        if W_diff > X_resolution:
-            # Add new W value to the left
-            W_new = (W_this + W_left) / 2
-            self.insert_W_data(W_new)
-            return False
-        else:
-            # Else, print a recommendation
-            msg = f'Persistent W-overflow in tls{self.d}:'
-            msg += f' To improve performance, sample W > {W_this}'
-            print(msg)
-            return True
-        # end if
-    # end def
-
-    def _treat_x_res(self, xi, X_resolution):
-        W_max = self.W_mat[0, -1]
-        W_this = self.W_mat[0, xi]
-        W_left = self.W_mat[0, xi - 1]
-        W_right = self.W_mat[0, xi + 1]
-        res = True
-        if (W_this - W_left) / W_max / 2 > X_resolution:
-            # Add new W value to the left
-            self.insert_W_data((W_this + W_left) / 2)
-            res &= False
-        # end if
-        if (W_right - W_this) / W_max / 2 > X_resolution:
-            # Add new W value to the right
-            self.insert_W_data((W_this + W_right) / 2)
-            res &= False
-        # end if
-        return res
-    # end def
-
-    # Fix x underflow by adding a new sigma value between the first and second
-    def _treat_y_underflow(self, Y_resolution):
-        S_this = self.S_mat[0, 0]  # should be zero
-        S_up = self.S_mat[1, 0] / 2
-        S_diff = (S_up - S_this) / self.W_max
-        if S_diff > Y_resolution:
-            self.insert_sigma_data(S_up)
-            return False
-        else:
-            # Else, print a recommendation
-            msg = f'Persistent Sigma underflow in tls{self.d}:'
-            msg += f' To improve performance, check Y_resolution: {Y_resolution}'
-            print(msg)
-            return True
-        # end if
-    # end def
-
-    # Fix x underflow by adding a new sigma value twice as high until W_max
-    def _treat_y_overflow(self, S_this, Y_resolution):
-        S_this = self.S_mat[-1, 0]
-        S_up = max(2 * S_this, self.W_max)
-        S_diff = (S_up - S_this) / self.W_max
-        if S_diff > Y_resolution:
-            self.insert_sigma_data(S_up)
-            return False
-        else:
-            msg = f'Could not add sigma higher than {S_up}.'
-            msg += f' To improve performance, sample W > {self.W_max}.'
-            print(msg)
-            return True
-        # end if
-    # end def
-
-    def _treat_y_res(self, yi, Y_resolution):
-        S_this = self.S_mat[yi, 0]
-        S_down = self.S_mat[yi - 1, 0]
-        S_up = self.S_mat[yi + 1, 0]
-        res = True
-        if (S_up - S_this) / self.W_max / 2 > Y_resolution:
-            self.insert_sigma_data((S_this + S_up) / 2)
-            res &= False
-        # end if
-        if (S_this - S_down) / self.W_max / 2 > Y_resolution:
-            self.insert_sigma_data((S_this + S_down) / 2)
-            res &= False
-        # end if
-        return res
-    # end def
-
-    # Return the W and maximum sigma to meet epsilon and maximization errors
-    def _maximize_y(self, epsilon):
-        xi, yi = self._argmax_y(self.E_mat, self.T_mat, epsilon)
-        E0 = self.E_mat[yi, xi]
-        x0 = self.W_mat[yi, xi]
-        y0 = self.S_mat[yi, xi]
-        return x0, y0, E0, (xi, yi)
-    # end def
-
-    def _argmax_y(self, E, T, epsilon):
-        """Return indices to the highest point in E matrix that is lower than epsilon"""
-        xi, yi = nan, nan
-        W = self.W_mat[0]
-        for i in range(len(E), 0, -1):  # from high to low
-            err = where((E[i - 1] < epsilon) & (T[i - 1]))
-            if len(err[0]) > 0:
-                yi = i - 1
-                # xi = err[0][argmax(E[i - 1][err[0]])]
-                # take the middle
-                xi = err[0][argmin(
-                    abs(W[err[0]] - (W[err[0][0]] + W[err[0][-1]]) / 2))]
-                break
-            # end if
-        # end for
-        return xi, yi
     # end def
 
     def to_settings(self):
@@ -605,7 +446,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     def statistical_cost(self):
         """Return statistical cost based on sigma and M"""
         if not self.optimized:
-            raise AssertionError('Cannot compute statistical cost before optimization')
+            return -1.0
         # end if
         return self.M * self.sigma_opt**-2
     # end def
@@ -622,10 +463,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         if ax is None:
             f, ax = plt.subplots(1, 1)
         # end if
-        T = self.T_mat
-        X = self.W_mat
-        Y = self.S_mat
-        Z = self.E_mat
+        T = self.error_surface.T_mat
+        X = self.error_surface.X_mat
+        Y = self.error_surface.Y_mat
+        Z = self.error_surface.E_mat
         Z[~T] = nan
         ax.contourf(X, Y, Z)
         ax.contour(X, Y, Z, [self.epsilon], colors='k')
@@ -634,9 +475,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     def _reset_resampling(self):
-        self.E_mat = None
-        self.S_mat = None
-        self.W_mat = None
+        self.error_surface = None
     # end def
 
 # end class

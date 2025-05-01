@@ -164,7 +164,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         **ls_args
         # M=7, fit_kind=None, fit_func=None, fit_args={}, Gs=None, fraction=0.025
         # bias_mix=0.0, bias_order=1, noise_frac=0.05,
-        # W_resolution=0.05, S_resolution=0.05, max_rounds=10
+        # W_resolution=0.05, S_resolution=0.05, verbosity=1, max_rounds=10
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
         if self.optimized and not reoptimize:
@@ -376,8 +376,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
             # sequential line-search from d0...dD
             for d in range(len(epsilon_d_opt)):
                 epsilon_d = epsilon_d_opt.copy()
-                min_error = self.ls_list[d].E_mat.min()
-                R_min = max(epsilon_d[d] * (1 - R_factor), min_error)
+                R_min = epsilon_d[d] * (1 - R_factor)
                 R_max = epsilon_d[d] * (1 + R_factor)
                 epsilons = linspace(R_min, R_max, 5)
                 costs = []
@@ -574,9 +573,13 @@ class TargetParallelLineSearch(ParallelLineSearch):
         return mean(epsilon_p**2 * self.hessian.hessian.diagonal())
     # end def
 
-    def _resample_errors_p_of_d(self, epsilon_d):
+    def _resample_errors_p_of_d(
+        self,
+        epsilon_d,
+        **kwargs  # max_rounds=10
+    ):
         for epsilon, tls, in zip(epsilon_d, self.ls_list):
-            tls.optimize(epsilon, skip_setup=True)
+            tls.optimize(epsilon, skip_setup=True, **kwargs)
         # end for
         return self._resample_errors()[1]
     # end def

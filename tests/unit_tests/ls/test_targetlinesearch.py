@@ -69,12 +69,8 @@ def test_TargetLineSearch_init():
     assert tls.R_opt is None
     assert tls.grid_opt is None
     assert tls.Gs is None
-    assert tls.Ws is None
     assert tls.M == 0
-    assert tls.E_mat is None
-    assert tls.W_mat is None
-    assert tls.S_mat is None
-    assert tls.T_mat is None
+    assert tls.error_surface is None
     assert tls.epsilon is None
     assert not tls.setup
     assert not tls.resampled
@@ -92,6 +88,7 @@ def test_TargetLineSearch_init():
         d=d,
         W=W
     )
+    assert tls.statistical_cost() == -1.0
     assert len(tls) == 7
     # Bias without valid target is nan
     assert isnan(tls.compute_bias_of(R=1.0)[2])
@@ -113,9 +110,6 @@ def test_TargetLineSearch_init():
     # end with
     with raises(AssertionError):
         tls.optimize(0.1)
-    # end with
-    with raises(AssertionError):
-        tls.statistical_cost()
     # end with
 
 # end def
@@ -205,10 +199,7 @@ def test_TargetLineSearch_generate():
 
     # Test setup
     assert not tls.resampled
-    assert tls.E_mat is None
-    assert tls.W_mat is None
-    assert tls.S_mat is None
-    assert tls.T_mat is None
+    assert tls.error_surface is None
     with raises(AssertionError):
         # Must be setup before generating
         tls.generate_error_surface()
@@ -231,12 +222,11 @@ def test_TargetLineSearch_generate():
                        [0.010, 0.010, 0.010]])
     # Note: this is not independently controlled. We can only consistently compare the
     # First row of E_mat
-    E0_mat_ref = array([[1.29622236e-06, 3.53685589e-04, 1.86921621e-03]])
-    assert match_to_tol(tls.S_mat.max() / tls.W_mat.max(), 0.05)
-    assert match_to_tol(tls.W_mat, W_mat_ref)
-    assert match_to_tol(tls.S_mat, S_mat_ref)
-    assert match_to_tol(tls.E_mat[0], E0_mat_ref[0])
-    assert all((tls.T_mat == (W_mat_ref >= S_mat_ref)).flatten())
+    E0_mat_ref = array([[0.0, 3.53685589e-04, 1.86921621e-03]])
+    assert match_to_tol(tls.error_surface.Y_mat.max() / tls.error_surface.X_mat.max(), 0.05)
+    assert match_to_tol(tls.error_surface.X_mat, W_mat_ref)
+    assert match_to_tol(tls.error_surface.Y_mat, S_mat_ref)
+    assert match_to_tol(tls.error_surface.E_mat[0], E0_mat_ref[0])
     # Test non-default values
     W_num = 4
     sigma_num = 5
@@ -253,8 +243,8 @@ def test_TargetLineSearch_generate():
         noise_frac=noise_frac,
     )
     assert Gs_old is tls.Gs
-    assert len(tls.Ws) == 3
-    assert len(tls.sigmas) == 3
+    assert len(tls.error_surface.Xs) == 3
+    assert len(tls.error_surface.Ys) == 3
 
     # Doubling the N will enforce recomputation of the whole error surface
     tls.setup_optimization(
@@ -276,13 +266,12 @@ def test_TargetLineSearch_generate():
                         [0.00750, 0.00750, 0.00750, 0.00750],
                         [0.01125, 0.01125, 0.01125, 0.01125],
                         [0.01500, 0.01500, 0.01500, 0.01500]])
-    E0_mat_ref1 = array([[1.29622236e-06, 1.41974295e-04, 3.53685589e-04, 1.07211477e-03]])
-    assert tls.W_mat.max() == W_max
-    assert match_to_tol(tls.S_mat.max() / tls.W_mat.max(), noise_frac)
-    assert match_to_tol(tls.W_mat, W_mat_ref1)
-    assert match_to_tol(tls.S_mat, S_mat_ref1)
-    assert match_to_tol(tls.E_mat[0], E0_mat_ref1[0])
-    assert all((tls.T_mat == (W_mat_ref1 >= S_mat_ref1)).flatten())
+    E0_mat_ref1 = array([[0.0, 1.41974295e-04, 3.53685589e-04, 1.07211477e-03]])
+    assert tls.error_surface.Xs.max() == W_max
+    assert match_to_tol(tls.error_surface.Ys.max() / tls.error_surface.Xs.max(), noise_frac)
+    assert match_to_tol(tls.error_surface.X_mat, W_mat_ref1)
+    assert match_to_tol(tls.error_surface.Y_mat, S_mat_ref1)
+    assert match_to_tol(tls.error_surface.E_mat[0], E0_mat_ref1[0])
 # end def
 
 
@@ -305,12 +294,12 @@ def test_TargetLineSearch_optimize():
     tls.optimize(epsilon0, Gs=Gs_N200_M7, fit_kind='pf2')
     assert tls.resampled
     assert not tls.optimized
-    # Only one round of generation is done.
-    assert tls.E_mat.shape == (3, 3)
+    # Ten rounds of generation are done
+    assert tls.error_surface.E_mat.shape == (13, 13)
 
     # Test defaults with a reasonable epsilon value
     epsilon1 = 0.03
-    W_opt_ref = 0.125
+    W_opt_ref = 0.14375
     sigma_opt_ref = 0.0175
     tls.optimize(
         epsilon1,
@@ -325,10 +314,10 @@ def test_TargetLineSearch_optimize():
     assert match_to_tol(tls.W_opt, W_opt_ref)
     assert match_to_tol(tls.sigma_opt, sigma_opt_ref)
     # Semantic quality checks
-    xi = where(tls.W_mat[0] == tls.W_opt)[0]
-    yi = where(tls.S_mat[:, 0] == tls.sigma_opt)[0]
-    assert tls.E_mat[yi, xi] < epsilon1
-    assert tls.E_mat[yi + 1, xi] > epsilon1
+    xi = where(tls.error_surface.X_mat[0] == tls.W_opt)[0]
+    yi = where(tls.error_surface.Y_mat[:, 0] == tls.sigma_opt)[0]
+    assert tls.error_surface.E_mat[yi, xi] < epsilon1
+    assert tls.error_surface.E_mat[yi + 1, xi] > epsilon1
 
     # Test with precise parameters and compare against hard-coded reference values
     epsilon2 = 0.02
@@ -349,60 +338,61 @@ def test_TargetLineSearch_optimize():
         bias_mix=0.1,
         max_rounds=5
     )
-    W_mat_ref = array([[0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ],
-       [0.        , 0.03333333, 0.05      , 0.06666667, 0.08333333,
-        0.1       , 0.13333333, 0.26666667, 0.4       ]])
-    S_mat_ref = array([[0.        , 0.        , 0.        , 0.        , 0.        ,
-        0.        , 0.        , 0.        , 0.        ],
-       [0.00416667, 0.00416667, 0.00416667, 0.00416667, 0.00416667,
-        0.00416667, 0.00416667, 0.00416667, 0.00416667],
-       [0.00833333, 0.00833333, 0.00833333, 0.00833333, 0.00833333,
-        0.00833333, 0.00833333, 0.00833333, 0.00833333],
-       [0.01666667, 0.01666667, 0.01666667, 0.01666667, 0.01666667,
-        0.01666667, 0.01666667, 0.01666667, 0.01666667],
-       [0.03333333, 0.03333333, 0.03333333, 0.03333333, 0.03333333,
-        0.03333333, 0.03333333, 0.03333333, 0.03333333],
-       [0.06666667, 0.06666667, 0.06666667, 0.06666667, 0.06666667,
-        0.06666667, 0.06666667, 0.06666667, 0.06666667],
-       [0.1       , 0.1       , 0.1       , 0.1       , 0.1       ,
-        0.1       , 0.1       , 0.1       , 0.1       ]])
-    E_mat_ref = array([[2.84214378e-08, 9.74160492e-04, 2.29013839e-03, 4.15589777e-03,
-        6.62269595e-03, 9.75803681e-03, 1.80738365e-02, 8.56891567e-02,
-        1.46457902e-01],
-       [1.46426994e-04, 1.43040779e-02, 1.32620992e-02, 1.36510644e-02,
-        1.50965237e-02, 1.73877488e-02, 2.42851402e-02, 8.88637116e-02,
-        1.51254491e-01],
-       [1.46427174e-04, 2.73929755e-02, 2.32308153e-02, 2.22803510e-02,
-        2.28551136e-02, 2.44477965e-02, 3.02454969e-02, 9.19655926e-02,
-        1.56091583e-01],
-       [1.46427264e-04, 6.77506399e-02, 4.66200451e-02, 4.03298486e-02,
-        3.78851767e-02, 3.78528092e-02, 4.12646656e-02, 9.80147118e-02,
-        1.65847135e-01],
-       [1.46427309e-04, 1.18549950e-01, 1.19761343e-01, 1.06232489e-01,
-        9.95015527e-02, 7.27409379e-02, 6.57040426e-02, 1.10380286e-01,
-        1.84973665e-01],
-       [1.46427331e-04, 1.48034491e-01, 1.65064058e-01, 1.93926446e-01,
-        2.06033895e-01, 2.10548751e-01, 2.16021568e-01, 1.40769507e-01,
-        2.20791921e-01],
-       [1.46427339e-04, 1.65205337e-01, 1.84635543e-01, 2.06487219e-01,
-        2.33160315e-01, 2.62995798e-01, 2.88178058e-01, 1.77637809e-01,
-        2.52814074e-01]])
+    Ws_ref = array([0.        , 0.03333333, 0.05      , 0.05833333, 0.0625    ,
+       0.06666667, 0.07083333, 0.075     , 0.08333333, 0.1       ,
+       0.13333333, 0.2       , 0.26666667, 0.4       ])
+    sigmas_ref = array([0.        , 0.00208333, 0.00416667, 0.00520833, 0.00625   ,
+       0.00729167, 0.00833333, 0.01666667, 0.03333333, 0.06666667,
+       0.1       ])
+    E_mat_ref = array([[0.00000000e+00, 9.74160492e-04, 2.29013839e-03, 3.15862171e-03,
+        3.64144834e-03, 4.15589777e-03, 4.70735080e-03, 5.30068514e-03,
+        6.62269595e-03, 9.75803681e-03, 1.80738365e-02, 4.44243674e-02,
+        8.56891567e-02, 1.46457902e-01],
+       [1.46426634e-04, 7.82358813e-03, 7.82607110e-03, 8.26595960e-03,
+        8.57390996e-03, 8.93076680e-03, 9.33826385e-03, 9.79946288e-03,
+        1.08866683e-02, 1.35935458e-02, 2.12613924e-02, 4.66784830e-02,
+        8.72857284e-02, 1.48850633e-01],
+       [1.46426994e-04, 1.43040779e-02, 1.32620992e-02, 1.33237625e-02,
+        1.34510883e-02, 1.36510644e-02, 1.39146222e-02, 1.42437768e-02,
+        1.50965237e-02, 1.73877488e-02, 2.42851402e-02, 4.88939126e-02,
+        8.88637116e-02, 1.51254491e-01],
+       [1.46427066e-04, 1.74637347e-02, 1.56963017e-02, 1.55956529e-02,
+        1.56888732e-02, 1.58581822e-02, 1.60851457e-02, 1.63722742e-02,
+        1.71288465e-02, 1.91958576e-02, 2.57877616e-02, 4.99875015e-02,
+        8.96458656e-02, 1.52460281e-01],
+       [1.46427114e-04, 2.03155719e-02, 1.82462001e-02, 1.79197792e-02,
+        1.78867435e-02, 1.79540415e-02, 1.80970818e-02, 1.83134096e-02,
+        1.89814258e-02, 2.09002402e-02, 2.72873650e-02, 5.10718693e-02,
+        9.04235302e-02, 1.53668478e-01],
+       [1.46427148e-04, 2.37747885e-02, 2.07599000e-02, 2.02502853e-02,
+        2.01405158e-02, 2.01342476e-02, 2.02164355e-02, 2.03762426e-02,
+        2.09210625e-02, 2.26768203e-02, 2.87731888e-02, 5.21124502e-02,
+        9.11967559e-02, 1.54878955e-01],
+       [1.46427174e-04, 2.73929755e-02, 2.32308153e-02, 2.25431587e-02,
+        2.23595625e-02, 2.22803510e-02, 2.23039033e-02, 2.24091150e-02,
+        2.28551136e-02, 2.44477965e-02, 3.02454969e-02, 5.31294746e-02,
+        9.19655926e-02, 1.56091583e-01],
+       [1.46427264e-04, 6.77506399e-02, 4.66200451e-02, 4.30910206e-02,
+        4.27108848e-02, 4.03298486e-02, 3.88912938e-02, 3.85791350e-02,
+        3.78851767e-02, 3.78528092e-02, 4.12646656e-02, 6.15162000e-02,
+        9.80147118e-02, 1.65847135e-01],
+       [1.46427309e-04, 1.18549950e-01, 1.19761343e-01, 1.14672678e-01,
+        1.14045850e-01, 1.06232489e-01, 1.04750658e-01, 1.05335129e-01,
+        9.95015527e-02, 7.27409379e-02, 6.57040426e-02, 7.93449569e-02,
+        1.10380286e-01, 1.84973665e-01],
+       [1.46427331e-04, 1.48034491e-01, 1.65064058e-01, 1.78250081e-01,
+        1.88511339e-01, 1.93926446e-01, 1.95594565e-01, 1.99243656e-01,
+        2.06033895e-01, 2.10548751e-01, 2.16021568e-01, 1.21844303e-01,
+        1.40769507e-01, 2.20791921e-01],
+       [1.46427339e-04, 1.65205337e-01, 1.84635543e-01, 1.97557987e-01,
+        2.02785284e-01, 2.06487219e-01, 2.11313811e-01, 2.17900794e-01,
+        2.33160315e-01, 2.62995798e-01, 2.88178058e-01, 3.60660312e-01,
+        1.77637809e-01, 2.52814074e-01]])
     W_opt_ref = 0.06666666666666668
-    sigma_opt_ref = 0.004166666666666667
-    assert match_to_tol(tls.W_mat, W_mat_ref)
-    assert match_to_tol(tls.S_mat, S_mat_ref)
-    assert match_to_tol(tls.E_mat, E_mat_ref)
+    sigma_opt_ref = 0.00625
+    assert match_to_tol(tls.error_surface.Xs, Ws_ref)
+    assert match_to_tol(tls.error_surface.Ys, sigmas_ref)
+    assert match_to_tol(tls.error_surface.E_mat, E_mat_ref)
     assert match_to_tol(tls.W_opt, W_opt_ref)
     assert match_to_tol(tls.sigma_opt, sigma_opt_ref)
     assert tls.optimized
