@@ -7,9 +7,11 @@ __license__ = "BSD-3-Clause"
 from numpy import array
 from matplotlib import pyplot as plt
 
+from stalk.pls.ParallelLineSearch import ParallelLineSearch
+
 
 def plot_parameter_convergence(
-    pls_list,
+    pls_list: list[ParallelLineSearch],
     ax=None,
     separate=True,
     P_list=None,
@@ -47,7 +49,7 @@ def plot_parameter_convergence(
     # end for
     # line search params
     for li, pls in enumerate(pls_list):
-        if pls.status.analyzed:
+        if pls.evaluated:
             for p in P_list:
                 x_grids[p].append(li + 1)
                 P_vals[p].append(pls.structure_next.params[p] - targets[p])
@@ -98,7 +100,7 @@ def plot_parameter_convergence(
 
 
 def plot_energy_convergence(
-    pls_list,
+    pls_list: list[ParallelLineSearch],
     ax=None,
     color='tab:blue',
     marker='x',
