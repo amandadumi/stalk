@@ -451,10 +451,6 @@ class TargetParallelLineSearch(ParallelLineSearch):
         return valid
     # end def
 
-    def compute_bias_p(self):
-        return self._compute_bias()[1]
-    # end def
-
     def bracket_target_biases(
         self,
         **kwargs
@@ -465,10 +461,6 @@ class TargetParallelLineSearch(ParallelLineSearch):
         for tls in self.ls_list:
             tls.bracket_target_bias(**kwargs)
         # end for
-    # end def
-
-    def compute_bias_d(self):
-        return self._compute_bias()[0]
     # end def
 
     def copy(
@@ -531,9 +523,9 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # end for
     # end def
 
-    def _resample_errors(self, N=None):
+    def _resample_errors(self):
         biases_d, biases_p = self._compute_bias()
-        errorbar_d, errorbar_p = self._resample_errorbars(N=N)
+        errorbar_d, errorbar_p = self._resample_errorbars()
         error_d = biases_d + errorbar_d
         error_p = biases_p + errorbar_p
         return error_d, error_p
@@ -542,7 +534,10 @@ class TargetParallelLineSearch(ParallelLineSearch):
     def _compute_bias(self):
         biases_d = []
         for tls in self.ls_list:
-            biases_d.append(tls.compute_bias(tls.grid_opt))
+            offsets = tls.figure_out_adjusted_offsets(W=tls.W_opt, M=tls.M)
+            values = tls.evaluate_target(offsets)
+            grid = LineSearchGrid(offsets=offsets, values=values)
+            biases_d.append(tls.compute_bias(grid))
         # end for
         biases_d = array(biases_d)
         biases_p = self._calculate_params_next(self.params, biases_d)
