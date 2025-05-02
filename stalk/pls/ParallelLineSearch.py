@@ -515,7 +515,7 @@ class ParallelLineSearch():
             string += '\n  Line-searches: None'
         else:
             string += '\n  Line-searches:\n'
-            string += indent('\n'.join(['#{:<2d} {}'.format(ls.d, str(ls)) for ls in self.ls_list]), '    ')
+            string += indent('\n'.join([str(ls) for ls in self.ls_list]), '    ')
         # end if
         # TODO
         return string

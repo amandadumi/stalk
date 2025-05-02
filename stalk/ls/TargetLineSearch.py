@@ -11,6 +11,7 @@ from numpy import ndarray
 from stalk.ls.ErrorSurface import ErrorSurface
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.TlsSettings import TlsSettings
+from stalk.util.util import FF
 from .LineSearch import LineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 
@@ -476,6 +477,15 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
 
     def _reset_resampling(self):
         self.error_surface = None
+    # end def
+
+    def __str__(self):
+        string = LineSearch.__str__(self)
+        if self.optimized:
+            string += '\n  W_opt: ' + FF.format(self.W_opt)
+            string += '\n  sigma_opt: ' + FF.format(self.sigma_opt)
+            string += '\n  epsilon: ' + FF.format(self.epsilon)
+        return string
     # end def
 
 # end class
