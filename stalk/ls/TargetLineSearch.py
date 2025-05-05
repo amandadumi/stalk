@@ -30,6 +30,8 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         structure=None,
         hessian=None,
         d=None,
+        path='',
+        interactive=False,
         # sigma=0.0
         offsets=None,
         M=7,
@@ -68,6 +70,8 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             R=R,
             offsets=offsets,
             pes=pes,
+            interactive=interactive,
+            path=path,
             **ls_args,
         )
         # Finally, attempt to reset interpolation
