@@ -224,6 +224,8 @@ def dmc_pes_job(
         nonlocalmoves=True,
         twistnum=0,
     )
+    # Store the relative samples for printout
+    dmc.samples = dmcsteps
     return [scf, nscf, p2q, opt, dmc]
 # end def
 

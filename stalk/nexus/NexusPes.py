@@ -5,7 +5,8 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import isnan
+from numpy import isnan, isscalar
+from pickle import load
 
 from nexus import run_project, bundle
 
@@ -178,21 +179,44 @@ class NexusPes(PesFunction):
             eqm_jobs=eqm_jobs,
             **eval_args
         )
+        structure.sigma = sigma
         structure.jobs = jobs
     # end def
 
     def _prompt(self, structures: list[NexusStructure]):
-        print("About to submit the following jobs:")
+        new_job_strs = []
         for structure in structures:
             if structure.generated:
                 for job in structure.jobs:
-                    print('  {} {}'.format(job.path, job.identifier))
+                    sim_path = '{}/sim_{}/sim.p'.format(job.path, job.identifier)
+                    finished = False
+                    try:
+                        with open(sim_path, mode='rb') as f:
+                            sim = load(f)
+                            finished = sim.finished
+                        # end with
+                    except (FileNotFoundError, AttributeError):
+                        pass
+                    # end try
+                    if not finished:
+                        job_str = '  {}'.format(job.path)
+                        if hasattr(job, "samples") and isscalar(job.samples):
+                            job_str += f' ({job.samples}x samples)'
+                        # end if
+                        new_job_strs.append(job_str)
+                    # end if
                 # end for
             # end if
         # end for
-        proceed = input("Proceed (Y/n)? ")
-        if proceed == 'n':
-            exit("")
+        if len(new_job_strs) > 0:
+            print("About to submit the following jobs:")
+            for job_str in new_job_strs:
+                print(job_str)
+            # end for
+            proceed = input("Proceed (Y/n)? ")
+            if proceed == 'n':
+                exit("Submission cancelled by user.")
+            # end if
         # end if
     # end def
 

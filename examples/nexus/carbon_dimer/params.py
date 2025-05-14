@@ -168,6 +168,8 @@ def dmc_pes_job(
         timestep=0.01,
         ntimesteps=1,
     )
+    # Store the relative samples for printout
+    dmc.samples = dmcsteps
     return [scf, c4q, opt, dmc]
 # end def
 
