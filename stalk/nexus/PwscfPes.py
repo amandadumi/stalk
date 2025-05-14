@@ -23,7 +23,7 @@ class PwscfPes(PesLoader):
     def _load(self, path, suffix='scf.in', **kwargs):
         ai = PwscfAnalyzer(PL.format(path, suffix), **kwargs)
         ai.analyze()
-        if ai.E == 0.0:
+        if not hasattr(ai, "E") or ai.E == 0.0:
             # Analysis has failed
             E = nan
         else:

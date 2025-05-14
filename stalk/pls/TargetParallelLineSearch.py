@@ -164,7 +164,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         **ls_args
         # M=7, fit_kind=None, fit_func=None, fit_args={}, Gs=None, fraction=0.025
         # bias_mix=0.0, bias_order=1, noise_frac=0.05,
-        # W_resolution=0.05, S_resolution=0.05, max_rounds=10
+        # W_resolution=0.05, S_resolution=0.05, verbosity=1, max_rounds=10
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
         if self.optimized and not reoptimize:
@@ -220,12 +220,15 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
         # If provided, distribute Gs per line-search; if not, provide None
+        print("Optimizing to windows + noises:")
+        fmt = ' tls=' + FI + ' (window=' + FF + ', noise=' + FF + ')'
         if Gs is None:
             Gs = len(windows) * [None]
         # end if
         for window, sigma, tls, Gs_this in zip(windows, noises, self.ls_list, Gs):
             # No optimization necessary if the windows, noises are readily provided but
             # generating error surface to store all required settings
+            print(fmt.format(tls.d, window, sigma))
             tls.setup_optimization(
                 Gs=Gs_this,
                 **ls_args
@@ -247,10 +250,13 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
         # If provided, distribute Gs per line-search; if not, provide None
+        print("Optimizing to epsilon_d")
+        fmt = ' tls=' + FI + ' (epsilon=' + FF + ')'
         if Gs is None:
             Gs = len(epsilon_d) * [None]
         # end if
         for epsilon, tls, Gs_this in zip(epsilon_d, self.ls_list, Gs):
+            print(fmt.format(tls.d, epsilon))
             tls.optimize(epsilon, Gs=Gs_this, skip_setup=skip_setup, **ls_args)
         # end for
         # These will be reset now and updated later if applicable
@@ -267,6 +273,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # W_resolution=0.05, S_resolution=0.05, max_rounds=10
         # W_num=3, W_max=None, sigma_num=3, sigma_max=None
     ):
+        print(('Calculating epsilon_d for temperature=' + FF).format(temperature))
         epsilon_d = self._get_thermal_epsilon_d(temperature)
         self.optimize_epsilon_d(epsilon_d, **ls_args)
         self.temperature = temperature
@@ -279,6 +286,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         thermal=False,
         Gs=None,
         resolution=0.01,
+        verbosity=1,
         **ls_args,
         # N=500, M=7, fraction=0.025, fit_kind=None, fit_func=None,
         # fit_args={}, bias_mix=0.0, bias_order=1, noise_frac=0.05,
@@ -291,22 +299,33 @@ class TargetParallelLineSearch(ParallelLineSearch):
         for tls, Gs_this in zip(self.ls_list, Gs):
             tls.setup_optimization(
                 Gs=Gs_this,
+                verbosity=verbosity,
                 **ls_args
             )
         # end for
         epsilon_p = array(epsilon_p, dtype=float)
         if thermal:
+            if verbosity >= 1:
+                print("Optimizing to epsilon_p with the thermal constraint")
+                self._print_epsilon(epsilon_p)
+            # end if
             epsilon_d_opt, T = self._optimize_epsilon_p_thermal(
                 epsilon_p,
-                resolution=resolution
+                resolution=resolution,
+                verbosity=verbosity,
             )
             self.optimize_epsilon_d(epsilon_d_opt, skip_setup=True, **ls_args)
             self.temperature = T
         else:
+            if verbosity >= 1:
+                print("Optimizing to epsilon_p using line-search")
+                self._print_epsilon(epsilon_p)
+            # end if
             epsilon_d_opt = self._optimize_epsilon_p_ls(
                 epsilon_p,
                 starting_mix=starting_mix,
-                resolution=resolution
+                resolution=resolution,
+                verbosity=verbosity,
             )
             self.optimize_epsilon_d(epsilon_d_opt, skip_setup=True, **ls_args)
         # end if
@@ -316,7 +335,8 @@ class TargetParallelLineSearch(ParallelLineSearch):
     def _optimize_epsilon_p_thermal(
         self,
         epsilon_p,
-        resolution=0.01  # Relative temperature resolution
+        resolution=0.01,  # Relative temperature resolution
+        verbosity=1,
     ):
         # initial temperature
         T = self._get_epsilon_p_temperature(epsilon_p) * resolution
@@ -324,12 +344,12 @@ class TargetParallelLineSearch(ParallelLineSearch):
         error_p = epsilon_p * 0
         # First loop: increase T until the errors are no longer capped
         while all(error_p - epsilon_p < 0.0):
-            try:
-                epsilon_d = self._get_thermal_epsilon_d(T)
-                error_p = self._resample_errors_p_of_d(epsilon_d)
-            except AssertionError:
-                pass
-            # end try
+            epsilon_d = self._get_thermal_epsilon_d(T)
+            if verbosity >= 2:
+                max_diff = (error_p - epsilon_p).max()
+                print(('  T=' + FF + ', max(error_p-epsilon_p)=' + FF).format(T, max_diff))
+            # end if
+            error_p = self._resample_errors_p_of_d(epsilon_d, max_rounds=4)
             T *= 1.5
         # end while
         # Second loop: decrease T until the errors are capped
@@ -347,7 +367,8 @@ class TargetParallelLineSearch(ParallelLineSearch):
         resolution=0.01,
         it_max=10,
         starting_mix=0.5,
-        cost_factor=0.5
+        cost_factor=0.5,
+        verbosity=1,
     ):
         U = self.hessian.get_directions()
         # Starting mixure of bias + noise
@@ -364,6 +385,10 @@ class TargetParallelLineSearch(ParallelLineSearch):
 
         epsilon_d_opt = array(epsilon_d0)
         # Initial optimization to get statistical cost
+        if verbosity >= 2:
+            print("Initial optimization:")
+            self._print_epsilon(epsilon_d0, 'd')
+        # end if
         for tls, epsilon in zip(self.ls_list, epsilon_d0):
             tls.optimize(epsilon, skip_setup=True)
         # end for
@@ -376,8 +401,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
             # sequential line-search from d0...dD
             for d in range(len(epsilon_d_opt)):
                 epsilon_d = epsilon_d_opt.copy()
-                min_error = self.ls_list[d].E_mat.min()
-                R_min = max(epsilon_d[d] * (1 - R_factor), min_error)
+                R_min = epsilon_d[d] * (1 - R_factor)
                 R_max = epsilon_d[d] * (1 + R_factor)
                 epsilons = linspace(R_min, R_max, 5)
                 costs = []
@@ -393,6 +417,10 @@ class TargetParallelLineSearch(ParallelLineSearch):
             # end for
             error_p = self._resample_errors_p_of_d(epsilon_d_opt)
             cost_it = cost(error_p, 0.0)
+            if verbosity >= 2:
+                print(('  iter=' + FI + 'cost=' + FF).format(it, cost_it))
+                self._print_epsilon(epsilon_d_opt, 'd')
+            # end if
             diff_epsilon_d = mean(abs(epsilon_d_old - epsilon_d_opt))
             if cost_it < resolution or diff_epsilon_d < resolution / 10:
                 break
@@ -423,10 +451,6 @@ class TargetParallelLineSearch(ParallelLineSearch):
         return valid
     # end def
 
-    def compute_bias_p(self):
-        return self._compute_bias()[1]
-    # end def
-
     def bracket_target_biases(
         self,
         **kwargs
@@ -437,10 +461,6 @@ class TargetParallelLineSearch(ParallelLineSearch):
         for tls in self.ls_list:
             tls.bracket_target_bias(**kwargs)
         # end for
-    # end def
-
-    def compute_bias_d(self):
-        return self._compute_bias()[0]
     # end def
 
     def copy(
@@ -497,9 +517,15 @@ class TargetParallelLineSearch(ParallelLineSearch):
         # end for
     # end def
 
-    def _resample_errors(self, N=None):
+    def _print_epsilon(self, epsilon, label='p'):
+        for p, eps in enumerate(epsilon):
+            print(('  {}=' + FI + FF).format(label, p, eps))
+        # end for
+    # end def
+
+    def _resample_errors(self):
         biases_d, biases_p = self._compute_bias()
-        errorbar_d, errorbar_p = self._resample_errorbars(N=N)
+        errorbar_d, errorbar_p = self._resample_errorbars()
         error_d = biases_d + errorbar_d
         error_p = biases_p + errorbar_p
         return error_d, error_p
@@ -508,7 +534,10 @@ class TargetParallelLineSearch(ParallelLineSearch):
     def _compute_bias(self):
         biases_d = []
         for tls in self.ls_list:
-            biases_d.append(tls.compute_bias(tls.grid_opt))
+            offsets = tls.figure_out_adjusted_offsets(W=tls.W_opt, M=tls.M)
+            values = tls.evaluate_target(offsets)
+            grid = LineSearchGrid(offsets=offsets, values=values)
+            biases_d.append(tls.compute_bias(grid))
         # end for
         biases_d = array(biases_d)
         biases_p = self._calculate_params_next(self.params, biases_d)
@@ -574,9 +603,13 @@ class TargetParallelLineSearch(ParallelLineSearch):
         return mean(epsilon_p**2 * self.hessian.hessian.diagonal())
     # end def
 
-    def _resample_errors_p_of_d(self, epsilon_d):
+    def _resample_errors_p_of_d(
+        self,
+        epsilon_d,
+        **kwargs  # max_rounds=10
+    ):
         for epsilon, tls, in zip(epsilon_d, self.ls_list):
-            tls.optimize(epsilon, skip_setup=True)
+            tls.optimize(epsilon, skip_setup=True, **kwargs)
         # end for
         return self._resample_errors()[1]
     # end def

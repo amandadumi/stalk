@@ -329,12 +329,22 @@ class ParameterStructure(ParameterSet):
 
     def remap_forward(self, forward, N=None, fraction=0.159, **kwargs):
         assert self.consistent, 'The mapping must be consistent'
-        params = forward(*self.map_backward(), **kwargs)
+        pos, axes = self.map_backward()
+        if self.periodic:
+            params = forward(pos, axes, **kwargs)
+        else:
+            params = forward(pos, **kwargs)
+        # end if
         if N is None:
             return params
         elif sum(self.params_err) > 0:  # resample errorbars
-            psdata = [forward(*self.map_backward(p))
-                      for p in self.get_params_distribution(N=N)]
+            if self.periodic:
+                psdata = [forward(*self.map_backward(p))
+                          for p in self.get_params_distribution(N=N)]
+            else:
+                psdata = [forward(self.map_backward(p)[0])
+                          for p in self.get_params_distribution(N=N)]
+            # end if
             params_err = array([get_fraction_error(ps, fraction=fraction)[
                                1] for ps in array(psdata).T])
             return params, params_err
