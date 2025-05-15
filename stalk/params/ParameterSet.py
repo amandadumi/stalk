@@ -5,7 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array, isscalar
+from numpy import array, isscalar, random
 from copy import deepcopy
 
 from stalk.params.LineSearchPoint import LineSearchPoint
@@ -91,17 +91,17 @@ class ParameterSet(LineSearchPoint):
         self._param_list = p_list
     # end def
 
-    def set_params(self, params, errors=None):
+    def set_params(self, params, params_err=None):
         # If params have not been initiated yet, do it now without extra info
         if len(self) > 0:
             assert len(params) == len(self)
         else:
-            self.init_params(params, errors)
+            self.init_params(params, params_err)
         # end if
-        if errors is None:
-            errors = len(params) * [0.0]
+        if params_err is None:
+            params_err = len(params) * [0.0]
         # end if
-        for sparam, param, error in zip(self.params_list, params, errors):
+        for sparam, param, error in zip(self.params_list, params, params_err):
             assert isinstance(sparam, Parameter)
             sparam.value = param
             sparam.error = error
@@ -138,6 +138,10 @@ class ParameterSet(LineSearchPoint):
             paramset.label = label
         # end if
         return paramset
+    # end def
+
+    def get_params_distribution(self, N=100):
+        return [self.params + self.params_err * g for g in random.randn(N, len(self))]
     # end def
 
     def check_consistency(self):

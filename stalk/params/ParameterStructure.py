@@ -5,7 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array, isscalar, random, diag
+from numpy import array, isscalar, diag
 from copy import deepcopy
 
 from stalk.util import match_to_tol, get_fraction_error, directorize
@@ -321,10 +321,6 @@ class ParameterStructure(ParameterSet):
             jacobian.append(dpos.flatten() / dp)
         # end for
         return array(jacobian).T
-    # end def
-
-    def get_params_distribution(self, N=100):
-        return [self.params + self.params_err * g for g in random.randn(N, len(self))]
     # end def
 
     def remap_forward(self, forward, N=None, fraction=0.159, **kwargs):
