@@ -5,8 +5,9 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array
+from numpy import array, mean
 
+from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import directorize
@@ -20,6 +21,7 @@ from stalk.util.util import FF, FFS, FI, FIS, FU
 class LineSearchIteration():
     _pls_list: list[ParallelLineSearch]  # list of ParallelLineSearch objects
     _path = ''  # base path
+    _transient = 0
 
     def __init__(
         self,
@@ -34,7 +36,7 @@ class LineSearchIteration():
     ):
         self.path = path
         self._pls_list = []
-        # Try to serialized iterations:
+        # Try to load serialized iterations:
         self.load_pls()
         # if no iterations loaded, try to initialize
         if len(self) == 0 or not self.pls(0).evaluated:
@@ -79,6 +81,63 @@ class LineSearchIteration():
             self._path = directorize(path)
         else:
             raise TypeError("path must be a string")
+        # end if
+    # end def
+
+    @property
+    def structure_init(self):
+        return self.pls(0).structure
+    # end def
+
+    @property
+    def structure_final(self):
+        params_list = []
+        params_err_list = []
+        values_list = []
+        errors_list = []
+        for pls in self.pls_list[self.transient:]:
+            if pls.evaluated:
+                params_list.append(pls.structure_next.params)
+                params_err_list.append(pls.structure_next.params_err)
+            # end if
+        # end for
+        for pls in self.pls_list[self.transient + 1:]:
+            if pls.structure.valid:
+                values_list.append(pls.structure.value)
+                errors_list.append(pls.structure.error)
+            # end if
+        # end for
+        mean_params = mean(array(params_list), axis=0)
+        mean_params_err = (mean(array(params_err_list)**2, axis=0) / len(params_err_list))**0.5
+
+        if len(values_list) > 0:
+            mean_value = mean(values_list)
+            mean_error = mean(array(errors_list)**2 / len(errors_list))**0.5
+        else:
+            mean_value = 0.0
+            mean_error = 0.0
+        # end if
+
+        mean_structure = self.structure_init.copy(
+            params=mean_params,
+            params_err=mean_params_err,
+        )
+        mean_structure.value = mean_value
+        mean_structure.error = mean_error
+        return mean_structure
+    # end def
+
+    @property
+    def transient(self):
+        return self._transient
+    # end def
+
+    @transient.setter
+    def transient(self, transient):
+        if isinstance(transient, int) and transient >= 0:
+            self._transient = min(transient, len(self) - 1)
+        else:
+            raise ValueError("transient must be integer >= 0")
         # end if
     # end def
 
@@ -218,7 +277,7 @@ class LineSearchIteration():
 
     def __str__(self):
         string = self.__class__.__name__
-        if len(self.pls_list) > 0:
+        if len(self) > 0:
             fmt = '\n  ' + FI + FF + FU + self.pls().D * (FF + FU)
             fmts = '\n  ' + FIS + FFS + FFS + self.pls().D * (FFS + FFS)
 
@@ -231,17 +290,26 @@ class LineSearchIteration():
 
             # Data rows
             for p, pls in enumerate(self.pls_list):
-                data = [pls.structure.value, pls.structure.error]
-                data[0] = data[0] if not data[0] is None else 0.0
-                data[1] = data[1] if not data[1] is None else 0.0
-                for param, perr in zip(pls.structure.params, pls.structure.params_err):
-                    data.append(param)
-                    data.append(perr)
-                # end for
-                string += fmt.format(p, *tuple(array(data)))
+                string += self._params_row(p, pls.structure, fmt)
             # end for
         # end if
+        # Mean params
+        if len(self) > 1:
+            string += f"\nMean[{self.transient + 1}:]:"
+            string += self._params_row(len(self), self.structure_final, fmt)
+        # end if
         return string
+    # end def
+
+    def _params_row(self, p, structure: ParameterSet, fmt: str):
+        data = [structure.value, structure.error]
+        data[0] = data[0] if not data[0] is None else 0.0
+        data[1] = data[1] if not data[1] is None else 0.0
+        for param, perr in zip(structure.params, structure.params_err):
+            data.append(param)
+            data.append(perr)
+        # end for
+        return fmt.format(p, *tuple(array(data)))
     # end def
 
 # end class
