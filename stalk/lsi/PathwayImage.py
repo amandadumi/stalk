@@ -7,7 +7,7 @@ __license__ = "BSD-3-Clause"
 
 from copy import copy
 from os import makedirs
-from numpy import savetxt, loadtxt
+from numpy import savetxt, loadtxt, array
 from functools import partial
 
 from numpy import ndarray, zeros
@@ -16,7 +16,7 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
-from stalk.util.util import orthogonal_subspace_basis
+from stalk.util.util import get_fraction_error, orthogonal_subspace_basis
 
 
 class PathwayImage():
@@ -77,7 +77,11 @@ class PathwayImage():
         if self._tangent is None:
             return self.lsi.structure_final
         else:
-            return extend_structure(self.structure, self.lsi.structure_final, self._subspace)
+            return extend_structure_errors(
+                self.structure,
+                self.lsi.structure_final,
+                self._subspace
+            )
         # end if
     # end def
 
@@ -194,6 +198,31 @@ class PathwayImage():
 def extend_structure(structure0: ParameterSet, structure_sub: ParameterSet, subspace):
     structure = structure0.copy(label=structure_sub.label)
     structure.shift_params(structure_sub.params @ subspace)
+    return structure
+# end def
+
+
+def extend_structure_errors(
+    structure0: ParameterSet,
+    structure_sub: ParameterSet,
+    subspace,
+    N=200,
+    fraction=0.025
+):
+    ps_sub = structure_sub.get_params_distribution(N=N)
+    ps = []
+    for p_sub in ps_sub:
+        ps.append(structure0.params + p_sub @ subspace)
+    # end for
+    ps = array(ps).T
+    params_err = [get_fraction_error(p, fraction=fraction)[1] for p in ps]
+    structure = structure0.copy(label=structure_sub.label)
+    structure.set_params(
+        structure0.params + structure_sub.params @ subspace,
+        params_err=params_err
+    )
+    structure.value = structure_sub.value
+    structure.error = structure_sub.error
     return structure
 # end def
 
