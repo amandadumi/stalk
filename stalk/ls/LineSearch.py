@@ -128,7 +128,7 @@ class LineSearch(LineSearchBase):
     def hessian(self, hessian):
         if isinstance(hessian, ParameterHessian):
             self._hessian = hessian
-            Lambda = self.hessian.get_lambda(self.d)
+            Lambda = self.hessian.lambdas[self.d]
             self.sgn = int(sign(Lambda))
             if self.structure is None:
                 # Use Hessian structure if no other has been provided yet
@@ -141,7 +141,7 @@ class LineSearch(LineSearchBase):
 
     @property
     def Lambda(self):
-        return None if self.hessian is None else abs(self.hessian.get_lambda(self.d))
+        return None if self.hessian is None else abs(self.hessian.lambdas[self.d])
     # end def
 
     @property
@@ -150,7 +150,7 @@ class LineSearch(LineSearchBase):
             return 0.0
         # end if
         if self.hessian is not None:
-            return self.hessian.get_directions(self.d)
+            return self.hessian.directions[self.d]
         elif self.structure is not None:
             # Get pure parameter direction
             direction = len(self.structure) * [0.0]

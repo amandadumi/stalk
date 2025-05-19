@@ -370,7 +370,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         cost_factor=0.5,
         verbosity=1,
     ):
-        U = self.hessian.get_directions()
+        U = self.hessian.directions
         # Starting mixure of bias + noise
         epsilon_d0 = starting_mix * (
             abs(U @ epsilon_p) + (1 - starting_mix) * U.T @ U @ epsilon_p
