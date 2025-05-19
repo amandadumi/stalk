@@ -7,6 +7,7 @@ __license__ = "BSD-3-Clause"
 
 from numpy import array, isscalar, linspace, nan
 from numpy import ndarray
+from matplotlib import pyplot as plt
 
 from stalk.ls.ErrorSurface import ErrorSurface
 from stalk.ls.LineSearchGrid import LineSearchGrid
@@ -454,6 +455,27 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             return -1.0
         # end if
         return self.M * self.sigma_opt**-2
+    # end def
+
+    def plot(
+        self,
+        ax=None,
+        **kwargs
+    ):
+        if ax is None:
+            f, ax = plt.subplots()
+        # end if
+        target = None
+        if self.optimized:
+            offsets = self.figure_out_adjusted_offsets(W=self.W_opt, M=self.M)
+            values = self.evaluate_target(offsets)
+            grid = LineSearchGrid(offsets, values)
+            target = self.target_settings.fit_func.find_minimum(grid)
+            errors = self.M * [self.sigma_opt]
+            offsets -= self.target_settings.target.x0
+            ax.errorbar(offsets, values, errors, linestyle='None', marker='*', color='r')
+        # end if
+        LineSearch.plot(self, ax=ax, target=target)
     # end def
 
     def plot_error_surface(

@@ -125,6 +125,7 @@ class LineSearchBase(LineSearchGrid):
         self,
         ax=None,
         color='tab:blue',
+        target=None,
         **kwargs
     ):
         if not self.valid:
@@ -134,13 +135,16 @@ class LineSearchBase(LineSearchGrid):
         if ax is None:
             f, ax = plt.subplots()
         # end if
+        if target is None:
+            target = self.fit_res
+        # end if
         LineSearchGrid.plot(self, ax=ax, color=color, **kwargs)
         if self.fit_res is not None:
             ax.errorbar(
-                self.fit_res.x0,
-                self.fit_res.y0,
-                self.fit_res.y0_err,
-                xerr=self.fit_res.x0_err,
+                target.x0,
+                target.y0,
+                target.y0_err,
+                xerr=target.x0_err,
                 linestyle='none',
                 marker='x',
                 color=color,
@@ -148,7 +152,7 @@ class LineSearchBase(LineSearchGrid):
             )
             xgrid = self._get_plot_grid()
             # NOTE: hard-coded to polyval
-            ygrid = polyval(self.fit_res.fit, xgrid)
+            ygrid = polyval(target.fit, xgrid)
             ax.plot(
                 xgrid,
                 ygrid,

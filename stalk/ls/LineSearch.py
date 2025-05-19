@@ -9,6 +9,7 @@ import warnings
 from numpy import array, polyval, sign, isscalar
 from matplotlib import pyplot as plt
 
+from stalk.ls.FittingResult import FittingResult
 from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
@@ -292,6 +293,7 @@ class LineSearch(LineSearchBase):
         self,
         ax=None,
         color='tab:blue',
+        target=None,
         **kwargs
     ):
         if not self.valid:
@@ -301,11 +303,18 @@ class LineSearch(LineSearchBase):
         if ax is None:
             f, ax = plt.subplots()
         # end if
-        LineSearchBase.plot(self, ax=ax, **kwargs)
+        if target is None:
+            if self.fit_res is None:
+                target = FittingResult(0.0, 0.0)
+            else:
+                target = self.fit_res
+            # end if
+        # end if
+        LineSearchBase.plot(self, ax=ax, target=target, **kwargs)
         if self.Lambda is not None:
             a = 0.5 * self.sgn * self.Lambda
-            x0 = self.fit_res.x0
-            y0 = self.fit_res.y0
+            x0 = target.x0
+            y0 = target.y0
             pfl = [a, -2 * a * x0, y0 + a * x0**2]
             xgrid = self._get_plot_grid(0.0)
             ygrid = polyval(pfl, xgrid)
