@@ -101,7 +101,7 @@ def test_LineSearch():
     assert ls_h.sgn == 1
     assert ls_h.W_max == W
     assert ls_h.valid_W_max == 0.0
-    assert ls_h.Lambda == hessian.get_lambda(d)
+    assert ls_h.Lambda == hessian.lambdas[d]
     with raises(ValueError):
         ls_h.sigma = -1.0
     # end with

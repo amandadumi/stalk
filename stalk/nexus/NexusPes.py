@@ -5,9 +5,10 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import isnan
+from numpy import isnan, isscalar
+from pickle import load
 
-from nexus import run_project
+from nexus import run_project, bundle
 
 from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
@@ -19,6 +20,7 @@ from stalk.util.util import directorize
 class NexusPes(PesFunction):
     loader = None
     disable_failed = False
+    bundle_jobs = False
 
     def __init__(
         self,
@@ -27,10 +29,12 @@ class NexusPes(PesFunction):
         loader=None,
         load_func=None,
         load_args={},
-        disable_failed=False
+        disable_failed=False,
+        bundle_jobs=False
     ):
         super().__init__(func, args)
         self.disable_failed = disable_failed
+        self.bundle_jobs = bundle_jobs
         if isinstance(loader, PesLoader):
             self.loader = loader
         else:
@@ -127,7 +131,11 @@ class NexusPes(PesFunction):
         if interactive:
             self._prompt(structures)
         # end if
-        run_project(jobs)
+        if self.bundle_jobs:
+            run_project(bundle(jobs))
+        else:
+            run_project(jobs)
+        # end if
 
         # Then, load
         for structure, sigma in zip(structures, sigmas):
@@ -171,21 +179,44 @@ class NexusPes(PesFunction):
             eqm_jobs=eqm_jobs,
             **eval_args
         )
+        structure.sigma = sigma
         structure.jobs = jobs
     # end def
 
     def _prompt(self, structures: list[NexusStructure]):
-        print("About to submit the following jobs:")
+        new_job_strs = []
         for structure in structures:
             if structure.generated:
                 for job in structure.jobs:
-                    print('  {} {}'.format(job.path, job.identifier))
+                    sim_path = '{}/sim_{}/sim.p'.format(job.path, job.identifier)
+                    finished = False
+                    try:
+                        with open(sim_path, mode='rb') as f:
+                            sim = load(f)
+                            finished = sim.finished
+                        # end with
+                    except (FileNotFoundError, AttributeError):
+                        pass
+                    # end try
+                    if not finished:
+                        job_str = '  {}'.format(job.path)
+                        if hasattr(job, "samples") and isscalar(job.samples):
+                            job_str += f' ({job.samples}x samples)'
+                        # end if
+                        new_job_strs.append(job_str)
+                    # end if
                 # end for
             # end if
         # end for
-        proceed = input("Proceed (Y/n)? ")
-        if proceed == 'n':
-            exit("")
+        if len(new_job_strs) > 0:
+            print("About to submit the following jobs:")
+            for job_str in new_job_strs:
+                print(job_str)
+            # end for
+            proceed = input("Proceed (Y/n)? ")
+            if proceed == 'n':
+                exit("Submission cancelled by user.")
+            # end if
         # end if
     # end def
 

@@ -101,20 +101,14 @@ class ParameterHessian():
         self.Lambda, self.U = Lambda, U
     # end def
 
-    def get_directions(self, d=None):
-        if d is None:
-            return self.U.T
-        else:
-            return self.U.T[d]
-        # end if
+    @property
+    def directions(self):
+        return self.U.T
     # end def
 
-    def get_lambda(self, d=None):
-        if d is None:
-            return self.Lambda
-        else:
-            return self.Lambda[d]
-        # end if
+    @property
+    def lambdas(self):
+        return self.Lambda
     # end def
 
     def _convert_hessian(
@@ -160,7 +154,7 @@ class ParameterHessian():
             # end for
             string += '\n  Conjugate directions:'
             string += '\n    Lambda     Direction'
-            for Lambda, direction in zip(self.Lambda, self.get_directions()):
+            for Lambda, direction in zip(self.lambdas, self.directions):
                 string += ('\n    {:<8f}   ' + len(direction) * '{:<+1.6f} ').format(Lambda, *tuple(direction))
             # end for
         else:

@@ -9,6 +9,7 @@ import warnings
 from numpy import array, polyval, sign, isscalar
 from matplotlib import pyplot as plt
 
+from stalk.ls.FittingResult import FittingResult
 from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterSet import ParameterSet
@@ -34,6 +35,8 @@ class LineSearch(LineSearchBase):
         W=None,
         R=None,
         pes=None,
+        path='',
+        interactive=False,
         **ls_args
         # values=None, errors=None, fraction=0.025, sgn=1
         # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
@@ -54,7 +57,7 @@ class LineSearch(LineSearchBase):
             self.set_grid(M=M, W=W, R=R, offsets=offsets)
             # Try to evaluate the pes and set the results
             if isinstance(pes, PesFunction):
-                self.evaluate(pes=pes)
+                self.evaluate(pes=pes, interactive=interactive, path=path)
             # end if
         except (ValueError):
             # If the grid or pes input values are missing, the grid will be set later
@@ -126,7 +129,7 @@ class LineSearch(LineSearchBase):
     def hessian(self, hessian):
         if isinstance(hessian, ParameterHessian):
             self._hessian = hessian
-            Lambda = self.hessian.get_lambda(self.d)
+            Lambda = self.hessian.lambdas[self.d]
             self.sgn = int(sign(Lambda))
             if self.structure is None:
                 # Use Hessian structure if no other has been provided yet
@@ -139,7 +142,7 @@ class LineSearch(LineSearchBase):
 
     @property
     def Lambda(self):
-        return None if self.hessian is None else abs(self.hessian.get_lambda(self.d))
+        return None if self.hessian is None else abs(self.hessian.lambdas[self.d])
     # end def
 
     @property
@@ -148,7 +151,7 @@ class LineSearch(LineSearchBase):
             return 0.0
         # end if
         if self.hessian is not None:
-            return self.hessian.get_directions(self.d)
+            return self.hessian.directions[self.d]
         elif self.structure is not None:
             # Get pure parameter direction
             direction = len(self.structure) * [0.0]
@@ -266,7 +269,7 @@ class LineSearch(LineSearchBase):
         self,
         pes: PesFunction = None,
         add_sigma=False,
-        **kwargs,  # path=''
+        **kwargs,  # path='', interactive=False
     ):
         '''Evaluate the PES on the line-search grid using an evaluation function.'''
         pes.evaluate_all(
@@ -290,6 +293,7 @@ class LineSearch(LineSearchBase):
         self,
         ax=None,
         color='tab:blue',
+        target=None,
         **kwargs
     ):
         if not self.valid:
@@ -299,11 +303,18 @@ class LineSearch(LineSearchBase):
         if ax is None:
             f, ax = plt.subplots()
         # end if
-        LineSearchBase.plot(self, ax=ax, **kwargs)
+        if target is None:
+            if self.fit_res is None:
+                target = FittingResult(0.0, 0.0)
+            else:
+                target = self.fit_res
+            # end if
+        # end if
+        LineSearchBase.plot(self, ax=ax, target=target, **kwargs)
         if self.Lambda is not None:
             a = 0.5 * self.sgn * self.Lambda
-            x0 = self.fit_res.x0
-            y0 = self.fit_res.y0
+            x0 = target.x0
+            y0 = target.y0
             pfl = [a, -2 * a * x0, y0 + a * x0**2]
             xgrid = self._get_plot_grid(0.0)
             ygrid = polyval(pfl, xgrid)

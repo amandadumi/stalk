@@ -217,7 +217,7 @@ class ParallelLineSearch():
         if self.hessian is None:
             return array([])
         else:
-            return array(self.hessian.get_lambda())
+            return array(self.hessian.lambdas)
         # end if
     # end def
 
@@ -412,8 +412,7 @@ class ParallelLineSearch():
     # end def
 
     def _calculate_params_next(self, params, shifts):
-        directions = self.hessian.get_directions()
-        return params + shifts @ directions
+        return params + shifts @ self.hessian.directions
     # end def
 
     @property
@@ -515,7 +514,7 @@ class ParallelLineSearch():
             string += '\n  Line-searches: None'
         else:
             string += '\n  Line-searches:\n'
-            string += indent('\n'.join(['#{:<2d} {}'.format(ls.d, str(ls)) for ls in self.ls_list]), '    ')
+            string += indent('\n'.join([str(ls) for ls in self.ls_list]), '    ')
         # end if
         # TODO
         return string

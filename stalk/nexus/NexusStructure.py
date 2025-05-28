@@ -50,7 +50,6 @@ class NexusStructure(ParameterStructure):
     def get_nexus_structure(
         self,
         kshift=(0, 0, 0),
-        kgrid=(1, 1, 1),
         **kwargs
     ):
         kwargs.update({
@@ -62,7 +61,6 @@ class NexusStructure(ParameterStructure):
             kwargs.update({
                 'axes': self.axes,
                 'kshift': kshift,
-                'kgrid': kgrid,
             })
         # end if
         return Structure(**kwargs)
