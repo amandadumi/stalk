@@ -1,5 +1,11 @@
-## v0.2.1 - Current
-- Add Nexus job bundle feature
+## v0.2.1 - 28 May 2025
+- Error surface optimization: Performance update and minor bug fixes
+- Plotting and printing updates for line-searches
+- Refactor examples and add README for documentation
+    - Add Nexus examples: carbon dimer, carbon diamond
+    - Add PySCF examples: benzene, H2O
+- Add Nexus job bundle feature and improved prompt
+- Minor tweaks and fixes
 
 ## v0.2.0 - 15 Apr 2025
 
