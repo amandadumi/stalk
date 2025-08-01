@@ -6,7 +6,7 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan
-from numpy import meshgrid, linalg, linspace
+from numpy import meshgrid, linalg, linspace, dot, eye
 
 
 Bohr = 0.5291772105638411  # A
@@ -169,4 +169,39 @@ def directorize(path):
         path += '/'
     # end if
     return path
+# end def
+
+
+# Find an orthonormal basis for the subspace orthogonal to 'vec'.
+def orthogonal_subspace_basis(vec, threshold=1e-10):
+    # Normalize 'vec'
+    vec = vec / linalg.norm(vec)
+
+    # Get the dimension of the space
+    dim = len(vec)
+
+    # Create an initial basis for the whole space including 'vec'
+    initial_basis = [vec] + [eye(dim)[:, i] for i in range(dim)]
+
+    # Orthonormalize the entire basis
+    orthonormalized = gram_schmidt(initial_basis)
+
+    # Exclude the orthonormal vector corresponding to 'vec'
+    subspace_basis = array([v for v in orthonormalized if abs(dot(v, vec)) < threshold])
+
+    return subspace_basis
+# end def
+
+
+# Perform the Gram-Schmidt process on a list of vectors.
+def gram_schmidt(vectors):
+    orthonormal_basis = []
+    for v in vectors:
+        for u in orthonormal_basis:
+            v -= dot(u, v) * u
+        # end for
+        if linalg.norm(v) > 0:
+            orthonormal_basis.append(v / linalg.norm(v))
+        # end if
+    return orthonormal_basis
 # end def
