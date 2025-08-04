@@ -1,0 +1,11 @@
+Fatal Error. Aborting at Insufficient data to copy from XML input which holds 5 entries. Need to copy from [0, 6).
+
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator world
+  Proc: [[10295,0],0]
+  Errorcode: 1
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------

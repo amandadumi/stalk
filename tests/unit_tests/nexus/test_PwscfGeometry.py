@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pytest import warns
 from stalk.nexus.PwscfGeometry import PwscfGeometry
 from stalk.io.XyzGeometry import XyzGeometry
 from stalk.params import GeometryResult
@@ -37,4 +38,19 @@ def test_PwscfGeometry():
     assert isinstance(res2, GeometryResult)
     # Only test superficially for now
     assert res2.get_axes() is not None
+
+    # Test skipping of missing test
+    with warns(UserWarning):
+        res_missing = loader1.load('missing', suffix='relax.in')
+        assert res_missing.get_pos() is None
+        assert res_missing.get_axes() is None
+    # end with
+
+    # Test structures being missing (loading PES job)
+    with warns(UserWarning):
+        res_nostruct = loader1.load(
+            'tests/unit_tests/assets/pwscf_pes', suffix='scf.in')
+        assert res_nostruct.get_pos() is None
+        assert res_nostruct.get_axes() is None
+    # end with
 # end def

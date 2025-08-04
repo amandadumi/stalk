@@ -4,7 +4,9 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+import warnings
 from numpy import nan
+from pathlib import Path
 
 from nexus import PwscfAnalyzer
 
@@ -21,10 +23,19 @@ class PwscfPes(PesLoader):
     # end def
 
     def _load(self, path, suffix='scf.in', **kwargs):
-        ai = PwscfAnalyzer(PL.format(path, suffix), **kwargs)
-        ai.analyze()
+        input_file = Path(PL.format(path, suffix))
+        # Testing existence here, because Nexus will shut down everything upon failure
+        if input_file.exists():
+            ai = PwscfAnalyzer(PL.format(path, suffix), **kwargs)
+            ai.analyze()
+        else:
+            warnings.warn(f"PwscfPes loader could not find {str(input_file)}. Returning None.")
+            return PesResult(nan)
+        # end if
+
         if not hasattr(ai, "E") or ai.E == 0.0:
             # Analysis has failed
+            warnings.warn(f"PwscfPes loader could not find energy in {str(input_file)}. Returning None.")
             E = nan
         else:
             E = ai.E

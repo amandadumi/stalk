@@ -1,0 +1,98 @@
+  Input file(s): dmc.in.xml 
+================================================================
+                        QMCPACK 4.1.9
+
+          (c) Copyright 2003-2025 QMCPACK developers
+
+                         Please cite:
+      J. Kim et al. J. Phys. Cond. Mat. 30 195901 (2018)
+           https://doi.org/10.1088/1361-648X/aab9c3
+                             and
+       P. Kent et al. J. Chem. Phys. 152 174105 (2020)
+              https://doi.org/10.1063/5.0004860
+
+  Git branch: develop
+  Last git commit: a962268418ec5160f843e659245c8a90ab3b93dc-dirty
+  Last git commit date: Mon May 12 09:39:32 2025 -0400
+  Last git commit subject: Merge pull request #5505 from ylee88/inverter_del_stream
+================================================================
+  Global options 
+
+  Total number of MPI ranks = 1
+  Number of MPI groups      = 1
+  MPI group ID              = 0
+  Number of ranks in group  = 1
+  MPI ranks per node        = 1
+  OMP 1st level threads     = 1
+  OMP nested threading disabled or only 1 thread on the 2nd level
+
+  Precision used in this calculation, see definitions in the manual:
+  Base precision      = double
+  Full precision      = double
+
+  CPU only build
+  Real build. QMC_COMPLEX=OFF
+  Timer build option is enabled. Current timer level is coarse
+
+=================================================
+--- Memory usage report : when QMCPACK starts ---
+=================================================
+Available memory on node 0, free + buffers :       0 MiB
+Memory footprint by rank 0 on node 0       :       0 MiB
+=================================================
+
+  Input XML = dmc.in.xml
+
+  Project = dmc
+  date    = 2025-08-04 09:45:26 EEST
+  host    = gyjnxcx9tv-mac
+
+
+ Random Number
+ -------------
+  Offset for the random number seeds based on time: 774
+
+  Range of prime numbers to use as seeds over processors and threads = 5897-5903
+
+
+ Lattice
+ -------
+  Simulation cell radius   = 5.000000 bohr
+  Wigner-Seitz cell radius = 5.000000 bohr
+
+  Overwriting global supercell 
+  Lattice (bohr):     20.0000000000                 0                 0
+                                  0     20.0000000000                 0
+                                  0                 0     10.0000000000
+
+  Boundary Conditions:  n  n  n 
+
+  Volume (bohr^3) = 4000.0000000000
+
+  Reciprocal vectors without 2*pi.
+    g_1 =       0.0500000000                 0                 0
+    g_2 =                  0      0.0500000000                 0
+    g_3 =                  0                 0      0.1000000000
+
+  Metric tensor in real-space.
+    h_1 = 400.0000000000 0.0000000000 0.0000000000 
+    h_2 = 0.0000000000 400.0000000000 0.0000000000 
+    h_3 = 0.0000000000 0.0000000000 100.0000000000 
+
+  Metric tensor in g-space.
+    h_1 = 0.0986960440 0.0000000000 0.0000000000 
+    h_2 = 0.0000000000 0.0986960440 0.0000000000 
+    h_3 = 0.0000000000 0.0000000000 0.3947841760 
+
+ Particle Set
+ ------------
+  Name: e   Offload : no
+
+  All the species have the same mass 1.0000000000
+  Particle set size: 30   Groups : 2
+
+
+ Particle Set
+ ------------
+  Name: ion0   Offload : no
+
