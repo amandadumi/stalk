@@ -9,6 +9,7 @@ from numpy import isscalar
 from stalk.ls.MorseFit import MorseFit
 from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.ls.FittingFunction import FittingFunction
+from stalk.ls.SplineFit import SplineFit
 
 
 class LsSettings():
@@ -102,9 +103,8 @@ class LsSettings():
         # Fit kind (str) takes precedence
         if fit_kind == 'morse':
             fit_func = MorseFit()
-        elif fit_kind == 'cspline':
-            pass
-            # fit_func = CsplineFit()
+        elif fit_kind == 'spline':
+            fit_func = SplineFit()
         elif hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
             fit_func = PolynomialFit(int(fit_kind[2:]))
         elif callable(fit_func):

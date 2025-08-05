@@ -15,6 +15,8 @@ from .MorseFit import MorseFit
 from .MorseResult import MorseResult
 from .PolynomialFit import PolynomialFit
 from .PolynomialResult import PolynomialResult
+from .SplineFit import SplineFit
+from .SplineResult import SplineResult
 from .TargetLineSearch import TargetLineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 from .TlsSettings import TlsSettings
@@ -30,6 +32,8 @@ __all__ = [
     'MorseResult',
     'PolynomialFit',
     'PolynomialResult',
+    'SplineFit',
+    'SplineResult',
     'TargetLineSearch',
     'TargetLineSearchBase',
     'TlsSettings',
