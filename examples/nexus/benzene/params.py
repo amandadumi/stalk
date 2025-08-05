@@ -161,6 +161,7 @@ def dmc_pes_job(
     sigma=None,
     samples=10,
     var_eff=None,
+    dep_jobs=[],
     **kwargs
 ):
     # Estimate the relative number of samples needed
@@ -209,12 +210,20 @@ def dmc_pes_job(
         dependencies=[(scf, 'orbitals')],
     )
     system.bconds = 'nnn'
+    reuse_jastrow = len(dep_jobs) > 0
+    if reuse_jastrow:
+        opt_cycles = 3
+        minwalkers = 0.5
+    else:
+        opt_cycles = 8
+        minwalkers = 0.1
+    # end if
     opt = generate_qmcpack(
         system=system,
         path=path + 'opt',
         job=job(**optjob),
         dependencies=[(p2q, 'orbitals')],
-        cycles=8,
+        cycles=opt_cycles,
         identifier='opt',
         qmc='opt',
         input_type='basic',
@@ -228,8 +237,11 @@ def dmc_pes_job(
         blocks=200,
         substeps=2,
         samples=100000,
-        minwalkers=0.1,
+        minwalkers=minwalkers,
     )
+    if reuse_jastrow:
+        opt.depends(dep_jobs[2])
+    # end if
     dmc = generate_qmcpack(
         system=system,
         path=path + 'dmc',

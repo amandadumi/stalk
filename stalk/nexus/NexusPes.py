@@ -48,8 +48,8 @@ class NexusPes(PesFunction):
         structure: NexusStructure,
         sigma=0.0,
         add_sigma=False,
-        eqm_jobs=None,
         path='',
+        dep_jobs=[],
         interactive=False,
         **kwargs
     ):
@@ -59,13 +59,14 @@ class NexusPes(PesFunction):
             structure,
             job_path,
             sigma=sigma,
-            eqm_jobs=eqm_jobs,
+            dep_jobs=dep_jobs,
             **kwargs
         )
         if interactive:
             self._prompt([structure])
         # end if
-        run_project(structure._jobs)
+        jobs = dep_jobs + structure.jobs
+        run_project(jobs)
         res = self.loader.load(job_path)
         # Treat failure
         if isnan(res.value) and self.disable_failed:
@@ -86,42 +87,31 @@ class NexusPes(PesFunction):
         add_sigma=False,
         path='',
         interactive=False,
+        dep_jobs=[],
         **kwargs
     ):
         if sigmas is None:
             sigmas = len(structures) * [0.0]
         # end if
-        eqm_jobs = None
-        # Try to find eqm
+        jobs = dep_jobs
+        eqm_generated = False
         for structure, sigma in zip(structures, sigmas):
             if structure.label == 'eqm':
-                job_path = directorize(path) + structure.label
-                eqm_jobs = self._evaluate_structure(
-                    structure,
-                    job_path,
-                    sigma=sigma,
-                    **kwargs,
-                )
-                break
-            # end if
-        # end for
-        jobs = []
-        for structure, sigma in zip(structures, sigmas):
-            if structure.label == 'eqm':
-                # Do not generate eqm jobs twice
-                if structure.jobs is not None:
-                    jobs += structure.jobs
+                if eqm_generated:
+                    # Do not generate eqm jobs twice
+                    continue
+                else:
+                    # About to generate the eqm
+                    eqm_generated = True
                 # end if
-                continue
             # end if
-            # Make a copy structure for job generation
-            job_path = self._job_path(path, structure.label)
             if not structure.analyzed:
+                job_path = self._job_path(path, structure.label)
                 self._evaluate_structure(
                     structure,
                     job_path,
                     sigma=sigma,
-                    eqm_jobs=eqm_jobs,
+                    dep_jobs=dep_jobs,
                     **kwargs,
                 )
                 jobs += structure.jobs
@@ -161,7 +151,6 @@ class NexusPes(PesFunction):
         self,
         structure: NexusStructure,
         job_path,
-        eqm_jobs=None,
         sigma=0.0,
         **kwargs
     ):
@@ -176,7 +165,6 @@ class NexusPes(PesFunction):
             structure.get_nexus_structure(),
             directorize(job_path),
             sigma=sigma,
-            eqm_jobs=eqm_jobs,
             **eval_args
         )
         structure.sigma = sigma

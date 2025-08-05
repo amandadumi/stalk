@@ -19,7 +19,7 @@ class PesFunction(FunctionCaller):
         sigma=0.0,
         add_sigma=False,
         interactive=False,  # catch interactive
-        **kwargs
+        **kwargs  # path, dep_jobs
     ):
         res = self._evaluate_structure(structure, sigma=sigma, **kwargs)
         if add_sigma:
@@ -35,7 +35,7 @@ class PesFunction(FunctionCaller):
         sigmas=None,
         add_sigma=False,
         interactive=False,  # catch interactive
-        **kwargs  # path
+        **kwargs  # path, dep_jobs
     ):
         if sigmas is None:
             sigmas = len(structures) * [0.0]

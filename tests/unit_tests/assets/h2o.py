@@ -59,7 +59,7 @@ hessian_real_H2O = array('''
 '''.split(), dtype=float).reshape(9, 9)
 
 
-def pes_H2O(structure, sigma=0.0, path=None):
+def pes_H2O(structure, sigma=0.0, **kwargs):
     if isinstance(structure, (ParameterStructure, NexusStructure)):
         pos = structure.pos
     else:

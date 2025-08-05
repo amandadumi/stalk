@@ -18,6 +18,8 @@ var_eff = pes_dmc.get_var_eff(
 )
 # Add var_eff to DMC arguments
 pes_dmc.args['var_eff'] = var_eff
+# Add job dependencies to recycle Jastrow
+dep_jobs = surrogate.structure.jobs
 
 # Then generate line-search iteration object based on the shifted surrogate
 dmc_ls = LineSearchIteration(
@@ -28,7 +30,7 @@ dmc_ls = LineSearchIteration(
 # Propagate the parallel line-search (compute values, analyze, then move on) 4 times
 #   add_sigma = True means that target errorbars are used to simulate random noise
 for i in range(3):
-    dmc_ls.propagate(i, interactive=interactive)
+    dmc_ls.propagate(i, interactive=interactive, dep_jobs=dep_jobs)
     if interactive:
         print(dmc_ls)
         dmc_ls.pls(i).plot()
@@ -36,7 +38,7 @@ for i in range(3):
     # end if
 # end for
 # Evaluate the latest eqm structure
-dmc_ls.pls().evaluate_eqm(interactive=interactive)
+dmc_ls.pls().evaluate_eqm(interactive=interactive, dep_jobs=dep_jobs)
 
 # Print the line-search performance
 if interactive:

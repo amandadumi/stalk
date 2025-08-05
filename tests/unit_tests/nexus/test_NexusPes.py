@@ -84,6 +84,21 @@ def test_NexusPes(tmp_path):
     # TODO: not sure if this behavior is good
     assert not structures[-1].generated
     assert not structures[-1].analyzed
+    # 2a: Test dep_jobs
+    s2de = s.copy(pos=pos_H2O, label='eqm')
+    s2dd = s.copy(pos=pos_H2O * 1.2, label='dep')
+    dep_jobs = nxs_generic_pes(s2dd.get_nexus_structure(), path=str(tmp_path) + '/dep')
+    assert not dep_jobs[0].finished
+    pes.evaluate_all(
+        [s2de],
+        dep_jobs=dep_jobs,
+        path=str(tmp_path) + '/eval_dep'
+    )
+    assert s2de.generated
+    assert s2de.analyzed
+    assert not s2dd.generated
+    assert not s2dd.analyzed
+    assert dep_jobs[0].finished
 
     # 3: Test bundle
     sigmas = [0.1, 0.2]
