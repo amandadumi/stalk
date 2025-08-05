@@ -3,6 +3,7 @@
 from numpy import array, isnan, linspace, where
 from pytest import raises
 
+from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.params.PesFunction import PesFunction
 from stalk.util import match_to_tol
 from stalk import TargetLineSearch
@@ -27,11 +28,11 @@ def test_TargetLineSearch_init():
     tls = TargetLineSearch(fit_kind='pf3')
     # TargetLineSearchBase properties
     assert tls.settings.N == 200
-    assert tls.settings.fit_func.args['pfn'] == 3
+    assert tls.settings.fit_func == PolynomialFit(3)
     assert tls.settings.sgn == 1
     assert tls.settings.fraction == 0.025
     assert tls.target_settings.Gs is None
-    assert tls.target_settings.fit_func.args['pfn'] == 3
+    assert tls.target_settings.fit_func == PolynomialFit(3)
     assert tls.target_settings.sgn == 1
     assert tls.target_settings.fraction == 0.025
     assert tls.target_settings.M == 0

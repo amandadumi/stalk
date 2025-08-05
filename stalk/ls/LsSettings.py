@@ -6,8 +6,9 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 from numpy import isscalar
+from stalk.ls.MorseFit import MorseFit
+from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.ls.FittingFunction import FittingFunction
-from stalk.util.util import get_min_params
 
 
 class LsSettings():
@@ -99,11 +100,13 @@ class LsSettings():
 
     def _set_fit_func(self, fit_func, fit_args, fit_kind):
         # Fit kind (str) takes precedence
-        if hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
-            fit_func = FittingFunction(
-                get_min_params,
-                args={'pfn': int(fit_kind[2:])}
-            )
+        if fit_kind == 'morse':
+            fit_func = MorseFit()
+        elif fit_kind == 'cspline':
+            pass
+            # fit_func = CsplineFit()
+        elif hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
+            fit_func = PolynomialFit(int(fit_kind[2:]))
         elif callable(fit_func):
             # Next, check if fit_func is provided as a function
             fit_func = FittingFunction(fit_func, args=fit_args)
@@ -117,11 +120,8 @@ class LsSettings():
     # end def
 
     def __str__(self):
-        # TODO: assumes polyfit
-        pfn = self.fit_func.args['pfn']
-        fit_str = 'pf' + str(pfn)
-        string = 'Fit: {}, N: {}, fraction: {}, sgn: {}'. format(
-            fit_str,
+        string = 'Fit: {}, N: {}, fraction: {}, sgn: {}'.format(
+            self.fit_func.kind,
             self.N,
             self.fraction,
             self.sgn

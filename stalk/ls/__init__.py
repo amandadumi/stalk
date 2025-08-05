@@ -11,6 +11,10 @@ from .LineSearch import LineSearch
 from .LineSearchBase import LineSearchBase
 from .LineSearchGrid import LineSearchGrid
 from .LsSettings import LsSettings
+from .MorseFit import MorseFit
+from .MorseResult import MorseResult
+from .PolynomialFit import PolynomialFit
+from .PolynomialResult import PolynomialResult
 from .TargetLineSearch import TargetLineSearch
 from .TargetLineSearchBase import TargetLineSearchBase
 from .TlsSettings import TlsSettings
@@ -22,6 +26,10 @@ __all__ = [
     'LineSearchBase',
     'LineSearchGrid',
     'LsSettings',
+    'MorseFit',
+    'MorseResult',
+    'PolynomialFit',
+    'PolynomialResult',
     'TargetLineSearch',
     'TargetLineSearchBase',
     'TlsSettings',

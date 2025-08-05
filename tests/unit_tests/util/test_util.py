@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from numpy import array, ones, random, linspace, polyval
+from numpy import array, ones, random
 from pytest import raises
 
-from stalk.util import match_to_tol, get_min_params, get_fraction_error
+from stalk.util import match_to_tol, get_fraction_error
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -15,51 +15,6 @@ def test_units():
     assert match_to_tol(Bohr, 0.5291772105638411, 1e-10)
     assert match_to_tol(Ry, 13.605693012183622, 1e-10)
     assert match_to_tol(Hartree, 2 * Ry, 1e-10)
-# end def
-
-
-def test_get_min_params():
-
-    # Test 0-dim (degraded)
-    with raises(AssertionError):
-        get_min_params([], [], pfn=0)
-    # end with
-
-    # Test 1-dim (degraded)
-    with raises(AssertionError):
-        get_min_params([], [], pfn=1)
-    # end with
-
-    # Test 2-dim (degraded inputs)
-    with raises(AssertionError):
-        get_min_params([0.0], [], pfn=2)
-    # end with
-    with raises(AssertionError):
-        get_min_params([], [0.0], pfn=2)
-    # end with
-    with raises(AssertionError):
-        get_min_params([0.0, 0.0], [0.0, 0.0], pfn=2)
-    # end with
-
-    # Test 2-dim (nominal)
-    p2_ref = array([1.23, 2.34, 3.45])
-    x_in = linspace(-4, 4, 3)
-    y_in = polyval(p2_ref, x_in)
-    xmin2, ymin2, pf2 = get_min_params(x_in, y_in, pfn=2)
-    # Should return the same pf, compare results to analytical solutions
-    assert match_to_tol(xmin2, -p2_ref[1] / 2 / p2_ref[0])  # x* = -b/2a
-    assert match_to_tol(ymin2, -p2_ref[1]**2 / 4 / p2_ref[0] + p2_ref[2])  # y* = -b^2/4a
-    assert match_to_tol(pf2, p2_ref)
-
-    # Test 3-dim (nominal)
-    p3_ref = array([3.0, 0.0, 0.0, 50.0])
-    x_in = linspace(-4, 4, 4)
-    y_in = polyval(p3_ref, x_in)
-    xmin3, ymin3, pf3 = get_min_params(x_in, y_in, pfn=3)
-    assert match_to_tol(xmin3, 0.0, 1e-6)  # x* = 0
-    assert match_to_tol(ymin3, 50.0)  # y* = -b^2/4a
-    assert match_to_tol(pf3, p3_ref)  
-
 # end def
 
 

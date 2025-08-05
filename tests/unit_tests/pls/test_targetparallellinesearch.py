@@ -2,6 +2,7 @@
 
 from numpy import array, flipud
 from pytest import raises
+from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
 from stalk.util import match_to_tol
 
@@ -86,7 +87,7 @@ def test_TargetParallelLineSearch():
         assert tls.target_settings.bias_mix == 0.0
         assert tls.target_settings.bias_order == 1
         # Test if 'pf3' was chosen as the default
-        assert tls.target_settings.fit_func.args['pfn'] == 3
+        assert tls.target_settings.fit_func == PolynomialFit(3)
     # end for
     assert match_to_tol(srg.M, [7, 7])
     assert match_to_tol(srg.epsilon_d, epsilon_d)

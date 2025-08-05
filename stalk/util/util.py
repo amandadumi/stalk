@@ -5,7 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import polyfit, polyder, polyval, roots, where, argmin, median, array, isnan
+from numpy import exp, median, array, isnan
 from numpy import meshgrid, linalg, linspace, dot, eye
 
 
@@ -39,31 +39,6 @@ FL = '{:>10s} '
 FLL = '{:<10s} '
 # structure label format
 SL = 'd{}_{:+5.4f}'
-
-
-def get_min_params(x_n, y_n, pfn=3):
-    """Find the minimum point by fitting a curve"""
-    assert pfn > 1, 'pfn must be larger than 1'
-    assert len(x_n) == len(y_n), 'x_n and y_n must be the same size.'
-    assert len(x_n) > pfn, 'The fitting is under-determined.'
-    pf = polyfit(x_n, y_n, pfn)
-    pfd = polyder(pf)
-    r = roots(pfd)
-    d = polyval(polyder(pfd), r)
-    # filter real minima (maxima with sgn < 0)
-    x_mins = r[where((r.imag == 0) & (d > 0))].real
-    if len(x_mins) > 0:
-        y_mins = polyval(pf, x_mins)
-        imin = argmin(abs(x_mins))
-    else:
-        x_mins = [min(x_n), max(x_n)]
-        y_mins = polyval(pf, x_mins)
-        imin = argmin(y_mins)  # pick the lowest/highest energy
-    # end if
-    y0 = y_mins[imin]
-    x0 = x_mins[imin]
-    return x0, y0, pf
-# end def
 
 
 def get_fraction_error(data, fraction, both=False):
@@ -204,4 +179,10 @@ def gram_schmidt(vectors):
             orthonormal_basis.append(v / linalg.norm(v))
         # end if
     return orthonormal_basis
+# end def
+
+
+def morse(p, r):
+    # p0: eqm value, p1: stiffness, p2: well depth, p3: E_inf
+    return p[2] * ((1 - exp(-(r - p[0]) / p[1]))**2 - 1) + p[3]
 # end def

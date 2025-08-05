@@ -2,9 +2,9 @@
 
 from pytest import raises
 
+from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.LsSettings import LsSettings
-from stalk.util.util import get_min_params
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -23,9 +23,7 @@ def test_LsSettings():
     assert ls.N == 200
     assert ls.sgn == 1
     assert ls.fraction == 0.025
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func.func is get_min_params
-    assert ls.fit_func.args['pfn'] == 3
+    assert ls.fit_func == PolynomialFit(3)
 
     # Test wrong values
     with raises(ValueError):
@@ -77,8 +75,7 @@ def test_LsSettings():
         fit_kind='pf4',
         fit_args={'pfn': 5}
     )
-    assert ls2.fit_func.func is get_min_params
-    assert ls2.fit_func.args['pfn'] == 4
+    assert ls2.fit_func == PolynomialFit(4)
     with raises(TypeError):
         # Cannot set unrecognized format
         LsSettings(fit_kind='error')

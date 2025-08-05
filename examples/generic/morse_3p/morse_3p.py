@@ -11,19 +11,17 @@
 from stalk.lsi import LineSearchIteration
 from stalk.params import ParameterSet, PesFunction, ParameterHessian
 from stalk.pls import TargetParallelLineSearch
+from stalk.util.util import morse
 
 base_dir = 'morse_3p/'
 
 
-# takes: a structure object with an attribute 3x1 array params, also target noise (sigma)
+# takes: a structure object with an attribute 3x1 array params
 #   c: coupling constant of parameters through auxiliary morse potentials
 #   d: eqm displacements
 # returns: energy value, error (= sigma)
-def pes(structure, sigma=None, c=1.0, d=0.0, **kwargs):
-    from numpy import array, exp
-
-    def morse(p, r):
-        return p[2] * ((1 - exp(-(r - p[0]) / p[1]))**2 - 1) + p[3]
+def pes(structure: ParameterSet, c=1.0, d=0.0, **kwargs):
+    from numpy import array
 
     p0, p1, p2 = structure.params
     # define Morse potentials for each individual parameter

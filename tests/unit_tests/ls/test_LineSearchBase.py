@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from stalk.ls.FittingFunction import FittingFunction
+from stalk.ls import PolynomialFit
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchBase import LineSearchBase
-from stalk.util.util import get_min_params, match_to_tol
+from stalk.util.util import match_to_tol
 
 from ..assets.fitting_pf2 import generate_exact_pf2
 
@@ -23,9 +23,7 @@ def test_LineSearchBase():
     assert ls.y0 is None
     assert ls.y0_err is None
     assert ls.settings.fraction == 0.025
-    assert isinstance(ls.settings.fit_func, FittingFunction)
-    assert ls.settings.fit_func.func is get_min_params
-    assert ls.settings.fit_func.args['pfn'] == 3
+    assert ls.settings.fit_func == PolynomialFit(3)
 
     # Test initialization with grid and values, no noise
     grid, ref = generate_exact_pf2(1.23, 2.34, N=5)

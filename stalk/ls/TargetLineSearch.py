@@ -434,11 +434,10 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     # end def
 
     def to_settings(self):
-        # TODO: assumes polyfit
         result = {
             'd': self.d,
             'fraction': self.target_settings.fraction,
-            'fit_kind': 'pf' + str(self.target_settings.fit_func.args['pfn']),
+            'fit_kind': self.target_settings.fit_func.kind,
             'sgn': self.target_settings.sgn,
             'M': self.target_settings.M,
             'W': self.W_opt,

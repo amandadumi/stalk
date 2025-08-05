@@ -2,9 +2,9 @@
 
 from pytest import raises
 
+from stalk.ls import PolynomialFit
 from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.TlsSettings import TlsSettings
-from stalk.util.util import get_min_params
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -24,9 +24,7 @@ def test_TlsSettings():
     ls = TlsSettings(fit_kind='pf3')
     assert ls.sgn == 1
     assert ls.fraction == 0.025
-    assert isinstance(ls.fit_func, FittingFunction)
-    assert ls.fit_func.func is get_min_params
-    assert ls.fit_func.args['pfn'] == 3
+    assert ls.fit_func == PolynomialFit(3)
     assert ls.bias_mix == 0.0
     assert ls.bias_order == 1
     assert ls.Gs is None

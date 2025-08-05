@@ -11,7 +11,6 @@ from stalk.util.util import bipolyval
 from stalk.util.util import bipolynomials
 from stalk.util.util import directorize
 from stalk.util.util import get_fraction_error
-from stalk.util.util import get_min_params
 from stalk.util.util import match_to_tol
 from stalk.util.util import Bohr
 from stalk.util.util import Hartree
@@ -24,7 +23,6 @@ __all__ = [
     'bipolyval',
     'directorize',
     'get_fraction_error',
-    'get_min_params',
     'match_to_tol',
     'Bohr',
     'Hartree',

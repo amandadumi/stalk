@@ -5,6 +5,7 @@ from scipy.interpolate import PchipInterpolator, CubicSpline
 from pytest import raises
 
 from stalk.ls.LineSearchGrid import LineSearchGrid
+from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.params.LineSearchPoint import LineSearchPoint
 from stalk.util import match_to_tol
 from stalk.ls import TargetLineSearchBase
@@ -27,11 +28,11 @@ def test_TargetLineSearchBase():
     # Test init of defaults
     tls = TargetLineSearchBase(fit_kind='pf3')
     assert tls.settings.N == 200
-    assert tls.settings.fit_func.args['pfn'] == 3
+    assert tls.settings.fit_func == PolynomialFit(3)
     assert tls.settings.sgn == 1
     assert tls.settings.fraction == 0.025
     assert tls.target_settings.Gs is None
-    assert tls.target_settings.fit_func.args['pfn'] == 3
+    assert tls.target_settings.fit_func == PolynomialFit(3)
     assert tls.target_settings.sgn == 1
     assert tls.target_settings.fraction == 0.025
     assert tls.target_settings.M == 0
@@ -66,10 +67,10 @@ def test_TargetLineSearchBase():
         target_y0=y0
     )
     assert tls.settings.N == N
-    assert tls.settings.fit_func.args['pfn'] == 3
+    assert tls.settings.fit_func == PolynomialFit(3)
     assert tls.settings.sgn == sgn
     assert tls.settings.fraction == fraction
-    assert tls.target_settings.fit_func.args['pfn'] == 3
+    assert tls.target_settings.fit_func == PolynomialFit(3)
     assert tls.target_settings.sgn == sgn
     assert tls.target_settings.fraction == fraction
     assert tls.target_settings.bias_mix == bias_mix

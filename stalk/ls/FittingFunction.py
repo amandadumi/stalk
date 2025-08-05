@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-'''Class for fitting for curve minimum'''
+'''Generic class for fitting for curve minimum'''
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import random, array
+from numpy import ndarray, random, array
 
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
@@ -13,7 +13,6 @@ from stalk.util import get_fraction_error
 
 
 class FittingFunction():
-    _result_type = FittingResult
     func = None
     args = {}
 
@@ -30,6 +29,12 @@ class FittingFunction():
         # end if
     # end def
 
+    @property
+    def kind(self):
+        # NOTE: using this argument does cannot create another FittingFunction
+        return str(self.func)
+    # end def
+
     def find_minimum(
         self,
         grid,
@@ -38,13 +43,7 @@ class FittingFunction():
         if not isinstance(grid, LineSearchGrid):
             raise ValueError("Fitting function input must be inherited from LineSearchGrid.")
         # end if
-        res = self._eval_function(grid.valid_offsets, grid.valid_values * sgn)
-        return res
-    # end def
-
-    def _eval_function(self, offsets, values):
-        x0, y0, fit = self.func(offsets, values, **self.args)
-        return self._result_type(x0, y0, fit=fit)
+        return self._eval_function(grid.valid_offsets, grid.valid_values * sgn)
     # end def
 
     def find_noisy_minimum(
@@ -81,7 +80,7 @@ class FittingFunction():
         grid,
         sgn=1,
         N=200,
-        Gs=None,
+        Gs: ndarray = None,
     ):
         if not isinstance(grid, LineSearchGrid):
             raise ValueError("Fitting function input must be inherited from LineSearchGrid.")
@@ -122,6 +121,11 @@ class FittingFunction():
         **kwargs  # sng=1, N=200, Gs=None
     ):
         return self.get_distribution(grid, **kwargs)[1]
+    # end def
+
+    def _eval_function(self, offsets, values) -> FittingResult:
+        x0, y0, fit = self.func(offsets, values, **self.args)
+        return FittingResult(x0, y0, fit=fit)
     # end def
 
     def __eq__(self, other):
