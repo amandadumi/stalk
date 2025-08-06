@@ -5,162 +5,112 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array, linalg, diag, isscalar, zeros, ones, where, mean, polyfit
+import warnings
+from numpy import array, linalg, diag, isscalar, ndarray, zeros, ones, where, mean, polyfit
 
 from stalk.params.ParameterStructure import ParameterStructure
 from stalk.params.PesFunction import PesFunction
-from stalk.util import Ry, Hartree, Bohr, bipolyfit
+from stalk.util import bipolyfit
 from stalk.params.ParameterSet import ParameterSet
 
 
 class ParameterHessian():
-    hessian = None  # always stored in (Ry/A)**2
-    Lambda = None
-    structure = None
-    U = None
-    P = None
-    D = None
+    _structure = None
+    _hessian = None
+    _Lambda = None
+    _U = None
+    require_consistent = True
 
     def __init__(
         self,
         hessian=None,
         structure=None,
-        hessian_real=None,
-        **kwargs,  # units etc
+        require_consistent=True,
     ):
-        if structure is not None:
-            self.set_structure(structure)
-            if hessian_real is not None:
-                self.init_hessian_real(hessian_real)
-            else:
-                self.init_hessian_structure(structure)
-            # end if
-        # end if
-        if hessian is not None:
-            self.init_hessian_array(hessian, **kwargs)
-        # end if
-    # end def
-
-    def set_structure(self, structure):
-        """Set the Hessian location as a ParameterSet or derived object"""
-        assert isinstance(
-            structure, ParameterSet), 'Structure must be inherited from ParameterSet class.'
+        self.require_consistent = require_consistent
         self.structure = structure
-    # end def
-
-    def init_hessian_structure(self, structure):
-        """Initialize the Hessian from a structure"""
-        assert isinstance(
-            structure, ParameterSet), 'Structure mus tbe inherited from ParameterSet class.'
-        assert structure.check_consistency(
-        ), 'Provided ParameterStructure is incomplete or inconsistent'
-        hessian = diag(len(structure.params) * [1.0])
-        self._set_hessian(hessian)
-    # end def
-
-    def init_hessian_real(self, hessian_real, structure=None):
-        structure = structure if structure is not None else self.structure
-        assert structure.check_consistency(
-        ), 'Provided ParameterStructure is incomplete or inconsistent'
-        jacobian = structure.jacobian()
-        hessian = jacobian.T @ hessian_real @ jacobian
-        self._set_hessian(hessian)
-    # end def
-
-    def init_hessian_array(self, hessian, **kwargs):
-        hessian = self._convert_hessian(array(hessian), **kwargs)
-        self._set_hessian(hessian)
-    # end def
-
-    def update_hessian(
-        self,
-        hessian,
-    ):
-        hessian = self._convert_hessian(array(hessian))
-        P, D = hessian.shape
-        Lambda, U = linalg.eig(hessian)
-        assert P == self.P, 'Parameter count P={} does not match initial {}'.format(
-            P, self.P)
-        assert D == self.D, 'Direction count D={} does not match initial {}'.format(
-            D, self.D)
-        self._set_hessian(hessian)
-    # end def
-
-    def _set_hessian(self, hessian):
-        # TODO: assertions
-        if len(hessian) == 1:
-            Lambda = array(hessian[0])
-            U = array([[1.0]])
-            P, D = 1, 1
-        else:
-            Lambda, U = linalg.eig(hessian)
-            P, D = hessian.shape
+        # Hessian must be set after structure
+        if self.structure is not None:
+            self.hessian = hessian
         # end if
-        self.hessian = array(hessian)
-        self.P, self.D = P, D
-        self.Lambda, self.U = Lambda, U
     # end def
 
     @property
-    def directions(self):
-        return self.U.T
+    def structure(self):
+        return self._structure
+    # end def
+
+    @structure.setter
+    def structure(self, structure):
+        if structure is None:
+            self.reset()
+        elif isinstance(structure, ParameterSet):
+            if not structure.check_consistency():
+                if self.require_consistent:
+                    raise AssertionError('The structure is not consistent! Aborting.')
+                else:
+                    warnings.warn("The structure is not consistent!")
+                # end if
+            # end if
+            self._structure = structure
+        else:
+            raise TypeError('Structure must be inherited from ParameterSet class.')
+        # end if
     # end def
 
     @property
-    def lambdas(self):
-        return self.Lambda
+    def hessian(self):
+        return self._hessian
     # end def
 
-    def _convert_hessian(
-        self,
-        hessian,
-        x_unit='A',
-        E_unit='Ry',
-    ):
-        if x_unit == 'B':
-            hessian *= Bohr**2
-        elif x_unit == 'A':
-            hessian *= 1.0
-        else:
-            raise ValueError('E_unit {} not recognized'.format(E_unit))
+    @hessian.setter
+    def hessian(self, hessian):
+        if self.structure is None:
+            raise AssertionError('Cannot set Hessian without setting structure first!')
         # end if
-        if E_unit == 'Ha':
-            hessian /= (Hartree / Ry)**2
-        elif E_unit == 'eV':
-            hessian /= Ry**2
-        elif E_unit == 'Ry':
-            hessian /= 1.0
+        d = len(self.structure)
+        if hessian is None:
+            # Default Hessian
+            self._hessian = diag(d * [1.0])
         else:
-            raise ValueError('E_unit {} not recognized'.format(E_unit))
+            hessian = array(hessian)
+            if len(hessian.shape) != 2 or hessian.shape[0] != d or hessian.shape[1] != d:
+                raise AssertionError(f'The Hessian must be {d}x{d} array, provided: {hessian.shape}')
+            # end if
+            self._hessian = hessian
         # end if
-        return hessian
-    # end def
-
-    def get_hessian(self, **kwargs):
-        return self._convert_hessian(self.hessian, **kwargs)
+        Lambda, U = linalg.eig(self.hessian)
+        self._Lambda = Lambda
+        self._U = U
     # end def
 
     @property
-    def hessian_set(self):
-        return self.hessian is not None
+    def U(self) -> ndarray:
+        return self._U
     # end def
 
-    def __str__(self):
-        string = self.__class__.__name__
-        if self.hessian_set:
-            string += '\n  hessian:'
-            for h in self.hessian:
-                string += ('\n    ' + len(h) * '{:<8f} ').format(*tuple(h))
-            # end for
-            string += '\n  Conjugate directions:'
-            string += '\n    Lambda     Direction'
-            for Lambda, direction in zip(self.lambdas, self.directions):
-                string += ('\n    {:<8f}   ' + len(direction) * '{:<+1.6f} ').format(Lambda, *tuple(direction))
-            # end for
-        else:
-            string += '\n  hessian: not set'
+    @property
+    def directions(self) -> ndarray:
+        if self.U is not None:
+            return self.U.T
         # end if
-        return string
+    # end def
+
+    @property
+    def lambdas(self) -> ndarray:
+        return self._Lambda
+    # end def
+
+    def reset(self):
+        self._structure = None
+        self._hessian = None
+        self._Lambda = None
+        self._U = None
+    # end def
+
+    # Only preserved for backward compatibility
+    def init_hessian_array(self, hessian):
+        self.hessian = hessian
     # end def
 
     def compute_fdiff(
@@ -171,11 +121,26 @@ class ParameterHessian():
         dpos_mode=False,
         **kwargs,
     ):
-        eqm = structure if structure is not None else self.structure
-        P = len(eqm.params)
-        dps = array(P * [dp]) if isscalar(dp) else array(dp)
-        dp_list, structure_list = self._get_fdiff_data(eqm, dps, dpos_mode=dpos_mode)
+        if structure is not None:
+            self.structure = structure
+        # end if
+        P = len(self)
+
+        # Figure out finite differences
+        if isscalar(dp):
+            dps = array(P * [dp])
+        elif len(dp) == P:
+            dps = array(dp)
+        else:
+            raise ValueError(f'Error: Provided {len(dp)} dps for {P} directions! Aborting.')
+        # end if
+
+        # Get list of displacements and structures
+        dp_list, structure_list = self._get_fdiff_data(dps, dpos_mode=dpos_mode)
         pes.evaluate_all(structure_list, **kwargs)
+        # Issue warning when eqm energy is not the apparent minimum
+        self._warn_energy(structure_list)
+
         # Pick those displacements and energies that were successfully computed
         energies = []
         pdiffs = []
@@ -188,7 +153,7 @@ class ParameterHessian():
         pdiffs = array(pdiffs)
         energies = array(energies)
 
-        params = eqm.params
+        params = self.structure.params
         if P == 1:  # for 1-dimensional problems
             pf = polyfit(pdiffs[:, 0], energies, 2)
             hessian = array([[pf[0]]])
@@ -223,13 +188,12 @@ class ParameterHessian():
                 hessian[p0, p0] = mean(pfs[p0])
             # end for
         # end if
-        self.init_hessian_array(hessian)
+        self.hessian = hessian
     # end def
 
-    def _get_fdiff_data(self, structure, dps, dpos_mode=False):
-        assert isinstance(structure, ParameterSet)
+    def _get_fdiff_data(self, dps, dpos_mode=False):
         dp_list = [0.0 * dps]
-        structure_list = [structure.copy(label='eqm')]
+        structure_list = [self.structure.copy(label='eqm')]
 
         def shift_params(id_ls, dp_ls):
             dparams = array(len(dps) * [0.0])
@@ -242,8 +206,8 @@ class ParameterHessian():
                 # end if
                 label += '{}'.format(dp)
             # end for
-            structure_new = structure.copy(label=label)
-            if isinstance(structure, ParameterStructure):
+            structure_new = self.structure.copy(label=label)
+            if isinstance(structure_new, ParameterStructure):
                 structure_new.shift_params(dparams, dpos_mode=dpos_mode)
             else:
                 structure_new.shift_params(dparams)
@@ -268,8 +232,40 @@ class ParameterHessian():
         return dp_list, structure_list
     # end def
 
+    def _warn_energy(self, structure_list: list[ParameterSet]):
+        eqm_value = structure_list[0].value
+        self.structure.value = eqm_value
+        for structure in structure_list[0:]:
+            if structure.value < eqm_value:
+                warnings.warn(f'Energy for {structure.label} is lower than E_eqm={eqm_value}!')
+            # end if
+        # end for
+    # end def
+
     def __len__(self):
-        return self.D
+        if self.structure is None:
+            return 0
+        else:
+            return len(self.structure)
+        # end if
+    # end def
+
+    def __str__(self):
+        string = self.__class__.__name__
+        if self.hessian is not None:
+            string += '\n  hessian:'
+            for h in self.hessian:
+                string += ('\n    ' + len(h) * '{:<8f} ').format(*tuple(h))
+            # end for
+            string += '\n  Conjugate directions:'
+            string += '\n    Lambda     Direction'
+            for Lambda, direction in zip(self.lambdas, self.directions):
+                string += ('\n    {:<8f}   ' + len(direction) * '{:<+1.6f} ').format(Lambda, *tuple(direction))
+            # end for
+        else:
+            string += '\n  hessian: not set'
+        # end if
+        return string
     # end def
 
 # end class
