@@ -6,8 +6,8 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 import warnings
+from numpy import linspace
 from matplotlib import pyplot as plt
-from numpy import linspace, polyval
 from stalk.ls.FittingResult import FittingResult
 from stalk.ls.LineSearchGrid import LineSearchGrid
 from stalk.ls.LsSettings import LsSettings
@@ -133,7 +133,7 @@ class LineSearchBase(LineSearchGrid):
             return
         # end if
         if ax is None:
-            f, ax = plt.subplots()
+            f, ax = self._create_plot(**kwargs)
         # end if
         if target is None:
             target = self.fit_res
@@ -148,19 +148,19 @@ class LineSearchBase(LineSearchGrid):
                 linestyle='none',
                 marker='x',
                 color=color,
-                label='Minimum'
+                label='Fitted minimum'
             )
             xgrid = self._get_plot_grid()
-            # NOTE: hard-coded to polyval
-            ygrid = polyval(target.fit, xgrid)
+            ygrid = target.get_values(xgrid)
             ax.plot(
                 xgrid,
                 ygrid,
                 linestyle='--',
                 color=color,
-                label='Fit'
+                label='Fitted curve'
             )
         # end if
+        plt.tight_layout()
     # end def
 
     def _get_plot_grid(self, fraction=0.1):

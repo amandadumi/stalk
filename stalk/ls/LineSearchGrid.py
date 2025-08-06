@@ -227,6 +227,7 @@ class LineSearchGrid():
     def plot(
         self,
         ax=None,
+        f=None,
         color='tab:blue',
         **kwargs
     ):
@@ -235,20 +236,34 @@ class LineSearchGrid():
             return
         # end if
         if ax is None:
-            f, ax = plt.subplots()
+            f, ax = self._create_plot(**kwargs)
         # end if
-        for point in self.grid:
+        self.grid[0].plot(ax, color=color, label='Data', **kwargs)
+        for point in self.grid[1:]:
             point.plot(ax, color=color, **kwargs)
         # end for
+        plt.tight_layout()
+    # end def
+
+    def _create_plot(
+        self,
+        xlabel='Offset',
+        ylabel='Energy',
+        **kwargs
+    ):
+        f, ax = plt.subplots()
+        ax.set_title(repr(self))
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        return f, ax
     # end def
 
     def __len__(self):
         return len(self.grid)
     # end def
 
-    # str of grid
     def __str__(self):
-        string = self.__class__.__name__
+        string = repr(self)
         if len(self) == 0:
             string += '\nGrid: not set.'
         else:
@@ -258,6 +273,10 @@ class LineSearchGrid():
             # end for
         # end if
         return string
+    # end def
+
+    def __repr__(self):
+        return self.__class__.__name__
     # end def
 
 # end class

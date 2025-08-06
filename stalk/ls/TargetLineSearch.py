@@ -5,9 +5,9 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from matplotlib import pyplot as plt
 from numpy import array, isscalar, linspace, nan
 from numpy import ndarray
-from matplotlib import pyplot as plt
 
 from stalk.ls.ErrorSurface import ErrorSurface
 from stalk.ls.LineSearchGrid import LineSearchGrid
@@ -462,7 +462,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         **kwargs
     ):
         if ax is None:
-            f, ax = plt.subplots()
+            f, ax = self._create_plot()
         # end if
         target = None
         if self.optimized:
@@ -472,7 +472,15 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             target = self.target_settings.fit_func.find_minimum(grid)
             errors = self.M * [self.sigma_opt]
             offsets -= self.target_settings.target.x0
-            ax.errorbar(offsets, values, errors, linestyle='None', marker='*', color='r')
+            ax.errorbar(
+                offsets,
+                values,
+                errors,
+                linestyle='None',
+                marker='*',
+                color='r',
+                label='Optimized grid'
+            )
         # end if
         LineSearch.plot(self, ax=ax, target=target)
     # end def
@@ -485,9 +493,9 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
             print('Must optimize before plotting error surface')
             return
         # end if
-        from matplotlib import pyplot as plt
         if ax is None:
-            f, ax = plt.subplots(1, 1)
+            f, ax = self._create_plot(xlabel='Grid extent W', ylabel='Input noise')
+            ax.set_title(f'Error surface: {repr(self)}, epsilon={FF.format(self.epsilon)}')
         # end if
         T = self.error_surface.T_mat
         X = self.error_surface.X_mat
@@ -498,6 +506,7 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
         ax.contour(X, Y, Z, [self.epsilon], colors='k')
         ax.plot(X.flatten(), Y.flatten(), 'k.', alpha=0.3)
         ax.plot(self.W_opt, self.sigma_opt, 'ko')
+        plt.tight_layout()
     # end def
 
     def _reset_resampling(self):

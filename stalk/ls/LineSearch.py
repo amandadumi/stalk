@@ -6,8 +6,8 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 import warnings
-from numpy import array, polyval, sign, isscalar
 from matplotlib import pyplot as plt
+from numpy import array, polyval, sign, isscalar
 
 from stalk.ls.FittingResult import FittingResult
 from stalk.params.ParameterHessian import ParameterHessian
@@ -301,7 +301,7 @@ class LineSearch(LineSearchBase):
             return
         # end if
         if ax is None:
-            f, ax = plt.subplots()
+            f, ax = self._create_plot(**kwargs)
         # end if
         if target is None:
             if self.fit_res is None:
@@ -310,7 +310,7 @@ class LineSearch(LineSearchBase):
                 target = self.fit_res
             # end if
         # end if
-        LineSearchBase.plot(self, ax=ax, target=target, **kwargs)
+        LineSearchBase.plot(self, ax=ax, target=target, color=color, **kwargs)
         if self.Lambda is not None:
             a = 0.5 * self.sgn * self.Lambda
             x0 = target.x0
@@ -322,18 +322,23 @@ class LineSearch(LineSearchBase):
                 xgrid,
                 ygrid,
                 color=color,
-                linestyle=':'
+                linestyle=':',
+                label='Hessian'
             )
         # end if
+        plt.tight_layout()
     # end def
 
     def __str__(self):
-        string = '#{} '.format(self.d)
-        string += LineSearchBase.__str__(self)
+        string = LineSearchBase.__str__(self)
         if self.Lambda is not None:
             string += ('\n  Lambda: ' + FF).format(self.Lambda)
         # end if
         return string
+    # end def
+
+    def __repr__(self):
+        return f'#{self.d} {super().__repr__()}'
     # end def
 
 # end class

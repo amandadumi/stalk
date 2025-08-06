@@ -33,5 +33,6 @@ surrogate.optimize(
 if __name__ == "__main__":
     print(surrogate)
     surrogate.plot()
+    plt.legend()
     plt.show()
 # end if
