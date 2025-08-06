@@ -5,6 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+import warnings
 from numpy import isnan, isscalar
 from pickle import load
 
@@ -13,8 +14,9 @@ from nexus import run_project, bundle
 from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.PesFunction import PesFunction
+from stalk.params.PesResult import PesResult
 from stalk.util.EffectiveVariance import EffectiveVariance
-from stalk.util.util import directorize
+from stalk.util.util import FF, FP, directorize
 
 
 class NexusPes(PesFunction):
@@ -51,6 +53,7 @@ class NexusPes(PesFunction):
         path='',
         dep_jobs=[],
         interactive=False,
+        warn_limit=2.0,
         **kwargs
     ):
         job_path = self._job_path(path, structure.label)
@@ -67,16 +70,17 @@ class NexusPes(PesFunction):
         # end if
         jobs = dep_jobs + structure.jobs
         run_project(jobs)
-        res = self.loader.load(job_path)
+        result = self.loader.load(job_path)
         # Treat failure
-        if isnan(res.value) and self.disable_failed:
+        if isnan(result.value) and self.disable_failed:
             structure.enabled = False
         # end if
+        self._warn_energy(structure, result, warn_limit=warn_limit)
         if add_sigma:
-            res.add_sigma(sigma)
+            result.add_sigma(sigma)
         # end if
-        structure.value = res.value
-        structure.error = res.error
+        structure.value = result.value
+        structure.error = result.error
     # end def
 
     # Override evaluation function to support parallel job submission and analysis
@@ -88,6 +92,7 @@ class NexusPes(PesFunction):
         path='',
         interactive=False,
         dep_jobs=[],
+        warn_limit=2.0,
         **kwargs
     ):
         if sigmas is None:
@@ -128,18 +133,19 @@ class NexusPes(PesFunction):
         # end if
 
         # Then, load
-        for structure, sigma in zip(structures, sigmas):
+        for structure in structures:
             job_path = self._job_path(path, structure.label)
-            res = self.loader.load(job_path)
+            result = self.loader.load(job_path)
+            self._warn_energy(structure, result, warn_limit=warn_limit)
             # Treat failure
-            if isnan(res.value) and self.disable_failed:
+            if isnan(result.value) and self.disable_failed:
                 structure.enabled = False
             # end if
             if add_sigma:
-                res.add_sigma(sigma)
+                result.add_sigma(sigma)
             # end if
-            structure.value = res.value
-            structure.error = res.error
+            structure.value = result.value
+            structure.error = result.error
         # end for
     # end def
 
@@ -205,6 +211,15 @@ class NexusPes(PesFunction):
             if proceed == 'n':
                 exit("Submission cancelled by user.")
             # end if
+        # end if
+    # end def
+
+    def _warn_energy(self, structure: NexusStructure, result: PesResult, warn_limit=2.0):
+        if (structure.sigma is not None and structure.sigma > 0.0 and result.error / structure.sigma > warn_limit):
+            msg = f'The error/sigma for {structure.label} is '
+            msg += f'{FF.format(result.error)}/{FF.format(structure.sigma)}'
+            msg += f'{FP.format(result.error / structure.sigma * 100)}'
+            warnings.warn(msg)
         # end if
     # end def
 

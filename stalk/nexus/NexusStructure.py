@@ -12,6 +12,7 @@ from stalk.params.ParameterStructure import ParameterStructure
 
 class NexusStructure(ParameterStructure):
     _jobs: list[Simulation] = None
+    _sigma = None
 
     @property
     def jobs(self):
@@ -45,6 +46,22 @@ class NexusStructure(ParameterStructure):
     @property
     def analyzed(self):
         return self.finished and self.value is not None
+    # end def
+
+    @property
+    def sigma(self):
+        return self._sigma
+    # end def
+
+    @sigma.setter
+    def sigma(self, sigma):
+        if sigma is None:
+            self._sigma = 1e100
+        elif sigma >= 0:
+            self._sigma = sigma
+        else:
+            raise ValueError(f'Sigma must be >= 0, provided: {sigma}')
+        # end if
     # end def
 
     def get_nexus_structure(
