@@ -34,6 +34,7 @@ class XyzGeometry(GeometryLoader, GeometryWriter):
     # end def
 
     def __write__(self, structure, path, suffix='structure.xyz', c_pos=1.0):
+        # TODO: branch for ParameterSet
         assert isinstance(structure, ParameterStructure)
         output = []
         header = str(len(structure.elem)) + '\n'

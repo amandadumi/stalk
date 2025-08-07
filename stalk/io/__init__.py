@@ -5,7 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from .FilesFunction import FilesFunction
+from .FilesPes import FilesPes
 from .FilesLoader import FilesLoader
 from .GeometryLoader import GeometryLoader
 from .GeometryWriter import GeometryWriter
@@ -14,7 +14,7 @@ from .XyzGeometry import XyzGeometry
 
 __all__ = [
     'FilesLoader',
-    'FilesFunction',
+    'FilesPes',
     'GeometryLoader',
     'GeometryWriter',
     'PesLoader',

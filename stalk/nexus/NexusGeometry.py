@@ -51,11 +51,12 @@ class NexusGeometry(FunctionCaller):
             **eval_args
         )
         structure.jobs = jobs
+        structure.job_path = directorize(path)
         # Run project
         run_project(jobs)
 
         # Load results and update the structure
-        res = self.loader.load(path)
+        res = self.loader.load(structure.job_path)
         if res.get_pos() is not None:
             structure.set_position(res.get_pos(), res.get_axes())
         else:

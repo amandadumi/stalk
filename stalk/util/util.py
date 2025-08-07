@@ -138,11 +138,12 @@ def bipolymin(p, X, Y, nx, ny, itermax=6, shrink=0.1, npoints=10):
 # end def bipolymin
 
 
-def directorize(path):
+def directorize(path: str):
     """If missing, add '/' to the end of path"""
     if len(path) > 0 and not path[-1] == '/':
         path += '/'
     # end if
+    path = path.replace("//", "/")
     return path
 # end def
 

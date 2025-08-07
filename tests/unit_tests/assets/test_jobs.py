@@ -9,6 +9,7 @@ from simulation import GenericSimulation, SimulationAnalyzer, Simulation
 from stalk.io.GeometryLoader import GeometryLoader
 from stalk.io.PesLoader import PesLoader
 from stalk.io.XyzGeometry import XyzGeometry
+from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.GeometryResult import GeometryResult
 from stalk.params.PesResult import PesResult
 
@@ -57,6 +58,8 @@ class TestAnalyzer(SimulationAnalyzer):
     ):
         if isinstance(arg0, Simulation):
             self.path = arg0.path
+        elif isinstance(arg0, NexusStructure):
+            self.path = arg0.job_path
         else:
             self.path = arg0
         # end if
@@ -101,8 +104,8 @@ class TestLoader(PesLoader):
         self._args = args
     # end def
 
-    def _load(self, path, produce_fail=False, **kwargs):
-        ai = TestAnalyzer(path, **kwargs)
+    def _load(self, structure: NexusStructure, produce_fail=False, **kwargs):
+        ai = TestAnalyzer(structure, **kwargs)
         ai.analyze()
         if produce_fail:
             return PesResult(nan, 0.0)

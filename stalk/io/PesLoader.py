@@ -10,19 +10,17 @@ from stalk.util.FunctionCaller import FunctionCaller
 
 class PesLoader(FunctionCaller):
 
-    def load(self, path, sigma=0.0, **kwargs):
-        '''The PES loader must accept a "path" to input file and return PesResult.
-        '''
+    def load(self, structure, sigma=0.0, **kwargs):
         args = self.args.copy()
         args.update(kwargs)
-        res = self._load(path=path, **args)
+        res = self._load(structure, **args)
         # If a non-zero, artificial errorbar is requested, add it to result
         res.add_sigma(sigma)
         return res
     # end def
 
-    def _load(self, path='', **kwargs):
-        res = self.func(path=path, **kwargs)
+    def _load(self, structure, **kwargs):
+        res = self.func(structure, **kwargs)
         if not isinstance(res, PesResult):
             raise AssertionError('The _load method must return a PesResult.')
         # end if

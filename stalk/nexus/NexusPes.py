@@ -56,11 +56,10 @@ class NexusPes(PesFunction):
         warn_limit=2.0,
         **kwargs
     ):
-        job_path = self._job_path(path, structure.label)
         # TODO: try to load first, to assess whether to regenerate or not
         self._evaluate_structure(
             structure,
-            job_path,
+            path=path,
             sigma=sigma,
             dep_jobs=dep_jobs,
             **kwargs
@@ -70,17 +69,7 @@ class NexusPes(PesFunction):
         # end if
         jobs = dep_jobs + structure.jobs
         run_project(jobs)
-        result = self.loader.load(job_path)
-        # Treat failure
-        if isnan(result.value) and self.disable_failed:
-            structure.enabled = False
-        # end if
-        self._warn_energy(structure, result, warn_limit=warn_limit)
-        if add_sigma:
-            result.add_sigma(sigma)
-        # end if
-        structure.value = result.value
-        structure.error = result.error
+        self._load_structure(structure, add_sigma=add_sigma, warn_limit=warn_limit)
     # end def
 
     # Override evaluation function to support parallel job submission and analysis
@@ -101,25 +90,27 @@ class NexusPes(PesFunction):
         jobs = dep_jobs
         eqm_generated = False
         for structure, sigma in zip(structures, sigmas):
+            skip_gen = False
             if structure.label == 'eqm':
                 if eqm_generated:
-                    # Do not generate eqm jobs twice
-                    continue
+                    skip_gen = True
                 else:
-                    # About to generate the eqm
                     eqm_generated = True
+                    skip_gen = False
                 # end if
             # end if
             if not structure.analyzed:
-                job_path = self._job_path(path, structure.label)
                 self._evaluate_structure(
                     structure,
-                    job_path,
+                    path=path,
                     sigma=sigma,
                     dep_jobs=dep_jobs,
+                    skip_gen=skip_gen,
                     **kwargs,
                 )
-                jobs += structure.jobs
+                if structure.jobs is not None:
+                    jobs += structure.jobs
+                # end if
             # end if
         # end for
         # TODO: try to load first, to assess whether to regenerate or not
@@ -134,47 +125,56 @@ class NexusPes(PesFunction):
 
         # Then, load
         for structure in structures:
-            job_path = self._job_path(path, structure.label)
-            result = self.loader.load(job_path)
-            self._warn_energy(structure, result, warn_limit=warn_limit)
-            # Treat failure
-            if isnan(result.value) and self.disable_failed:
-                structure.enabled = False
-            # end if
-            if add_sigma:
-                result.add_sigma(sigma)
-            # end if
-            structure.value = result.value
-            structure.error = result.error
+            self._load_structure(structure, add_sigma=add_sigma, warn_limit=warn_limit)
         # end for
-    # end def
-
-    def _job_path(self, path, label):
-        return f'{directorize(path)}{label}/'
     # end def
 
     def _evaluate_structure(
         self,
         structure: NexusStructure,
-        job_path,
+        path='',
         sigma=0.0,
+        skip_gen=False,
         **kwargs
     ):
         # Do not redo jobs
         if structure.generated:
             return
         # end if
+        job_path = f'{directorize(path)}{structure.label}/'
         eval_args = self.args.copy()
         # Override with kwargs
         eval_args.update(**kwargs)
-        jobs = self.func(
-            structure.get_nexus_structure(),
-            directorize(job_path),
-            sigma=sigma,
-            **eval_args
-        )
+        if not skip_gen:
+            jobs = self.func(
+                structure.get_nexus_structure(),
+                job_path,
+                sigma=sigma,
+                **eval_args
+            )
+            structure.jobs = jobs
+        # end if
+        structure.job_path = job_path
         structure.sigma = sigma
-        structure.jobs = jobs
+    # end def
+
+    def _load_structure(
+        self,
+        structure: NexusStructure,
+        add_sigma=False,
+        warn_limit=2.0,
+    ):
+        result = self.loader.load(structure)
+        self._warn_energy(structure, result, warn_limit=warn_limit)
+        # Treat failure
+        if isnan(result.value) and self.disable_failed:
+            structure.enabled = False
+        # end if
+        if add_sigma:
+            result.add_sigma(structure.sigma)
+        # end if
+        structure.value = result.value
+        structure.error = result.error
     # end def
 
     def _prompt(self, structures: list[NexusStructure]):
@@ -242,6 +242,7 @@ class NexusPes(PesFunction):
     # end def
 
     def relax(
+        self,
         *args,
         **kwargs
     ):

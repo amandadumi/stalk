@@ -21,12 +21,14 @@ class PesFunction(FunctionCaller):
         interactive=False,  # catch interactive
         **kwargs  # path, dep_jobs
     ):
-        res = self._evaluate_structure(structure, sigma=sigma, **kwargs)
-        if add_sigma:
-            res.add_sigma(sigma)
-        # end if
-        structure.value = res.value
-        structure.error = res.error
+        result = self._evaluate_structure(structure, sigma=sigma, **kwargs)
+        # Load hook to be used in derived classes
+        self._load_structure(
+            structure,
+            result=result,
+            sigma=sigma,
+            add_sigma=add_sigma
+        )
     # end def
 
     def evaluate_all(
@@ -56,6 +58,24 @@ class PesFunction(FunctionCaller):
         eval_args.update(**kwargs)
         value, error = self.func(structure, sigma=sigma, **eval_args)
         return PesResult(value, error)
+    # end def
+
+    def _load_structure(
+        self,
+        structure: ParameterSet,
+        result: PesResult = None,
+        add_sigma=False,
+        sigma=0.0,
+    ):
+        if result is None:
+            return
+        # end if
+        # Loading is trivial because the result is readily provided
+        if add_sigma:
+            result.add_sigma(sigma)
+        # end if
+        structure.value = result.value
+        structure.error = result.error
     # end def
 
     def relax(

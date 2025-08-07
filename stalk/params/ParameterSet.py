@@ -15,6 +15,7 @@ from stalk.params.Parameter import Parameter
 class ParameterSet(LineSearchPoint):
     _param_list: list[Parameter] = []
     label = ''  # label for identification
+    file_path = None  # field to be used in file I/O mode
 
     @property
     def params_list(self):
