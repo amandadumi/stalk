@@ -46,3 +46,59 @@ class PwscfPes(PesLoader):
     # end def
 
 # end class
+
+class PwscfEnthalpy(PesLoader):
+
+    def __init__(self, args={}):
+        self._func = None
+        self.args = args
+    # end def
+
+    def _load(self, structure: ParameterSet, suffix='scf.in', **kwargs):
+        input_file = Path(PL.format(structure.file_path, suffix))
+        # Testing existence here, because Nexus will shut down everything upon failure
+        if input_file.exists():
+            ai = PwscfAnalyzer(str(input_file), **kwargs)
+            ai.analyze()
+        else:
+            warnings.warn(f"PwscfPes loader could not find {str(input_file)}. Returning None.")
+            return PesResult(nan)
+        # end if
+        
+        if not hasattr(ai, "E") or ai.E == 0.0:
+            # Analysis has failed
+            warnings.warn(f"PwscfPes loader could not find energy in {str(input_file)}. Returning None.")
+            E = nan
+        else:
+            E = ai.E # In units of Ry
+            E*=2
+        # end if
+
+        if not hasattr(ai, "pressure") or ai.pressure == 0.0:
+            # Analysis has failed
+            warnings.warn(f"PwscfPes loader could not find pressure in {str(input_file)}. Returning None.")
+            P = nan
+        else:
+            P = ai.pressure # in units of kbar
+            #convert units
+            P*=1e8 #kbar to Pa
+            P*= 1/47105076e13 # Ry/bohr3 per Pa
+            P*=0.5 # Ry to Ha
+        # end if
+
+        if not hasattr(ai, "volume") or ai.volume == 0.0:
+            # Analysis has failed
+            warnings.warn(f"PwscfPes loader could not find volume in {str(input_file)}. Returning None.")
+            V = nan
+        else:
+            V = ai.volume # in units of bohr^3
+            # convert units
+            
+        # end if
+        Err = 0.0
+
+        H = E+(P*V)
+        return PesResult(H, Err)
+    # end def
+
+# end class
