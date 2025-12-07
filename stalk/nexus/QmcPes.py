@@ -91,7 +91,7 @@ class QmcPes(PesLoader):
 
 # end class
 
-class QmcEnthalpyPes(PesLoader):
+class QmcEnthalpy(PesLoader):
 
     def __init__(self, args={}):
         self._func = None
@@ -121,12 +121,15 @@ class QmcEnthalpyPes(PesLoader):
             warnings.warn(f"QmcPes loader could not find energy in {str(input_file)}. Returning None.")
             return PesResult(nan)
         else:
-
-            P = self._analyze_energy_term(ai.qmc[qmc_idx].scalars)
+            P = self._analyze_stress_term(ai.qmc[qmc_idx].scalars)
+            print(f'pressure: {P}')
             E,E_err =  self._analyze_energy_term(ai.qmc[qmc_idx].scalars, term)
-            V = self._analyze_volume_term(ai.structure)
+            print(f'energy: {E}')
+            V = self._analyze_volume_term(ai.info.system.structure)
+            print(f'volume: {V}')
 
             H = E + (P*V)
+            print(f'Enthalpy: {H}')
             return PesResult(H,E_err) 
         # end if
     # end def
@@ -140,7 +143,7 @@ class QmcEnthalpyPes(PesLoader):
         return np.abs(np.dot(a,np.cross(b,c)))
         
 
-    def _analyze_stress_term(self, scalars, label):
+    def _analyze_stress_term(self, scalars):
         force_00 = scalars['force_0_0']
         value_00 = force_00.mean
         error_00 = force_00.error
@@ -152,12 +155,12 @@ class QmcEnthalpyPes(PesLoader):
         force_22 = scalars['force_2_2']
         value_22 = force_22.mean
         error_22 = force_22.error
-        
-
+        print('stress values') 
+        print(value_00, value_11,value_22)
         P = (1/3)*(value_00 + value_11 + value_22)
         return P
 
-    def _analyze_energy_term(self, scalars, label):
+    def _analyze_energy_term(self, scalars, label='LocalEnergy'):
         LE = scalars[label]
         value = LE.mean
         error = LE.error

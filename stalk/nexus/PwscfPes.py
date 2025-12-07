@@ -71,7 +71,6 @@ class PwscfEnthalpy(PesLoader):
             E = nan
         else:
             E = ai.E # In units of Ry
-            E*=2
         # end if
 
         if not hasattr(ai, "pressure") or ai.pressure == 0.0:
@@ -81,9 +80,7 @@ class PwscfEnthalpy(PesLoader):
         else:
             P = ai.pressure # in units of kbar
             #convert units
-            P*=1e8 #kbar to Pa
-            P*= 1/47105076e13 # Ry/bohr3 per Pa
-            P*=0.5 # Ry to Ha
+            P *= 6.7978e-6 # Ry/bohr3 per Pa
         # end if
 
         if not hasattr(ai, "volume") or ai.volume == 0.0:
@@ -96,6 +93,7 @@ class PwscfEnthalpy(PesLoader):
             
         # end if
         Err = 0.0
+        print(f"Energy:{E}\nVolume: {V}\nPressure:{P}\n\n")
 
         H = E+(P*V)
         return PesResult(H, Err)
