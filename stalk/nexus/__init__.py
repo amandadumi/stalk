@@ -11,7 +11,9 @@ try:
     from .NexusPes import NexusPes
     from .PwscfGeometry import PwscfGeometry
     from .PwscfPes import PwscfPes
+    from .PwscfPes import PwscfEnthalpy
     from .QmcPes import QmcPes
+    from .QmcPes import QmcEnthalpy
     nexus_enabled = True
 except ModuleNotFoundError:
     nexus_enabled = False
