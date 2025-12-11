@@ -12,6 +12,7 @@ interactive = __name__ == "__main__"
 # Run a snapshot job to sample effective variance w.r.t relative DMC samples
 # Choosing higher tiling makes for higher accuracy and higher cost
 pes_dmc.args['tile_opt'] = 4
+pes_dmc.args['twist_grid'] = (2, 2, 2)
 # Rescale the result appropriately
 pes_dmc.loader.scale = 4
 var_eff = pes_dmc.get_var_eff(
@@ -32,7 +33,6 @@ dmc_ls = LineSearchIteration(
     pes=pes_dmc,
 )
 # Propagate the parallel line-search (compute values, analyze, then move on) 4 times
-#   add_sigma = True means that target errorbars are used to simulate random noise
 for i in range(2):
     dmc_ls.propagate(
         i,
