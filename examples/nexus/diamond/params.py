@@ -124,6 +124,8 @@ def dmc_pes_job(
     tile_opt=1,
     dep_jobs=[],
     rcut=3.0,
+    twist_grid=(1, 1, 1),
+    kshift=(0, 0, 0),
     **kwargs
 ):
     # Estimate the relative number of samples needed
@@ -140,12 +142,12 @@ def dmc_pes_job(
     )
     # Create spherical tiling to mitigate finite-size effects
     tiled = structure.tile_opt(tile_opt)
-    # In this example, we only consider twistnumber=0
-    tiled.add_symmetrized_kmesh(kgrid=(1, 1, 1), kshift=(0, 0, 0))
-    supercell = generate_physical_system(
-        structure=tiled,
-        C=4,
-    )
+    tiled.add_symmetrized_kmesh(kgrid=(1, 1, 1), kshift=kshift)
+    supercell = generate_physical_system(structure=tiled, C=4)
+    # Twisted supercell
+    tiled_twisted = structure.tile_opt(tile_opt)
+    tiled_twisted.add_symmetrized_kmesh(kgrid=twist_grid, kshift=kshift)
+    twisted_supercell = generate_physical_system(structure=tiled_twisted, C=4)
 
     # Check if reusing Jastrows
     reuse_jastrow = len(dep_jobs) > 0 and tiled.rwigner(1) > rcut
@@ -229,11 +231,30 @@ def dmc_pes_job(
     if reuse_jastrow:
         opt.depends(dep_jobs[3], 'jastrow')
     # end if
+    nscft = generate_pwscf(
+        system=twisted_supercell,
+        job=job(**pwscfjob),
+        path=path + 'nscft',
+        identifier='nscf',
+        calculation='nscf',
+        wf_collect=True,
+        nosym=True,
+        nogamma=True,
+        dependencies=[(scf, 'charge_density')],
+        **scf_qmc_args
+    )
+    p2qt = generate_pw2qmcpack(
+        job=job(**p2qjob),
+        path=path + 'nscft',
+        identifier='p2q',
+        write_psir=False,
+        dependencies=[(nscft, 'orbitals')],
+    )
     dmc = generate_qmcpack(
-        system=supercell,
+        system=twisted_supercell,
         path=path + 'dmc',
         job=job(**dmcjob),
-        dependencies=[(p2q, 'orbitals'), (opt, 'jastrow')],
+        dependencies=[(p2qt, 'orbitals'), (opt, 'jastrow')],
         steps=dmcsteps,
         identifier='dmc',
         qmc='dmc',
@@ -246,11 +267,10 @@ def dmc_pes_job(
         timestep=0.01,
         ntimesteps=1,
         nonlocalmoves=True,
-        twistnum=0,
     )
     # Store the relative samples for printout
     dmc.samples = dmcsteps
-    return [scf, nscf, p2q, opt, dmc]
+    return [scf, nscf, p2q, opt, nscft, p2qt, dmc]
 # end def
 
 
@@ -270,5 +290,5 @@ pes_dmc = NexusPes(
     dmc_pes_job,
     # Nexus QmcpackAnalyzer returns DMC energy for the first time-step after walker
     # generation, so at index->1
-    loader=QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
+    loader=QmcPes({'suffix': '/dmc/dmc.in', 'qmc_idx': 1})
 )
