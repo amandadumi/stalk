@@ -80,7 +80,8 @@ class PwscfEnthalpy(PesLoader):
         else:
             P = ai.pressure # in units of kbar
             #convert units
-            P *= 6.7978e-6 # Ry/bohr3 per Pa
+            rybohr3_per_kbar = 6.7978e-6
+            P *=  rybohr3_per_kbar
         # end if
 
         if not hasattr(ai, "volume") or ai.volume == 0.0:
@@ -89,13 +90,12 @@ class PwscfEnthalpy(PesLoader):
             V = nan
         else:
             V = ai.volume # in units of bohr^3
-            # convert units
             
         # end if
         Err = 0.0
         print(f"Energy:{E}\nVolume: {V}\nPressure:{P}\n\n")
 
-        H = E+(P*V)
+        H = E+(P*V) # Returned in Rydberg
         return PesResult(H, Err)
     # end def
 
