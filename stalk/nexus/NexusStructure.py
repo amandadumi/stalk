@@ -4,8 +4,8 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from structure import Structure
-from simulation import Simulation
+from nexus.structure import Structure
+from nexus.simulation import Simulation
 
 from stalk.params.ParameterStructure import ParameterStructure
 
