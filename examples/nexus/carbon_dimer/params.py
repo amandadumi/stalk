@@ -5,7 +5,7 @@ from numpy import array
 from nexus import generate_pyscf, generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_convert4qmc
 from stalk.io.util import load_energy
-from structure import Structure
+from nexus import Structure
 
 from stalk.params.util import distance
 from stalk.io.XyzGeometry import XyzGeometry
@@ -15,6 +15,7 @@ from stalk.nexus.QmcPes import QmcPes
 from stalk.util import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
+# Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly
 from nxs import pyscfjob, optjob, dmcjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)

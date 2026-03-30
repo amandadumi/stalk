@@ -6,7 +6,7 @@ from nexus import generate_pyscf, generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_pw2qmcpack, generate_pwscf
 from stalk.io.PesLoader import PesLoader
 from stalk.io.util import load_energy
-from structure import Structure
+from nexus import Structure
 
 from stalk.params.util import mean_distances
 from stalk.util.util import Bohr
@@ -18,6 +18,7 @@ from stalk.params.PesFunction import PesFunction
 from stalk.util import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
+# Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly
 from nxs import pyscfjob, optjob, dmcjob, pwscfjob, p2qjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)

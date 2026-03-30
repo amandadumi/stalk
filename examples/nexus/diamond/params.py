@@ -4,7 +4,7 @@ from numpy import ndarray
 
 from nexus import generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_pw2qmcpack, generate_pwscf
-from structure import Structure
+from nexus import Structure
 
 from stalk.nexus.PwscfGeometry import PwscfGeometry
 from stalk.nexus.PwscfPes import PwscfPes
@@ -15,6 +15,7 @@ from stalk.nexus.QmcPes import QmcPes
 from stalk.util import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
+# Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly
 from nxs import pwscfjob, optjob, dmcjob, p2qjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)

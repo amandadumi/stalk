@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Surrogate Hessian accelerated parallel line-search: Nexus additions"""
+"""Surrogate Hessian accelerated parallel line-search: Nexus integration"""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"

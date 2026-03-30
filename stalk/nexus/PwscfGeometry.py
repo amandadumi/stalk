@@ -5,8 +5,9 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 import warnings
-from nexus import PwscfAnalyzer
 from pathlib import Path
+
+from nexus import PwscfAnalyzer
 
 from stalk.util.util import PL
 from stalk.io.GeometryLoader import GeometryLoader
