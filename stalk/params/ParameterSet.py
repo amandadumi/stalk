@@ -153,9 +153,21 @@ class ParameterSet(LineSearchPoint):
         if isinstance(other, ParameterSet) and len(other) == len(self):
             result = self.copy()
             result.shift_params(-other.params)
+            return result
         else:
             raise ValueError(f'Cannot subtract {repr(other)} from {repr(self)}')
         # end if
+    # end def
+
+    # Mean squared distance between this and other ParameterSet
+    def distance2(self, other):
+        diff = self - other
+        return sum(array(diff.params)**2)
+    # end def
+
+    # Mean unsigned distance between this and other ParameterSet
+    def distance(self, other):
+        return self.distance2(other)**0.5
     # end def
 
     def __str__(self):
