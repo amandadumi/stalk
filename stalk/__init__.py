@@ -15,6 +15,8 @@ from stalk import util
 from stalk.params import ParameterHessian
 from stalk.params import ParameterSet
 from stalk.params import ParameterStructure
+from stalk.params import EffectiveVariance
+from stalk.params import EffectiveVarianceMap
 from stalk.lsi import LineSearchIteration
 from stalk.ls import LineSearch
 from stalk.ls import TargetLineSearch
@@ -42,6 +44,8 @@ __all__ = [
     'ParameterHessian',
     'ParameterSet',
     'ParameterStructure',
+    'EffectiveVariance',
+    'EffectiveVarianceMap',
     'LineSearchIteration',
     'LineSearch',
     'TargetLineSearch',

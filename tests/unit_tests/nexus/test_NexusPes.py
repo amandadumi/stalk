@@ -6,9 +6,10 @@ from numpy import isnan
 from stalk.util.util import match_to_tol
 from stalk.nexus.NexusPes import NexusPes
 from stalk.nexus.NexusStructure import NexusStructure
+from stalk import EffectiveVarianceMap
 
 from ..assets.test_jobs import nxs_generic_pes, TestLoader
-from ..assets.h2o import pes_H2O, pos_H2O, elem_H2O
+from ..assets.h2o import pes_H2O, pos_H2O, elem_H2O, forward_H2O
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -122,4 +123,44 @@ def test_NexusPes(tmp_path):
     assert all([s.analyzed for s in structures_bundle])
     assert match_to_tol([s.error for s in structures_bundle], sigmas)
 
+    # 4: Test effective variance map
+    samples = 15
+    pes = NexusPes(
+        nxs_generic_pes,
+        args={'pes_variable': 'evm'},
+        loader=TestLoader()
+    )
+    s_evm = s.copy()
+    evm = pes.get_var_eff_map(
+        structure=s_evm,
+        path=str(tmp_path) + '/evm_test',
+        samples=samples
+    )
+    assert isinstance(evm, EffectiveVarianceMap)
+    assert len(evm) == 1
+    assert evm.scaling_map[0][0] is s_evm
+    assert match_to_tol(evm.scaling_map[0][1].var_eff, s_evm.error**2 * samples)
+
+    s_evm0 = s_evm.copy(label='evm_test0', pos=pos_H2O * 0.9)
+    sigma = 0.0001
+    with raises(ValueError):
+        # using var_eff_map requires forward mapping to use parameters
+        samples_ref = evm.get_samples(s_evm0, error=sigma)
+    # end with
+    s_evm.set_forward_func(forward_H2O)
+    s_evm0.set_forward_func(forward_H2O)
+    samples_ref = evm.get_samples(s_evm0, error=sigma)
+    pes.evaluate(
+        s_evm0,
+        path=str(tmp_path) + '/evm_test0',
+        var_eff_map=evm,
+        sigma=sigma,
+    )
+    assert s_evm0.samples == samples_ref
+    assert len(evm) == 2
+    assert evm.scaling_map[1][0] is s_evm0
+    # TODO: The new estimated value is not externally validated
+    error_new = 0.004
+    samples_new = 277
+    assert evm.get_samples(s_evm0, error=error_new) == samples_new
 # end def

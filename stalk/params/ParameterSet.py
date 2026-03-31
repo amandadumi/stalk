@@ -14,6 +14,7 @@ from stalk.params.Parameter import Parameter
 
 class ParameterSet(LineSearchPoint):
     _param_list: list[Parameter] = []
+    _samples = None  # samples for effective variance estimation
     label = ''  # label for identification
     file_path = None  # field to be used in file I/O mode
 
@@ -33,6 +34,22 @@ class ParameterSet(LineSearchPoint):
     def params_err(self):
         if len(self) > 0:
             return array([p.error for p in self.params_list])
+        # end if
+    # end def
+
+    @property
+    def samples(self):
+        return self._samples
+    # end def
+
+    @samples.setter
+    def samples(self, samples):
+        if samples is None:
+            self._samples = None
+        elif int(samples) > 0:
+            self._samples = int(samples)
+        else:
+            raise ValueError(f'Samples must be > 0 integer, provided: {samples}')
         # end if
     # end def
 
@@ -150,7 +167,7 @@ class ParameterSet(LineSearchPoint):
     # end def
 
     def __sub__(self, other):
-        if isinstance(other, ParameterSet) and len(other) == len(self):
+        if isinstance(other, ParameterSet) and len(self) > 0 and len(other) == len(self):
             result = self.copy()
             result.shift_params(-other.params)
             return result

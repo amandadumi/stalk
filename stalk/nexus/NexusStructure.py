@@ -86,7 +86,11 @@ class NexusStructure(ParameterStructure):
                 'kshift': kshift,
             })
         # end if
-        return Structure(**kwargs)
+        structure = Structure(**kwargs)
+        if self.samples is not None:
+            structure.samples = self.samples
+        # end if
+        return structure
     # end def
 
     def reset_value(self):

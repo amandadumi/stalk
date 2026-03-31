@@ -5,7 +5,6 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from stalk.util.EffectiveVariance import EffectiveVariance
 from stalk.util.util import bipolyfit
 from stalk.util.util import bipolyval
 from stalk.util.util import bipolynomials
@@ -17,7 +16,6 @@ from stalk.util.util import Hartree
 from stalk.util.util import Ry
 
 __all__ = [
-    'EffectiveVariance',
     'bipolyfit',
     'bipolynomials',
     'bipolyval',

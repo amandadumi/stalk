@@ -42,6 +42,10 @@ if __name__ == '__main__':
             writer = XyzGeometry({'suffix': xyzfilename})
             writer.write(structure, '.')
             np.savetxt(axesfilename, axes_diamond)
+        elif pes_variable == 'evm':
+            # If evaluating PES, write energy and errorbar to disk
+            value, error = pes_H2O(pos, dvar_eff=[0.1, 0.2])
+            np.savetxt(efilename, [value, error])
         else:  # default: dummy
             pass
         # end if

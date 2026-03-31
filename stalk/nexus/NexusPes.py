@@ -15,7 +15,8 @@ from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.PesFunction import PesFunction
 from stalk.params.PesResult import PesResult
-from stalk.util.EffectiveVariance import EffectiveVariance
+from stalk.params.EffectiveVariance import EffectiveVariance
+from stalk.params.EffectiveVarianceMap import EffectiveVarianceMap
 from stalk.util.util import FF, FP, directorize
 
 
@@ -54,6 +55,7 @@ class NexusPes(PesFunction):
         dep_jobs=[],
         interactive=False,
         warn_limit=2.0,
+        var_eff_map=None,
         **kwargs
     ):
         # TODO: try to load first, to assess whether to regenerate or not
@@ -62,6 +64,7 @@ class NexusPes(PesFunction):
             path=path,
             sigma=sigma,
             dep_jobs=dep_jobs,
+            var_eff_map=var_eff_map,
             **kwargs
         )
         if interactive:
@@ -69,7 +72,12 @@ class NexusPes(PesFunction):
         # end if
         jobs = dep_jobs + structure.jobs
         run_project(jobs)
-        self._load_structure(structure, add_sigma=add_sigma, warn_limit=warn_limit)
+        self._load_structure(
+            structure,
+            add_sigma=add_sigma,
+            warn_limit=warn_limit,
+            var_eff_map=var_eff_map,
+        )
     # end def
 
     # Override evaluation function to support parallel job submission and analysis
@@ -82,6 +90,7 @@ class NexusPes(PesFunction):
         interactive=False,
         dep_jobs=[],
         warn_limit=2.0,
+        var_eff_map=None,
         **kwargs
     ):
         if sigmas is None:
@@ -110,6 +119,7 @@ class NexusPes(PesFunction):
                     sigma=sigma,
                     dep_jobs=dep_jobs,
                     skip_gen=skip_gen,
+                    var_eff_map=var_eff_map,
                     **kwargs,
                 )
                 if structure.jobs is not None:
@@ -129,7 +139,12 @@ class NexusPes(PesFunction):
 
         # Then, load
         for structure in structures:
-            self._load_structure(structure, add_sigma=add_sigma, warn_limit=warn_limit)
+            self._load_structure(
+                structure,
+                add_sigma=add_sigma,
+                warn_limit=warn_limit,
+                var_eff_map=var_eff_map,
+            )
         # end for
     # end def
 
@@ -139,6 +154,7 @@ class NexusPes(PesFunction):
         path='',
         sigma=0.0,
         skip_gen=False,
+        var_eff_map=None,
         **kwargs
     ):
         file_path = f'{directorize(path)}{structure.label}/'
@@ -149,6 +165,8 @@ class NexusPes(PesFunction):
         if structure.generated:
             return
         # end if
+        # Set samples hook
+        self._set_samples(structure, sigma=sigma, var_eff_map=var_eff_map)
         # Override with kwargs
         eval_args.update(**kwargs)
         if not skip_gen:
@@ -167,6 +185,7 @@ class NexusPes(PesFunction):
         structure: NexusStructure,
         add_sigma=False,
         warn_limit=2.0,
+        var_eff_map=None,
     ):
         if add_sigma:
             result = self.loader.load(structure, sigma=structure.sigma)
@@ -180,6 +199,8 @@ class NexusPes(PesFunction):
         # end if
         structure.value = result.value
         structure.error = result.error
+        # Update var_eff_map hook
+        self._update_var_eff_map(structure, var_eff_map)
     # end def
 
     def _prompt(self, structures: list[NexusStructure]):
@@ -245,6 +266,22 @@ class NexusPes(PesFunction):
         var_eff = EffectiveVariance(samples, structure.error)
         return var_eff
     # end def
+
+    def get_var_eff_map(
+        self,
+        structure: NexusStructure,
+        path='path',
+        samples=10,
+        interactive=False,
+    ):
+        var_eff = self.get_var_eff(
+            structure,
+            path=path,
+            samples=samples,
+            interactive=interactive
+        )
+        var_eff_map = EffectiveVarianceMap(structure, var_eff=var_eff)
+        return var_eff_map
 
     def relax(
         self,

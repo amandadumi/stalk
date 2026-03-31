@@ -59,19 +59,26 @@ hessian_real_H2O = array('''
 '''.split(), dtype=float).reshape(9, 9)
 
 
-def pes_H2O(structure, sigma=0.0, **kwargs):
+def pes_H2O(structure, sigma=0.0, dvar_eff=None, **kwargs):
     if isinstance(structure, (ParameterStructure, NexusStructure)):
         pos = structure.pos
     else:
         # In testing, pos may be passed directly
         pos = structure
     # end if
+    r0 = 0.95789707
+    a0 = 104.119
     a = bond_angle(pos[1], pos[0], pos[2])
     r = mean_distances([(pos[0], pos[1]), (pos[0], pos[1])])
     V = sigma * randn(1)[0]
-    V += morse([0.95789707, 0.5, 0.5, 0.0], r)
-    V += harmonic_a([104.119, 0.5], a)
-    return V, sigma
+    sigma_eff = sigma
+    if dvar_eff is not None:
+        # assume 2-dimensionnal; make sigma depend on the displacement
+        sigma_eff += abs(a - a0) * dvar_eff[0] + abs(r - r0) * dvar_eff[1]
+    # end if
+    V += morse([r0, 0.5, 0.5, 0.0], r)
+    V += harmonic_a([a0, 0.5], a)
+    return V, sigma_eff
 # end def
 
 
