@@ -276,6 +276,11 @@ class LineSearchIteration():
         self.pls_list.append(pls_next)
     # end
 
+    # Evalutate last eqm
+    def evaluate_eqm(self, **kwargs):
+        self.pls().evaluate_eqm(var_eff_map=self.var_eff_map, **kwargs)
+    # end def
+
     # Keeping a limited version for backward compatibility
     def plot_convergence(
         self,
