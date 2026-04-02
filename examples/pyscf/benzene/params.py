@@ -99,7 +99,7 @@ def kernel_pyscf(structure: ParameterStructure):
 def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz'):
     mf = kernel_pyscf(structure=structure)
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='benzene_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
 # end def

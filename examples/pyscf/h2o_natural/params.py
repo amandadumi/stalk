@@ -36,7 +36,7 @@ def backward(params: ndarray):
     r = params[0]
     # Transform bond angle to triangular angle
     a = (pi - params[1]) / 2
-    # place atoms on a hexagon in the xy-directions
+    # place O at origin, and Hs in xy plane
     O0 = [0.0, 0.0, 0.0]
     H1 = [r * sin(a), r * cos(a), 0.0]
     H2 = [r * sin(a), -r * cos(a), 0.0]
@@ -71,7 +71,7 @@ def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz', xc='pbe'):
     mf = kernel_pyscf(structure=structure)
     mf.xc = xc
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='h2o_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
 # end def

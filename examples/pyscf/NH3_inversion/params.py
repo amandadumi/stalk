@@ -88,7 +88,7 @@ def kernel_pyscf(positions, elem):
 def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz'):
     mf = kernel_pyscf(structure.pos, structure.elem)
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='nh3_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
 # end def

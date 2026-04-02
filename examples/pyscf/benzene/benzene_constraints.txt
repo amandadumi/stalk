@@ -1,0 +1,4 @@
+$freeze
+z 1-12
+trans-xyz 1-12
+rotation 1-12

@@ -1,0 +1,4 @@
+$freeze
+xyz 1
+xy 2
+trans-xy 3-5

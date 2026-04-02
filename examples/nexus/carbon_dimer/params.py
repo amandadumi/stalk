@@ -12,7 +12,7 @@ from stalk.io.XyzGeometry import XyzGeometry
 from stalk.nexus.NexusGeometry import NexusGeometry
 from stalk.nexus.NexusPes import NexusPes
 from stalk.nexus.QmcPes import QmcPes
-from stalk.util import EffectiveVariance
+from stalk import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
 # Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly
@@ -100,7 +100,9 @@ def dmc_pes_job(
     **kwargs
 ):
     # Estimate the relative number of samples needed
-    if isinstance(var_eff, EffectiveVariance):
+    if hasattr(structure, 'samples'):
+        dmcsteps = structure.samples
+    elif isinstance(var_eff, EffectiveVariance):
         dmcsteps = var_eff.get_samples(sigma)
     else:
         dmcsteps = samples
