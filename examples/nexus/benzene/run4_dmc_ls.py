@@ -10,14 +10,12 @@ from run2_surrogate import surrogate
 interactive = __name__ == "__main__"
 
 # Run a snapshot job to sample effective variance w.r.t relative DMC samples
-var_eff = pes_dmc.get_var_eff(
+var_eff_map = pes_dmc.get_var_eff_map(
     structure=surrogate.structure,
     path='dmc_var_eff',
     samples=10,
     interactive=interactive,
 )
-# Add var_eff to DMC arguments
-pes_dmc.args['var_eff'] = var_eff
 # Add job dependencies to recycle Jastrow
 dep_jobs = surrogate.structure.jobs
 
@@ -26,6 +24,7 @@ dmc_ls = LineSearchIteration(
     surrogate=surrogate,
     path='dmc_ls',
     pes=pes_dmc,
+    var_eff_map=var_eff_map,
 )
 # Propagate the parallel line-search (compute values, analyze, then move on) 4 times
 #   add_sigma = True means that target errorbars are used to simulate random noise
@@ -38,7 +37,7 @@ for i in range(3):
     # end if
 # end for
 # Evaluate the latest eqm structure
-dmc_ls.pls().evaluate_eqm(interactive=interactive, dep_jobs=dep_jobs)
+dmc_ls.evaluate_eqm(interactive=interactive, dep_jobs=dep_jobs)
 
 # Print the line-search performance
 if interactive:
