@@ -12,9 +12,12 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase import Atoms
 from ase.constraints import FixAtoms
 
-from stalk.params.util import mean_distances, mean_param, angle, rotate_2d
+from stalk import mean_distances
+from stalk import mean_param
+from stalk import angle
+from stalk import rotate_2d
 from stalk import ParameterStructure
-from stalk.params import PesFunction
+from stalk import PesFunction
 
 
 # Forward mapping: produce parameter values from an array of atomic positions

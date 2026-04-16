@@ -8,10 +8,12 @@
 #
 # Computing task: Runs on command line
 
-from stalk.lsi import LineSearchIteration
-from stalk.params import ParameterSet, PesFunction, ParameterHessian
-from stalk.pls import TargetParallelLineSearch
-from stalk.util.util import morse
+from stalk import LineSearchIteration
+from stalk import ParameterSet
+from stalk import PesFunction
+from stalk import ParameterHessian
+from stalk import TargetParallelLineSearch
+from stalk import morse
 
 base_dir = 'morse_3p/'
 

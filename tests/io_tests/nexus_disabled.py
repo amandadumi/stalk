@@ -12,7 +12,7 @@ def disable_nexus():
     from sys import path
     # Temporarily remove nexus from path
     for p in path:
-        if '/nexus/lib' in p:
+        if '/nexus' in p:
             path.remove(p)
         # end if
     # end for

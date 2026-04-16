@@ -3,9 +3,12 @@
 from numpy import array, sin, cos, ndarray, pi
 from pyscf import dft, gto
 
-from stalk.io.FilesPes import FilesPes
-from stalk.params.ParameterStructure import ParameterStructure
-from stalk.params.util import bond_angle, distance, mean_distances, mean_param
+from stalk import FilesPes
+from stalk import ParameterStructure
+from stalk import bond_angle
+from stalk import distance
+from stalk import mean_distances
+from stalk import mean_param
 
 
 # Natural forward mapping using bond lengths and angles

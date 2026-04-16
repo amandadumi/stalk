@@ -6,13 +6,13 @@ from nexus import generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_pw2qmcpack, generate_pwscf
 from nexus import Structure
 
-from stalk.nexus.PwscfGeometry import PwscfGeometry
-from stalk.nexus.PwscfPes import PwscfPes
-from stalk.util.util import Bohr
-from stalk.nexus.NexusGeometry import NexusGeometry
-from stalk.nexus.NexusPes import NexusPes
-from stalk.nexus.QmcPes import QmcPes
-from stalk.util import EffectiveVariance
+from stalk.util import Bohr
+from stalk.nexus import PwscfGeometry
+from stalk.nexus import PwscfPes
+from stalk.nexus import NexusGeometry
+from stalk.nexus import NexusPes
+from stalk.nexus import QmcPes
+from stalk import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
 # Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly

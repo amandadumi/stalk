@@ -4,7 +4,7 @@ from os import makedirs
 from numpy import array
 
 from stalk import ParameterStructure
-from stalk.io import XyzGeometry
+from stalk import XyzGeometry
 
 from params import forward, backward, relax_pyscf
 

@@ -4,15 +4,15 @@ from numpy import array
 
 from nexus import generate_pyscf, generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_convert4qmc
-from stalk.io.util import load_energy
 from nexus import Structure
 
-from stalk.params.util import distance
-from stalk.io.XyzGeometry import XyzGeometry
-from stalk.nexus.NexusGeometry import NexusGeometry
-from stalk.nexus.NexusPes import NexusPes
-from stalk.nexus.QmcPes import QmcPes
+from stalk import load_energy
+from stalk import distance
+from stalk import XyzGeometry
 from stalk import EffectiveVariance
+from stalk.nexus import NexusGeometry
+from stalk.nexus import NexusPes
+from stalk.nexus import QmcPes
 
 # This requires the following job arguments to be defined in local nxs.py
 # Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly

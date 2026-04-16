@@ -5,7 +5,7 @@ from pyscf.geomopt.geometric_solver import optimize
 from pyscf.gto.mole import tofile
 
 from stalk import ParameterStructure
-from stalk.io import XyzGeometry
+from stalk import XyzGeometry
 
 from params import forward, backward, kernel_pyscf
 
