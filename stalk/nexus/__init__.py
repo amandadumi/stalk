@@ -12,6 +12,7 @@ try:
     from .PwscfGeometry import PwscfGeometry
     from .PwscfPes import PwscfPes
     from .QmcPes import QmcPes
+    from .XsfGeometry import XsfGeometry
     nexus_enabled = True
 except ModuleNotFoundError:
     nexus_enabled = False
@@ -25,4 +26,5 @@ __all__ = [
     'PwscfGeometry',
     'PwscfPes',
     'QmcPes',
+    'XsfGeometry',
 ]

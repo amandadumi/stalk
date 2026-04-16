@@ -5,15 +5,16 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from stalk.util.util import bipolyfit
-from stalk.util.util import bipolyval
-from stalk.util.util import bipolynomials
-from stalk.util.util import directorize
-from stalk.util.util import get_fraction_error
-from stalk.util.util import match_to_tol
-from stalk.util.util import Bohr
-from stalk.util.util import Hartree
-from stalk.util.util import Ry
+from .util import bipolyfit
+from .util import bipolyval
+from .util import bipolynomials
+from .util import directorize
+from .util import get_fraction_error
+from .util import match_to_tol
+from .util import morse
+from .util import Bohr
+from .util import Hartree
+from .util import Ry
 
 __all__ = [
     'bipolyfit',
@@ -22,6 +23,7 @@ __all__ = [
     'directorize',
     'get_fraction_error',
     'match_to_tol',
+    'morse',
     'Bohr',
     'Hartree',
     'Ry',
