@@ -112,7 +112,7 @@ class FilesPes(PesFunction):
         # warn_limit=2.0,
         **kwargs
     ):
-        result = self.loader.load(structure)
+        result = self.loader.load(structure.file_path)
         if isnan(result.value):
             finished = False
         else:

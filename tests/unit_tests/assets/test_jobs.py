@@ -89,7 +89,7 @@ class TestAnalyzer(SimulationAnalyzer):
         xyz_file = path / xyzfilename
         axes_file = path / axesfilename
         if xyz_file.exists():
-            res = XyzGeometry({'suffix': xyzfilename}).load(str(self.path))
+            res = XyzGeometry(suffix=xyzfilename).load(str(path))
             if axes_file.exists():
                 res.axes = np.loadtxt(axes_file)
             # end if

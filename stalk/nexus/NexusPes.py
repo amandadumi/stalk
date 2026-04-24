@@ -183,9 +183,9 @@ class NexusPes(PesFunction):
         var_eff_map=None,
     ):
         if add_sigma:
-            result = self.loader.load(structure, sigma=structure.sigma)
+            result = self.loader.load(structure.file_path, sigma=structure.sigma)
         else:
-            result = self.loader.load(structure)
+            result = self.loader.load(structure.file_path)
         # end if
         self._warn_energy(structure, result, warn_limit=warn_limit)
         # Treat failure

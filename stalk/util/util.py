@@ -192,18 +192,17 @@ def morse(p, r):
 # end def
 
 
-def get_filename(path, args: dict):
-    suffix = args.pop('suffix', None)
-    # First, try to load 'path'
+def check_result_file(path, args: dict):
+    suffix = args.pop('suffix', '')
     p = Path(path)
-    if p.exists() and not p.is_dir():
-        return path
-    # end if
-    # Next, try 'path/suffix'
-    if isinstance(suffix, str):
-        p = p / suffix
-        if p.exists() and not p.is_dir():
-            return str(p)
+    if isinstance(suffix, str) and len(suffix) > 0:
+        if suffix.startswith('/'):
+            suffix = suffix[1:]
         # end if
+        p /= suffix
     # end if
+    if not p.exists():
+        raise FileNotFoundError(f'Could not find {p}. Aborting.')
+    # end if
+    return str(p)
 # end def

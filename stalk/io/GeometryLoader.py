@@ -3,12 +3,12 @@
 import warnings
 from numpy import nan
 
-from numpy import isscalar, isnan
+from numpy import isscalar
 
 from stalk.params.GeometryResult import GeometryResult
 from stalk.params.ParameterSet import ParameterSet
 from stalk.util.ArgsContainer import ArgsContainer
-from stalk.util.util import get_filename
+from stalk.util.util import check_result_file
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
@@ -28,19 +28,20 @@ class GeometryLoader(ArgsContainer):
         # end if
         scale = args.pop('scale', 1.0)
 
-        filename = get_filename(path, args)
-        if filename is None:
+        try:
+            filename = check_result_file(path, args)
+        except FileNotFoundError as e:
             if only_warn:
-                warnings.warn(f'Could not find result in {path}')
+                warnings.warn(repr(e))
                 return GeometryResult(nan)
             else:
-                raise FileNotFoundError(f'Could not find result in {path}')
+                raise e
             # end if
-        else:
-            res = self._load(filename, **args)
-        # end if
+        # end try
+        res = self._load(filename, **args)
         # Rescale to model units
         res.rescale(scale)
+        print(f'Loaded geometry from {filename}')
         return res
     # end def
 
@@ -49,20 +50,19 @@ class GeometryLoader(ArgsContainer):
         path,
         relax_func: callable,
         structure: ParameterSet,
-        relax_args={},
-        **kwargs
+        **kwargs  # relax kwargs
     ) -> ParameterSet:
-        res = self.load(path, **kwargs)
-        if not isnan(res.pos):
-            return structure.copy(pos=res.pos, axes=res.axes)
-        # end i
-        if not callable(relax_func):
-            raise TypeError('The relax_func must be callable and return GeometryResult!')
-        # end if
-        # Try to relax
-        relax_func(structure, **relax_args)
-        # Then, try to load again
-        res = self.load(path, **kwargs)
+        try:
+            res = self.load(path)
+            if not callable(relax_func):
+                raise TypeError('The relax_func must be callable and return GeometryResult!')
+            # end if
+        except FileNotFoundError:
+            # Try to relax
+            relax_func(structure, **kwargs)
+            # Then, try to load again
+            res = self.load(path)
+        # end try
         return structure.copy(pos=res.pos, axes=res.axes)
     # end def
 
