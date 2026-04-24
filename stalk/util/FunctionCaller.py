@@ -5,9 +5,11 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 
-class FunctionCaller():
+from stalk.util.ArgsContainer import ArgsContainer
+
+
+class FunctionCaller(ArgsContainer):
     _func = None
-    _args = {}
 
     @property
     def func(self):
@@ -23,29 +25,19 @@ class FunctionCaller():
         # end if
     # end
 
-    @property
-    def args(self):
-        return self._args
-    # end def
-
-    @args.setter
-    def args(self, args):
-        if isinstance(args, dict):
-            self._args = args
-        elif args is None:
-            self._args = {}
-        else:
-            raise TypeError("The argument list must be a dictionary")
-        # end if
-    # end
-
-    def __init__(self, func, args={}):
+    def __init__(
+        self,
+        func,
+        args: dict = {},  # keep positional 'args' in place for backward compatibility
+        **kwargs
+    ):
         if isinstance(func, FunctionCaller):
             self.func = func.func
-            self.args = func.args
+            args.update(kwargs)
+            self.args = func.get_updated(args)
         else:
             self.func = func
-            self.args = args
+            super().__init__(**args, **kwargs)
         # end if
     # end def
 

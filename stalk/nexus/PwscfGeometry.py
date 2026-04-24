@@ -5,44 +5,41 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 import warnings
-from pathlib import Path
 
 from nexus import PwscfAnalyzer
 
-from stalk.util.util import PL
 from stalk.io.GeometryLoader import GeometryLoader
 from stalk.params.GeometryResult import GeometryResult
 
 
 class PwscfGeometry(GeometryLoader):
 
-    def __init__(self, args={}):
-        self._func = None
-        self.args = args
+    def __init__(
+        self,
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='relax.in',
+        **kwargs
+    ):
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
-    def _load(self, path, suffix='relax.in', c_pos=1.0, **kwargs):
-        input_file = Path(PL.format(path, suffix))
-        # Testing existence here, because Nexus will shut down everything upon failure
-        if input_file.exists():
-            ai = PwscfAnalyzer(str(input_file), **kwargs)
-            ai.analyze()
-        else:
-            warnings.warn(f"PwscfGeometry loader could not find {str(input_file)}. Returning None.")
-            return GeometryResult(None, None)
-        # end if
+    def _load(self, filename: str, **kwargs):
+        ai = PwscfAnalyzer(str(filename), **kwargs)
+        ai.analyze()
 
         if not hasattr(ai, "structures") or len(ai.structures) == 0:
-            warnings.warn(f"PwscfGeometry loader could not find structures in {str(input_file)}")
+            warnings.warn(f"PwscfGeometry loader could not find structures in {str(filename)}")
             return GeometryResult(None, None)
         # end if
-        pos = ai.structures[len(ai.structures) - 1].positions * c_pos
-        try:
-            axes = ai.structures[len(ai.structures) - 1].axes * c_pos
-        except AttributeError:
-            # In case axes is not present in the relaxation
+        final_structure = ai.structures[len(ai.structures) - 1]
+        pos = final_structure.positions
+        if 'axes' in final_structure:
+            axes = final_structure.axes
+        else:
             axes = None
-        # end try
+        # end if
         return GeometryResult(pos, axes)
     # end def
 

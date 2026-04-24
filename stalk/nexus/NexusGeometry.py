@@ -16,23 +16,18 @@ from stalk.util.util import directorize
 
 
 class NexusGeometry(FunctionCaller):
-    loader = None
+    loader: GeometryLoader = None
 
     def __init__(
         self,
         func,
-        args={},
-        loader=None,
-        load_func=None,
-        load_args={},
+        args={},  # keep positional 'args' in place for backward compatibility
+        loader: GeometryLoader = None,
+        **kwargs
     ):
         # Geometry jobs can use the same format as PesFunction
-        super().__init__(func, args)
-        if isinstance(loader, GeometryLoader):
-            self.loader = loader
-        else:
-            self.loader = GeometryLoader(load_func, load_args)
-        # end if
+        super().__init__(func, args=args, **kwargs)
+        self.loader = loader
     # end def
 
     def relax(
@@ -41,9 +36,7 @@ class NexusGeometry(FunctionCaller):
         path='relax',
         **kwargs,
     ):
-        # Override with kwargs
-        eval_args = self.args.copy()
-        eval_args.update(**kwargs)
+        eval_args = self.get_updated(kwargs)
         # Generate relaxation jobs
         jobs = self.func(
             structure.get_nexus_structure(),

@@ -8,7 +8,7 @@ __license__ = "BSD-3-Clause"
 from numpy import array, isscalar, diag
 from copy import deepcopy
 
-from stalk.util import match_to_tol, get_fraction_error, directorize
+from stalk.util import match_to_tol, get_fraction_error
 from stalk.util.util import FF
 from stalk.params.ParameterSet import ParameterSet
 
@@ -346,44 +346,6 @@ class ParameterStructure(ParameterSet):
             return params, params_err
         else:  # errors are zero
             return params, 0 * params
-        # end if
-    # end def
-
-    def load(
-        self,
-        path='relax',
-        xyz_file=None,
-        xsf_file=None,
-        load_func=None,
-        load_args={},
-        c_pos=1.0,
-        c_axes=1.0,
-        make_consistent=True,
-        verbose=True,
-        **kwargs,
-    ):
-        path = directorize(path)
-        if load_func is not None:
-            pos, axes = load_func(path, **load_args)
-        else:
-            print('Not loaded')
-        # end if
-        pos *= c_pos
-        self.set_position(pos)
-        if self.periodic:
-            axes *= c_axes
-            self.set_axes(axes)
-        # end if
-        if make_consistent:
-            # Map forth and back for idempotency
-            self.params = self.map_forward()
-            self.pos, self.axes = self.map_backward()
-        # end if
-        pos_diff = self.pos - pos
-        pos_diff -= pos_diff.mean(axis=0)
-        if verbose:
-            print('Position difference')
-            print(pos_diff.reshape(-1, 3))
         # end if
     # end def
 

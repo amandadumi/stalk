@@ -5,6 +5,8 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+from pathlib import Path
+
 from numpy import exp, median, array, isnan
 from numpy import meshgrid, linalg, linspace, dot, eye
 
@@ -140,6 +142,7 @@ def bipolymin(p, X, Y, nx, ny, itermax=6, shrink=0.1, npoints=10):
 
 def directorize(path: str):
     """If missing, add '/' to the end of path"""
+    path = str(path)
     if len(path) > 0 and not path[-1] == '/':
         path += '/'
     # end if
@@ -186,4 +189,21 @@ def gram_schmidt(vectors):
 def morse(p, r):
     # p0: eqm value, p1: stiffness, p2: well depth, p3: E_inf
     return p[2] * ((1 - exp(-(r - p[0]) / p[1]))**2 - 1) + p[3]
+# end def
+
+
+def get_filename(path, args: dict):
+    suffix = args.pop('suffix', None)
+    # First, try to load 'path'
+    p = Path(path)
+    if p.exists() and not p.is_dir():
+        return path
+    # end if
+    # Next, try 'path/suffix'
+    if isinstance(suffix, str):
+        p = p / suffix
+        if p.exists() and not p.is_dir():
+            return str(p)
+        # end if
+    # end if
 # end def

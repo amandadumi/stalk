@@ -6,37 +6,32 @@ __license__ = "BSD-3-Clause"
 
 import warnings
 from numpy import nan
-from pathlib import Path
 
 from nexus import PwscfAnalyzer
 
-from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesResult import PesResult
-from stalk.util.util import PL
 from stalk.io.PesLoader import PesLoader
 
 
 class PwscfPes(PesLoader):
 
-    def __init__(self, args={}):
-        self._func = None
-        self.args = args
+    def __init__(
+        self,
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='scf.in',
+        **kwargs
+    ):
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
-    def _load(self, structure: ParameterSet, suffix='scf.in', **kwargs):
-        input_file = Path(PL.format(structure.file_path, suffix))
-        # Testing existence here, because Nexus will shut down everything upon failure
-        if input_file.exists():
-            ai = PwscfAnalyzer(str(input_file), **kwargs)
-            ai.analyze()
-        else:
-            warnings.warn(f"PwscfPes loader could not find {str(input_file)}. Returning None.")
-            return PesResult(nan)
-        # end if
-
+    def _load(self, filename: str, **kwargs) -> PesResult:
+        ai = PwscfAnalyzer(filename, **kwargs)
+        ai.analyze()
         if not hasattr(ai, "E") or ai.E == 0.0:
             # Analysis has failed
-            warnings.warn(f"PwscfPes loader could not find energy in {str(input_file)}. Returning None.")
+            warnings.warn(f"PwscfPes loader could not find energy in {filename}. Returning None.")
             E = nan
         else:
             E = ai.E

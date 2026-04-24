@@ -21,28 +21,23 @@ from stalk.util.util import FF, FP, directorize
 
 
 class NexusPes(PesFunction):
-    loader = None
+    loader: PesLoader = None
     disable_failed = False
     bundle_jobs = False
 
     def __init__(
         self,
         func,
-        args={},
-        loader=None,
-        load_func=None,
-        load_args={},
+        args: dict = {},  # Keep 'args' for backward compatibility
+        loader: PesLoader = None,
         disable_failed=False,
-        bundle_jobs=False
+        bundle_jobs=False,
+        **kwargs,
     ):
-        super().__init__(func, args)
+        super().__init__(func, args=args, **kwargs)
         self.disable_failed = disable_failed
         self.bundle_jobs = bundle_jobs
-        if isinstance(loader, PesLoader):
-            self.loader = loader
-        else:
-            self.loader = PesLoader(load_func, load_args)
-        # end if
+        self.loader = loader
     # end def
 
     # Override evaluation function to support job submission and analysis
@@ -168,7 +163,7 @@ class NexusPes(PesFunction):
         # Set samples hook
         self._set_samples(structure, sigma=sigma, var_eff_map=var_eff_map)
         # Override with kwargs
-        eval_args.update(**kwargs)
+        eval_args = self.get_updated(kwargs)
         if not skip_gen:
             jobs = self.func(
                 structure.get_nexus_structure(),

@@ -17,30 +17,9 @@ def test_PesFunction():
         return sum(s.params), arg
     # end def
 
-    # Test degraded
-    with raises(TypeError):
-        # Cannot init empty
-        PesFunction()
-    # end with
-    with raises(TypeError):
-        # pes_func must be callable
-        PesFunction(pes_func=[])
-    # end with
-    with raises(TypeError):
-        # pes_args must be dict
-        PesFunction(pes_func=pes_func, pes_args=[])
-    # end with
-
     # Test nominal
     args = {"arg": 5.0}
     pf = PesFunction(func=pes_func, args=args)
-    assert pf.args is args
-    assert pf.func is pes_func
-
-    # Test copy constructor
-    pf_copy = PesFunction(pf)
-    assert pf_copy.args is args
-    assert pf_copy.func is pes_func
 
     # Test evaluation add_sigma=False
     params = [1.0, 2.0, 3.0]

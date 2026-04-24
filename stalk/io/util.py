@@ -21,12 +21,11 @@ def write_xyz_sigma(
         sigmafilename = directorize(structure.file_path) + sigma_suffix
         savetxt(sigmafilename, [sigma])
     # end if
-    g.write(structure=structure, path=structure.file_path, suffix=suffix, **kwargs)
+    g.write(structure=structure, path=structure.file_path, suffix=suffix)
 # end def
 
 
-def load_energy(structure: ParameterSet, suffix='energy.dat', **kwargs):
-    filename = directorize(structure.file_path) + suffix
+def load_energy(filename):
     if Path(filename).exists():
         data = loadtxt(filename)
         print(f"Loaded {filename}")

@@ -74,6 +74,7 @@ from stalk.pls import ParallelLineSearch
 from stalk.pls import TargetParallelLineSearch
 # util module
 from stalk.util import FunctionCaller
+from stalk.util import ArgsContainer
 from stalk.util import morse
 
 
@@ -138,6 +139,7 @@ __all__ = [
     'ParallelLineSearch',
     'TargetParallelLineSearch',
     # util module
+    'ArgsContainer',
     'FunctionCaller',
     'morse',
 ]
