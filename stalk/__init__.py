@@ -77,6 +77,8 @@ from stalk.util import FunctionCaller
 from stalk.util import ArgsContainer
 from stalk.util import morse
 
+# Make practical alias
+Surrogate = TargetParallelLineSearch
 
 __all__ = [
     # io module
@@ -138,6 +140,7 @@ __all__ = [
     # pls module
     'ParallelLineSearch',
     'TargetParallelLineSearch',
+    'Surrogate',
     # util module
     'ArgsContainer',
     'FunctionCaller',
