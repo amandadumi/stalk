@@ -7,9 +7,9 @@ from pyscf import gto
 from pyscf.geomopt.geometric_solver import optimize
 from pyscf.gto.mole import tofile
 
-from stalk.params.util import mean_param
+from stalk import mean_param
 from stalk import ParameterStructure
-from stalk.params import PesFunction
+from stalk import PesFunction
 
 
 # Forward mapping: produce parameter values from an array of atomic positions

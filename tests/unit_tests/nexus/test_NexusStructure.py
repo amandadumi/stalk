@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from structure import Structure
+from nexus import Structure
 from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.ParameterStructure import ParameterStructure
 

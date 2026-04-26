@@ -6,10 +6,10 @@ from ase.mep import NEB
 from ase.optimize import BFGS
 from ase import io
 
+from stalk import interpolate_params
 from params import neb_image
 from run0_relax_a import structure_relax as structure_a
 from run0_relax_b import structure_relax as structure_b
-from stalk.params.util import interpolate_params
 
 
 # Generate base directory for NEB

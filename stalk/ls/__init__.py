@@ -5,6 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
+# from .ErrorSurface import ErrorSurface
 from .FittingFunction import FittingFunction
 from .FittingResult import FittingResult
 from .LineSearch import LineSearch

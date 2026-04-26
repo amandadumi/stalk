@@ -4,8 +4,14 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from nexus.structure import Structure
-from nexus.simulation import Simulation
+try:
+    from nexus import Structure
+    from nexus.simulation import Simulation
+except ImportError:
+    # Old Nexus legacy fallback
+    from structure import Structure  # type: ignore
+    from simulation import Simulation  # type: ignore
+# end try
 
 from stalk.params.ParameterStructure import ParameterStructure
 
@@ -80,7 +86,11 @@ class NexusStructure(ParameterStructure):
                 'kshift': kshift,
             })
         # end if
-        return Structure(**kwargs)
+        structure = Structure(**kwargs)
+        if self.samples is not None:
+            structure.samples = self.samples
+        # end if
+        return structure
     # end def
 
     def reset_value(self):

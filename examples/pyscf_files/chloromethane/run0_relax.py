@@ -5,7 +5,7 @@ from pyscf.geomopt.geometric_solver import optimize
 from pyscf.gto.mole import tofile
 
 from stalk import ParameterStructure
-from stalk.io import XyzGeometry
+from stalk import XyzGeometry
 
 from params import forward, backward, kernel_pyscf
 
@@ -29,7 +29,7 @@ except FileNotFoundError:
     mf = kernel_pyscf(structure=structure)
     mf.xc = 'pbe'
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='chloromethane_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
     geom = XyzGeometry({'suffix': outfile}).load('./')

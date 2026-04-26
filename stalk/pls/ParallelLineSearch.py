@@ -290,7 +290,8 @@ class ParallelLineSearch():
         self,
         add_sigma=False,
         interactive=False,
-        dep_jobs=[]
+        dep_jobs=[],
+        var_eff_map=None,
     ):
         if not self.shifted:
             raise AssertionError("Must have shifted structures first!")
@@ -302,7 +303,8 @@ class ParallelLineSearch():
             add_sigma=add_sigma,
             path=self.path,
             interactive=interactive,
-            dep_jobs=dep_jobs
+            dep_jobs=dep_jobs,
+            var_eff_map=var_eff_map,
         )
         # Set the eqm energy
         for ls in self.ls_list:
@@ -327,6 +329,7 @@ class ParallelLineSearch():
         add_sigma=False,
         interactive=False,
         dep_jobs=[],
+        var_eff_map=None,
     ):
         self.pes.evaluate(
             self.structure,
@@ -335,6 +338,7 @@ class ParallelLineSearch():
             add_sigma=add_sigma,
             interactive=interactive,
             dep_jobs=dep_jobs,
+            var_eff_map=var_eff_map,
         )
     # end def
 
@@ -482,10 +486,10 @@ class ParallelLineSearch():
         add_sigma=False,
         fname='pls.p',
         interactive=False,
-        dep_jobs=[],
+        **kwargs  # dep_jobs=[], var_eff_map=None
     ):
         if not self.evaluated:
-            self.evaluate(add_sigma=add_sigma, interactive=interactive, dep_jobs=dep_jobs)
+            self.evaluate(add_sigma=add_sigma, interactive=interactive, **kwargs)
         # end if
         path = path if path is not None else self.path + '_next/'
         # Write to disk

@@ -10,6 +10,8 @@ from .GeometryLoader import GeometryLoader
 from .GeometryWriter import GeometryWriter
 from .PesLoader import PesLoader
 from .XyzGeometry import XyzGeometry
+from .util import load_energy
+from .util import write_xyz_sigma
 
 __all__ = [
     'FilesPes',
@@ -17,4 +19,6 @@ __all__ = [
     'GeometryWriter',
     'PesLoader',
     'XyzGeometry',
+    'load_energy',
+    'write_xyz_sigma',
 ]

@@ -4,20 +4,21 @@ from numpy import array, ndarray, sin, cos, pi, diag
 
 from nexus import generate_pyscf, generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_pw2qmcpack, generate_pwscf
-from stalk.io.PesLoader import PesLoader
-from stalk.io.util import load_energy
-from structure import Structure
+from nexus import Structure
 
-from stalk.params.util import mean_distances
-from stalk.util.util import Bohr
-from stalk.io.XyzGeometry import XyzGeometry
-from stalk.nexus.NexusGeometry import NexusGeometry
-from stalk.nexus.NexusPes import NexusPes
-from stalk.nexus.QmcPes import QmcPes
-from stalk.params.PesFunction import PesFunction
-from stalk.util import EffectiveVariance
+from stalk.util import Bohr
+from stalk import PesLoader
+from stalk import load_energy
+from stalk import mean_distances
+from stalk import XyzGeometry
+from stalk import NexusGeometry
+from stalk import NexusPes
+from stalk import QmcPes
+from stalk import PesFunction
+from stalk import EffectiveVariance
 
 # This requires the following job arguments to be defined in local nxs.py
+# Copy examples/nexus/nxs_template.py to ./nxs.py and edit accordingly
 from nxs import pyscfjob, optjob, dmcjob, pwscfjob, p2qjob
 
 # Pseudos (execute download_pseudos.sh in the working directory)
@@ -166,7 +167,9 @@ def dmc_pes_job(
     **kwargs
 ):
     # Estimate the relative number of samples needed
-    if isinstance(var_eff, EffectiveVariance):
+    if hasattr(structure, 'samples'):
+        dmcsteps = structure.samples
+    elif isinstance(var_eff, EffectiveVariance):
         dmcsteps = var_eff.get_samples(sigma)
     else:
         dmcsteps = samples

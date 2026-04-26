@@ -6,7 +6,7 @@ __license__ = "BSD-3-Clause"
 
 from pytest import raises
 from numpy import isnan, array
-from stalk.util.EffectiveVariance import EffectiveVariance
+from stalk.params.EffectiveVariance import EffectiveVariance
 from stalk.util.util import match_to_tol
 
 
@@ -24,7 +24,6 @@ def test_EffectiveVariance():
     assert isnan(ev0.var_eff)
     assert ev0.get_samples(2.0) == -1
     assert isnan(ev0.get_errorbar(2))
-    str(ev0)
 
     # Test basic properties using scalar init
     samples = 5
@@ -42,7 +41,6 @@ def test_EffectiveVariance():
     assert ev1.get_samples(1e10) == 1
     # Test the effective variance
     assert match_to_tol(ev1.var_eff, samples * errorbar**2)
-    str(ev1)
 
     # Test array init
     samples2 = [5, 6]
@@ -78,9 +76,19 @@ def test_EffectiveVariance():
     # Test addition
     ev3 = EffectiveVariance(7, 3.0)
     ev_add = ev2 + ev3
-    assert match_to_tol(ev_add.errorbar_data[:-1], ev2.errorbar_data)
-    assert match_to_tol(ev_add.errorbar_data[-1], ev3.errorbar_data[-1])
+    assert match_to_tol(ev_add.error_data[:-1], ev2.error_data)
+    assert match_to_tol(ev_add.error_data[-1], ev3.error_data[-1])
     assert not match_to_tol(ev_add.var_eff, ev2.var_eff)
     assert not match_to_tol(ev_add.var_eff, ev3.var_eff)
+
+    # Test var_eff init
+    var_eff = 4.0
+    ev4 = EffectiveVariance(var_eff=var_eff)
+    assert match_to_tol(ev4.var_eff, var_eff)
+    assert match_to_tol(ev4.get_errorbar(samples=1), var_eff**0.5)
+    assert match_to_tol(ev4.get_samples(error=var_eff / 16), 64)
+    # Test mean
+    ev4.add_var_eff(6.0)
+    assert match_to_tol(ev4.var_eff, 5.0)
 
 # end def

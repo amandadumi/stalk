@@ -7,9 +7,12 @@ from pyscf import gto
 from pyscf.geomopt.geometric_solver import optimize
 from pyscf.gto.mole import tofile
 
-from stalk.params.util import bond_angle, distance, mean_distances, mean_param
 from stalk import ParameterStructure
-from stalk.params import PesFunction
+from stalk import PesFunction
+from stalk import bond_angle
+from stalk import distance
+from stalk import mean_distances
+from stalk import mean_param
 
 
 # Natural forward mapping using bond lengths and angles
@@ -107,7 +110,7 @@ def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz', xc='pbe'):
     mf = kernel_pyscf(structure=structure)
     mf.xc = xc
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='chloromethane_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
 # end def

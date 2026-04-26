@@ -8,6 +8,7 @@ __license__ = "BSD-3-Clause"
 from numpy import array, isscalar, mean
 from matplotlib import pyplot as plt
 
+from stalk.params.EffectiveVarianceMap import EffectiveVarianceMap
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.pls.TargetParallelLineSearch import TargetParallelLineSearch
@@ -20,6 +21,7 @@ class LineSearchIteration():
     _pls_list: list[ParallelLineSearch]  # list of ParallelLineSearch objects
     _path = ''  # base path
     _transient = 0
+    _var_eff_map = None
 
     def __init__(
         self,
@@ -30,10 +32,12 @@ class LineSearchIteration():
         pes=None,
         pes_func=None,
         pes_args={},
+        var_eff_map=None,
         **pls_args
     ):
         self.path = path
         self._pls_list = []
+        self.var_eff_map = var_eff_map
         # Try to load serialized iterations:
         self.load_pls()
         # if no iterations loaded, try to initialize
@@ -139,6 +143,19 @@ class LineSearchIteration():
         # end if
     # end def
 
+    @property
+    def var_eff_map(self):
+        return self._var_eff_map
+    # end def
+
+    @var_eff_map.setter
+    def var_eff_map(self, var_eff_map):
+        if var_eff_map is not None and not isinstance(var_eff_map, EffectiveVarianceMap):
+            raise TypeError("var_eff_map must be an EffectiveVarianceMap object or None")
+        # end if
+        self._var_eff_map = var_eff_map
+    # end def
+
     def init_from_surrogate(
         self,
         surrogate: ParallelLineSearch,
@@ -239,7 +256,7 @@ class LineSearchIteration():
         fname='pls.p',
         add_sigma=False,
         interactive=False,
-        dep_jobs=[],
+        **kwargs  # dep_jobs=[]
     ):
         # Do not propagate if 'i' points to earlier iteration
         if i is not None and i < len(self.pls_list) - 1:
@@ -253,10 +270,16 @@ class LineSearchIteration():
             fname=fname,
             add_sigma=add_sigma,
             interactive=interactive,
-            dep_jobs=dep_jobs,
+            var_eff_map=self.var_eff_map,
+            **kwargs
         )
         self.pls_list.append(pls_next)
     # end
+
+    # Evalutate last eqm
+    def evaluate_eqm(self, **kwargs):
+        self.pls().evaluate_eqm(var_eff_map=self.var_eff_map, **kwargs)
+    # end def
 
     # Keeping a limited version for backward compatibility
     def plot_convergence(

@@ -5,7 +5,7 @@ import numpy as np
 from numpy import nan
 from pathlib import Path
 from nexus import obj, job, settings, generate_physical_system, input_template
-from simulation import GenericSimulation, SimulationAnalyzer, Simulation
+from nexus.simulation import GenericSimulation, SimulationAnalyzer, Simulation
 from stalk.io.GeometryLoader import GeometryLoader
 from stalk.io.PesLoader import PesLoader
 from stalk.io.XyzGeometry import XyzGeometry

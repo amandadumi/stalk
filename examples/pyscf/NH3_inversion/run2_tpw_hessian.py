@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from stalk.lsi.TransitionPathway import TransitionPathway
+from stalk import TransitionPathway
 
 from params import pes
 from run1_neb import traj_neb

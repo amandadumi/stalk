@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pytest import raises
+import numpy as np
 
 from stalk.util.util import match_to_tol
 
@@ -87,15 +88,20 @@ def test_ParameterSet():
     # end for
 
     # Testing shifting of parameters
+    ss = s.copy()
     shifts = [0.1, 0.2]
     with raises(ValueError):
-        s.shift_params([1])
+        ss.shift_params([1])
     # end with
-    s.shift_params(shifts)
-    for param, param_ref, shift in zip(s.params, params, shifts):
+    ss.shift_params(shifts)
+    for param, param_ref, shift in zip(ss.params, params, shifts):
         assert param == param_ref + shift
-        assert s.value is None
+        assert ss.value is None
     # end for
+    # Test difference and distance
+    assert match_to_tol((ss - s).params, shifts)
+    assert match_to_tol(s.distance2(ss), sum(np.array(shifts)**2))
+    assert match_to_tol(s.distance(ss), sum(np.array(shifts)**2)**0.5)
 
     # Test setting of parameters (w/o error)
     new_params = [10., 11.]

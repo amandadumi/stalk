@@ -12,9 +12,12 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase import Atoms
 from ase.constraints import FixAtoms
 
-from stalk.params.util import mean_distances, mean_param, angle, rotate_2d
+from stalk import mean_distances
+from stalk import mean_param
+from stalk import angle
+from stalk import rotate_2d
 from stalk import ParameterStructure
-from stalk.params import PesFunction
+from stalk import PesFunction
 
 
 # Forward mapping: produce parameter values from an array of atomic positions
@@ -88,7 +91,7 @@ def kernel_pyscf(positions, elem):
 def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz'):
     mf = kernel_pyscf(structure.pos, structure.elem)
     mf.kernel()
-    mol_eq = optimize(mf, maxsteps=100)
+    mol_eq = optimize(mf, maxsteps=100, constraints='nh3_constraints.txt')
     # Write to external file
     tofile(mol_eq, outfile, format='xyz')
 # end def

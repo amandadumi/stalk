@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-from stalk import TargetParallelLineSearch
 from matplotlib import pyplot as plt
+
+from stalk import TargetParallelLineSearch
 
 from params import pes_xyz
 from run1_hessian import hessian

@@ -18,17 +18,18 @@ First, install the following requirements
 Optional
 ~~~~~~~~
 
-To manage atomic structures and simulation jobs, install Nexus in a preferred location:
+To manage atomic structures and simulation jobs, install Nexus manually in a preferred
+location:
 
 ::
 
     git clone https://github.com/QMCPACK/qmcpack.git qmcpack
-    export PYTHONPATH=$PYTHONPATH:"$PWD/qmcpack/nexus/lib" 
+    export PYTHONPATH=$PYTHONPATH:"$PWD/qmcpack/nexus" 
 
 
 See
 `Nexus documentation <https://nexus-workflows.readthedocs.io/en/latest/installation.html>`_
-for more details on additional requirements and recommendations.
+for more details, recommendations and alternative installation methods.
 
 In addition, install any software that are going to be interfaced with ``stalk``, such as:
 
