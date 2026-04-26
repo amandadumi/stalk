@@ -10,8 +10,8 @@ class LatticeDerivativeFit(FittingFunction):
     # end def
 
     @property
-    def n(self):
-        return self._n
+    def pressure_target(self):
+        return self._pressure_target
     # end def
 
     @property
@@ -20,45 +20,35 @@ class LatticeDerivativeFit(FittingFunction):
     # end def
 
     @n.setter
-    def n(self, n):
-        if not isinstance(n, int):
-            raise TypeError(f'Polynomial degree n must be integer, provided: {n}')
-        # end if
-        if n < 2:
-            raise ValueError(f'Polynomial degree n must be higher than 1, provided: {n}')
-        # end if
-        self._n = n
+    def pressure(self, p):
+        self._pressure_target = p
     # end def
 
     def _eval_function(self, offsets, values) -> LatticeDerivativeResult:
         if len(offsets) <= self.n:
-            raise ValueError(f'Fitting of {self.n} degree polynomial to {len(offsets)} points is under-determined. Aborting.')
-        # end if
         from scipy.optimize import brentq
         f_interp = interp1d(offsets, values, kind='linear')
-# Find intervals where sign changes
+        # Find intervals where sign changes
         sign_changes = []
         for i in range(len(y_data) - 1):
             if y_data[i] * y_data[i+1] < 0:
                 sign_changes.append((x_data[i], x_data[i+1]))
         if len(sign_changes>1):
             raise Warning('more than one root present')
-        pfd = polyder(pf)
-        r = roots(pfd)
-        d = polyval(polyder(pfd), r)
-        # filter real minima (maxima with sgn < 0)
-        x_mins = r[where((r.imag == 0) & (d > 0))].real
+        roots = []
+        for a, b in sign_changes:
+            root = brentq(f_interp, a, b)
+            roots.append(root)
+        
+        
+        x_mins = r[where((r.imag == 0))].real
         if len(x_mins) > 0:
-            y_mins = polyval(pf, x_mins)
-            imin = argmin(abs(x_mins))
+            y_mins = 0
         else:
             warnings.warn('The fit minimum not found inside grid but at the boundary!')
-            x_mins = [min(offsets), max(offsets)]
-            y_mins = polyval(pf, x_mins)
-            imin = argmin(y_mins)  # pick the lowest/highest energy
         # end if
-        y0 = y_mins[imin]
-        x0 = x_mins[imin]
+        y0 = y_mins
+        x0 = x_mins[0]
         res = PolynomialResult(x0, y0, fit=pf)
         return res
  
