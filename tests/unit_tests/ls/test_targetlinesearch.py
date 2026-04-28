@@ -57,7 +57,6 @@ def test_TargetLineSearch_init():
     assert tls.hessian is None
     assert tls.W_max is None
     assert tls.Lambda is None
-    assert tls.enabled
     assert tls.R_max == 0.0
     assert tls.sigma == 0.0
     assert len(tls.grid) == 0

@@ -59,7 +59,7 @@ class GeometryLoader(ArgsContainer):
             # end if
         except FileNotFoundError:
             # Try to relax
-            relax_func(structure, **kwargs)
+            relax_func(structure.copy(), **kwargs)
             # Then, try to load again
             res = self.load(path)
         # end try

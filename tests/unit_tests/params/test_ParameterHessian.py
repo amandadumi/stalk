@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from pytest import raises, warns
-from numpy import linalg
+from numpy import linalg, where
 
 from stalk.params.PesFunction import PesFunction
 from stalk.params.ParameterHessian import ParameterHessian
@@ -24,6 +24,7 @@ def test_ParameterHessian():
     assert h0.directions is None
     assert h0.lambdas is None
     assert h0.require_consistent
+    assert h0.disable_limit == 0.0
 
     with raises(AssertionError):
         h0.hessian = [0]
@@ -34,12 +35,14 @@ def test_ParameterHessian():
     h1_ref = [[1., 0.], [0., 1.]]
     U1_ref = [[1., 0.], [0., 1.]]
     Lambda1_ref = [1., 1.]
-    h1 = ParameterHessian(structure=s1)
+    h1 = ParameterHessian(structure=s1, disable_limit=0.1)
     assert h1.structure is s1
     assert match_to_tol(h1.hessian, h1_ref)
     assert match_to_tol(h1.U, U1_ref)
     assert match_to_tol(h1.directions, U1_ref)
     assert match_to_tol(h1.lambdas, Lambda1_ref)
+    assert match_to_tol(h1.enabled_directions, U1_ref)
+    assert match_to_tol(h1.enabled_lambdas, Lambda1_ref)
 
     # Test based on structure and Hessian
     s2 = s1.copy()
@@ -65,6 +68,17 @@ def test_ParameterHessian():
     )
     assert match_to_tol(h3.hessian, h3_ref, 1e-3)
     assert match_to_tol(h3.structure.value, E3_ref, 1e-6)
+
+    # Test disabled
+    LambdaD_ref, UD_ref = linalg.eig(hessian_H2O)
+    # This limit will cut out the lower direction
+    hD = ParameterHessian(disable_limit=0.3)
+    assert hD.disable_limit == 0.3
+    hD.structure = s2
+    hD.hessian = hessian_H2O
+    idx = where(LambdaD_ref / max(LambdaD_ref) > 0.3)
+    assert match_to_tol(hD.enabled_directions, UD_ref.T[idx, :])
+    assert match_to_tol(hD.enabled_lambdas, LambdaD_ref[idx])
 
     # Test warning and scalar dp
     s4 = s1.copy()

@@ -137,7 +137,7 @@ class ParallelLineSearch():
     # Return True if the line-search structures have been shifted
     @property
     def shifted(self):
-        return len(self) > 0 and all([ls.shifted for ls in self.enabled_ls])
+        return len(self) > 0 and all([ls.shifted for ls in self.ls_list])
     # end def
 
     # Return a list of all line-searches
@@ -155,15 +155,9 @@ class ParallelLineSearch():
         # end if
     # ed def
 
-    # Return a list of enabled line-searches
-    @property
-    def enabled_ls(self):
-        return [ls for ls in self.ls_list if ls.enabled]
-    # end def
-
     @property
     def evaluated(self):
-        return len(self) > 0 and all([ls.evaluated for ls in self.ls_list if ls.enabled])
+        return len(self) > 0 and all([ls.evaluated for ls in self.ls_list])
     # end def
 
     @property
@@ -217,7 +211,7 @@ class ParallelLineSearch():
         if self.hessian is None:
             return array([])
         else:
-            return array(self.hessian.lambdas)
+            return array(self.hessian.enabled_lambdas)
         # end if
     # end def
 
@@ -245,6 +239,11 @@ class ParallelLineSearch():
         return array([ls.sigma for ls in self.ls_list]).min()
     # end def
 
+    @property
+    def D_list(self):
+        return [d for d in range(len(self.hessian)) if self.hessian.enabled[d]]
+    # end def
+
     def initialize(
         self,
         windows=None,
@@ -270,16 +269,19 @@ class ParallelLineSearch():
         # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
     ):
         ls_list = []
-        for d, window, noise in zip(range(self.D), windows, noises):
-            ls = self.ls_type(
-                structure=self.structure,
-                hessian=self.hessian,
-                d=d,
-                sigma=noise,
-                W=window,
-                **ls_args
-            )
-            ls_list.append(ls)
+        for d, window, noise in zip(self.D_list, windows, noises):
+            # Only add if enabled by the Hessian
+            if self.hessian.enabled[d]:
+                ls = self.ls_type(
+                    structure=self.structure,
+                    hessian=self.hessian,
+                    d=d,
+                    sigma=noise,
+                    W=window,
+                    **ls_args
+                )
+                ls_list.append(ls)
+            # end if
         # end for
         self._ls_list = ls_list
         # Reset next structure if re-initialized
@@ -346,7 +348,7 @@ class ParallelLineSearch():
         structures = []
         sigmas = []
         sigma_eqm = self.noises_min
-        for ls in self.enabled_ls:
+        for ls in self.ls_list:
             for structure in ls.grid:
                 structures += [structure]
                 if structure.is_eqm:
@@ -360,14 +362,14 @@ class ParallelLineSearch():
     # end def
 
     def _solve_ls(self):
-        for ls in self.enabled_ls:
+        for ls in self.ls_list:
             ls._search_and_store()
         # end for
     # end def
 
     @property
     def noisy(self):
-        return any([ls.noisy for ls in self.enabled_ls])
+        return any([ls.noisy for ls in self.ls_list])
     # end def
 
     @property
@@ -428,21 +430,12 @@ class ParallelLineSearch():
     # end def
 
     def _calculate_params_next(self, params, shifts):
-        return params + shifts @ self.hessian.directions
+        return params + shifts @ self.hessian.enabled_directions
     # end def
 
     @property
     def shifts(self):
-        shifts = []
-        for ls in self.ls_list:
-            if ls.enabled:
-                shift = ls.x0
-            else:
-                shift = 0.0
-            # end if
-            shifts.append(shift)
-        # end for
-        return array(shifts)
+        return array([ls.x0 for ls in self.ls_list])
     # end def
 
     def copy(

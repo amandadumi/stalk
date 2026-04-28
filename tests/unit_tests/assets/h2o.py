@@ -41,9 +41,9 @@ def backward_H2O(params):
     H2 = params[0] * \
         array([0.0, -cos((pi - a_HOH) / 2), sin((pi - a_HOH) / 2)])
     return array([O1, H1, H2])
-
-
 # end def
+
+
 hessian_H2O = array([[1.0, 0.2],
                      [0.2, 0.5]])  # random guess for testing purposes
 hessian_real_H2O = array('''

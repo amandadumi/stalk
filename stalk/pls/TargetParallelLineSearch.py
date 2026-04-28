@@ -20,7 +20,6 @@ from stalk.util.util import FF, FFS, FI, FIS, FP, FPS
 
 
 class TargetParallelLineSearch(ParallelLineSearch):
-
     ls_type = TargetLineSearch
     _ls_list: list[TargetLineSearch] = []
     _temperature = None
@@ -28,7 +27,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
     error_p = None
     error_d = None
 
-    # Return a list of all line-searches
+    # Return a list of enabled line-searches
     @property
     def ls_list(self):
         return self._ls_list
@@ -40,7 +39,7 @@ class TargetParallelLineSearch(ParallelLineSearch):
         if all(eps is None for eps in epsilon_d):
             return None
         else:
-            return [tls.epsilon for tls in self.ls_list]
+            return epsilon_d
         # end if
     # end def
 
@@ -138,13 +137,6 @@ class TargetParallelLineSearch(ParallelLineSearch):
                 tls.reset_interpolation(interpolate_kind=interpolate_kind)
             # end if
         # end for
-    # end def
-
-    def ls(self, i) -> TargetLineSearch:
-        if i < 0 or i >= len(self.ls_list):
-            raise ValueError("Must choose line-search between 0 and " + str(len(self.ls_list)))
-        # end if
-        return self.ls_list[i]
     # end def
 
     def optimize(
