@@ -202,7 +202,7 @@ def check_result_file(path, args: dict):
         p /= suffix
     # end if
     if not p.exists():
-        raise FileNotFoundError(f'Could not find {p}. Aborting.')
+        raise FileNotFoundError(f'Could not find {p}.')
     # end if
     return str(p)
 # end def

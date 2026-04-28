@@ -30,10 +30,10 @@ class PesLoader(ArgsContainer):
             filename = check_result_file(path, args)
         except FileNotFoundError as e:
             if only_warn:
-                warnings.warn(repr(e))
+                warnings.warn(e.args[0])
                 return PesResult(nan)
             else:
-                raise e
+                raise e.add_note('Aborting.')
             # end if
         # end try
         res = self._load(filename, **args)

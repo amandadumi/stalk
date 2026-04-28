@@ -7,12 +7,13 @@ __license__ = "BSD-3-Clause"
 
 from pathlib import Path
 
+from stalk.util import directorize
 from stalk.util.ArgsContainer import ArgsContainer
 
 
 class GeometryWriter(ArgsContainer):
 
-    def write(self, structure, path, **kwargs):
+    def write(self, structure, path='', **kwargs):
         '''The Geometry writer must accept a "structure" and a "path" to output file
         '''
         # Hot update of args
@@ -23,7 +24,7 @@ class GeometryWriter(ArgsContainer):
         if suffix is None:
             filename = path
         else:
-            filename = f'{path}/{suffix}'
+            filename = f'{directorize(path)}{suffix}'
         # end if
         if Path(filename).is_dir():
             raise IsADirectoryError(f"The target file {filename} is a directory!")
