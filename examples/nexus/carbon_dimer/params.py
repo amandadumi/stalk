@@ -6,10 +6,10 @@ from nexus import generate_pyscf, generate_qmcpack, job, obj
 from nexus import generate_physical_system, generate_convert4qmc
 from nexus import Structure
 
-from stalk import load_energy
 from stalk import distance
 from stalk import XyzGeometry
 from stalk import EffectiveVariance
+from stalk import PesLoader
 from stalk.nexus import NexusGeometry
 from stalk.nexus import NexusPes
 from stalk.nexus import QmcPes
@@ -65,7 +65,11 @@ def scf_relax_job(structure: Structure, path, **kwargs):
         identifier='relax',
         job=job(**pyscfjob),
         path=path,
-        mole=scf_mole_args
+        mole=scf_mole_args,
+        calculation=obj(
+            method='RKS',
+            xc='pbe',
+        )
     )
     return [relax]
 # end def
@@ -83,7 +87,11 @@ def scf_pes_job(structure: Structure, path, **kwargs):
         identifier='scf',
         job=job(**pyscfjob),
         path=path,
-        mole=scf_mole_args
+        mole=scf_mole_args,
+        calculation=obj(
+            method='RKS',
+            xc='pbe',
+        )
     )
     return [scf]
 # end def
@@ -97,6 +105,7 @@ def dmc_pes_job(
     samples=10,
     var_eff=None,
     dep_jobs=[],
+    xc='pbe',
     **kwargs
 ):
     # Estimate the relative number of samples needed
@@ -136,6 +145,10 @@ def dmc_pes_job(
             ecp='ccecp',
             basis='ccecp-ccpvqz',  # Use larger basis to promote QMC performance
             symmetry=False,
+        ),
+        calculation=obj(
+            method='RKS',
+            xc=xc,
         ),
         save_qmc=True,
     )
@@ -196,16 +209,16 @@ def dmc_pes_job(
 relax_pyscf = NexusGeometry(
     scf_relax_job,
     # pyscf_relax.py is configured to output relaxed geometry in relax.xyz
-    loader=XyzGeometry({'suffix': 'relax.xyz'})
+    loader=XyzGeometry(suffix='relax.xyz')
 )
 pes_pyscf = NexusPes(
     scf_pes_job,
     # pyscf_pes.py is configured to output SCF energy in energy.dat
-    load_func=load_energy
+    loader=PesLoader(suffix='energy.dat')
 )
 pes_dmc = NexusPes(
     dmc_pes_job,
     # Nexus QmcpackAnalyzer returns DMC energy for the first time-step after walker
     # generation, so at index->1
-    loader=QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
+    loader=QmcPes(suffix='dmc/dmc.in.xml', qmc_idx=1)
 )

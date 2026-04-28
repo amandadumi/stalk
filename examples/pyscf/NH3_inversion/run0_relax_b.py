@@ -8,7 +8,7 @@ from stalk import XyzGeometry
 
 from params import forward, backward, relax_pyscf
 
-# Generate base directory for point A
+# Generate base directory for point B
 basedir = 'pointB'
 makedirs(basedir, exist_ok=True)
 
@@ -24,11 +24,11 @@ structure_init = ParameterStructure(
 )
 
 outfile = f'{basedir}/relax.xyz'
-try:
-    geom = XyzGeometry({'suffix': outfile}).load('./')
-except FileNotFoundError:
-    new_params = relax_pyscf(structure_init, outfile)
-    geom = XyzGeometry({'suffix': outfile}).load('./')
-# end try
-new_params = structure_init.map_forward(geom.get_pos())
-structure_relax = structure_init.copy(params=new_params)
+xyz = XyzGeometry(suffix=outfile)
+structure_relax = xyz.load_or_relax(
+    path='./',
+    relax_func=relax_pyscf,
+    structure=structure_init,
+    xc='pbe',
+    outfile=outfile,
+)

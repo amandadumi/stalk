@@ -12,7 +12,7 @@ from stalk import LineSearchIteration
 from stalk import ParameterSet
 from stalk import PesFunction
 from stalk import ParameterHessian
-from stalk import TargetParallelLineSearch
+from stalk import Surrogate
 from stalk import morse
 
 base_dir = 'morse_3p/'
@@ -49,7 +49,7 @@ def pes(structure: ParameterSet, c=1.0, d=0.0, **kwargs):
 
 # Guess the initial structure based on the non-coupled equilibria
 p_init = ParameterSet([1.0, 2.0, 3.0])
-pes_surrogate = PesFunction(pes, {'c': 1.0, 'd': 0.0})
+pes_surrogate = PesFunction(pes, c=1.0, d=0.0)
 
 # Relax numerically in the absence of noise, wrap the function for numerical optimizer
 p_relax = p_init.copy()
@@ -64,9 +64,9 @@ print('Hessian:')
 print(hessian)
 
 
-# Create, or try to load from disk, surrogate TargetParallelLineSearch object
+# Create, or try to load from disk, a Surrogate object
 srg_file = 'surrogate.p'
-surrogate = TargetParallelLineSearch(
+surrogate = Surrogate(
     load=srg_file,
     fit_kind='pf3',
     path=base_dir + 'surrogate',
@@ -89,7 +89,7 @@ surrogate.optimize(
 )
 
 # Define alternative PES
-pes_alt = PesFunction(pes, {'c': 0.9, 'd': 0.3})
+pes_alt = PesFunction(pes, c=0.9, d=0.3)
 p_alt = p_relax.copy()
 pes_alt.relax(p_alt)
 print('Minimum-energy parameters (alternative):')

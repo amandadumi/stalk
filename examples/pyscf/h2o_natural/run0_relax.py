@@ -27,14 +27,14 @@ makedirs(relax_dir, exist_ok=True)
 structure_relax = {}
 for xc, pes in pes_dict.items():
     outfile = f'{relax_dir}{xc}.xyz'
-    try:
-        geom = XyzGeometry({'suffix': outfile}).load('./')
-    except FileNotFoundError:
-        new_params = relax_pyscf(structure, outfile, xc=xc)
-        geom = XyzGeometry({'suffix': outfile}).load('./')
-    # end try
-    new_params = structure.map_forward(geom.get_pos())
-    structure_relax[xc] = structure.copy(params=new_params)
-    print(f'Params ({xc}):')
+    xyz = XyzGeometry(suffix=outfile)
+    structure_relax[xc] = xyz.load_or_relax(
+        path='./',
+        relax_func=relax_pyscf,
+        structure=structure,
+        xc=xc,
+        outfile=outfile,
+    )
+    print(f'Relaxed parameters ({xc}):')
     print(structure_relax[xc].params)
 # end for

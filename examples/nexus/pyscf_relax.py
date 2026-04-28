@@ -1,14 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env $python_exe
 
-from pyscf import dft
+$pyscfimport
 
 $system
 
-### generated calculation text ###
-mf = dft.RKS(mol)
-mf.xc = 'pbe'
-e_scf = mf.kernel()
-### end generated calculation text ###
+$calculation
 
 from pyscf.geomopt.geometric_solver import optimize
 mol_eq = optimize(mf, maxsteps=100)

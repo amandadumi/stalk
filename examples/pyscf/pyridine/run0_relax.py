@@ -32,15 +32,16 @@ structure_init = ParameterStructure(
     units='A'
 )
 
-outfile = 'relax.xyz'
-try:
-    geom = XyzGeometry({'suffix': outfile}).load('./')
-except FileNotFoundError:
-    new_params = relax_pyscf(structure_init, outfile)
-    geom = XyzGeometry({'suffix': outfile}).load('./')
-# end try
-new_params = structure_init.map_forward(geom.get_pos())
-structure_relax = structure_init.copy(params=new_params)
+xyz = XyzGeometry(suffix='relax.xyz')
+structure_relax = xyz.load_or_relax(
+    path='./',
+    relax_func=relax_pyscf,
+    structure=structure_init
+)
 
-print(structure_init)
-print(structure_relax)
+if __name__ == '__main__':
+    print('Initial parameters:')
+    print(structure_init.params)
+    print('Relaxed parameters:')
+    print(structure_relax.params)
+# end if

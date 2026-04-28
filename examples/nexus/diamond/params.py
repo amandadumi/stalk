@@ -280,16 +280,16 @@ def dmc_pes_job(
 relax_pwscf = NexusGeometry(
     scf_vcrelax_job,
     # Nexus PwscfAnalyzer returns PWSCF relaxed structure in Angstrom
-    loader=PwscfGeometry({'suffix': 'vcrelax.in', 'c_pos': Bohr})
+    loader=PwscfGeometry(suffix='vcrelax.in', scale=Bohr**-1)
 )
 pes_pwscf = NexusPes(
     scf_pes_job,
     # Nexus PwscfAnalyzer returns PWSCF energy
-    loader=PwscfPes({'suffix': 'scf.in'})
+    loader=PwscfPes(suffix='scf.in')
 )
 pes_dmc = NexusPes(
     dmc_pes_job,
     # Nexus QmcpackAnalyzer returns DMC energy for the first time-step after walker
     # generation, so at index->1
-    loader=QmcPes({'suffix': '/dmc/dmc.in', 'qmc_idx': 1})
+    loader=QmcPes(suffix='dmc/dmc.in', qmc_idx=1)
 )
