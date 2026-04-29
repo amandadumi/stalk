@@ -13,7 +13,7 @@ from stalk.io.PesLoader import PesLoader
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.util.util import directorize
-from stalk.io.util import write_xyz_sigma, load_energy
+from stalk.io.util import write_xyz_sigma
 
 
 class FilesPes(PesFunction):
@@ -24,15 +24,15 @@ class FilesPes(PesFunction):
         func=write_xyz_sigma,
         args={},
         loader=None,
-        load_func=load_energy,
         load_args={},
+        suffix='energy.dat'
     ):
         self.func = func
         self.args = args
         if isinstance(loader, PesLoader):
             self.loader = loader
         else:
-            self.loader = PesLoader(load_func, load_args)
+            self.loader = PesLoader(suffix=suffix, **load_args)
         # end if
     # end def
 
@@ -112,7 +112,7 @@ class FilesPes(PesFunction):
         # warn_limit=2.0,
         **kwargs
     ):
-        result = self.loader.load(structure)
+        result = self.loader.load(structure.file_path)
         if isnan(result.value):
             finished = False
         else:

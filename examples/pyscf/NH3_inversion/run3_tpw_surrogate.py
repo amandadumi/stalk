@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from params import pes
+from params import pes_pbe
 from run2_tpw_hessian import tpw
 
 tpw.generate_surrogates(
-    pes=pes,
+    pes=pes_pbe,
     fit_kind='pf3',
     M=15,
     window_frac=0.25

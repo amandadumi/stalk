@@ -66,7 +66,15 @@ class TestAnalyzer(SimulationAnalyzer):
     # end def
 
     def analyze(self):
-        e_file = Path(self.path + "/" + efilename)
+        path = Path(self.path)
+        if not path.exists():
+            raise AssertionError('The job has not run yet!')
+        # end if
+        # In case pointing to final file
+        if not path.is_dir():
+            path = path.parent
+        # end if
+        e_file = path / efilename
         if e_file.exists():
             res = np.loadtxt(e_file)
             if len(res) == 1:
@@ -78,10 +86,10 @@ class TestAnalyzer(SimulationAnalyzer):
         else:
             raise AssertionError('The job has not run yet!')
         # end if
-        xyz_file = Path(self.path + "/" + xyzfilename)
-        axes_file = Path(self.path + "/" + axesfilename)
+        xyz_file = path / xyzfilename
+        axes_file = path / axesfilename
         if xyz_file.exists():
-            res = XyzGeometry({'suffix': xyzfilename}).load(str(self.path))
+            res = XyzGeometry(suffix=xyzfilename).load(str(path))
             if axes_file.exists():
                 res.axes = np.loadtxt(axes_file)
             # end if
@@ -99,9 +107,15 @@ def test_dummy(*args, **kwargs):
 # Tailor Nexus analyzer for generic testing
 class TestLoader(PesLoader):
 
-    def __init__(self, func=test_dummy, args={}):
-        self._func = func
-        self._args = args
+    def __init__(
+        self,
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='test_energy.dat',
+        **kwargs
+    ):
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
     def _load(self, structure: NexusStructure, produce_fail=False, **kwargs):
@@ -120,13 +134,19 @@ class TestLoader(PesLoader):
 # Tailor Nexus analyzer for generic testing
 class TestGeometryLoader(GeometryLoader):
 
-    def __init__(self, func=test_dummy, args={}):
-        self._func = func
-        self._args = args
+    def __init__(
+        self,
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='relax.xyz',
+        **kwargs
+    ):
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
-    def _load(self, path, produce_fail=False, **kwargs):
-        ai = TestAnalyzer(path, **kwargs)
+    def _load(self, filename, produce_fail=False, **kwargs):
+        ai = TestAnalyzer(filename, **kwargs)
         ai.analyze()
         if produce_fail:
             return GeometryResult(None, None)

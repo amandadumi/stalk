@@ -7,7 +7,7 @@ from ase.optimize import BFGS
 from ase import io
 
 from stalk import interpolate_params
-from params import neb_image
+from params import neb_image, pes_pbe
 from run0_relax_a import structure_relax as structure_a
 from run0_relax_b import structure_relax as structure_b
 
@@ -20,7 +20,7 @@ makedirs(basedir, exist_ok=True)
 n_images = 3
 
 traj_init = interpolate_params(structure_a, structure_b, n_images)
-images = [neb_image(structure) for structure in traj_init]
+images = [neb_image(structure, pes_args=pes_pbe.args) for structure in traj_init]
 
 # Try to load from disk
 try:

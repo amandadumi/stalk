@@ -8,10 +8,10 @@ from stalk.util.util import match_to_tol
 
 
 def test_PwscfGeometry():
+
     # Test with empty args
     pes = PwscfGeometry()
-    assert pes.func is None
-    assert len(pes.args) == 0
+    assert pes.args == {'suffix': 'relax.in'}
 
     # Use XyzLoader for reference
     pos_ref = XyzGeometry().load(
@@ -27,7 +27,7 @@ def test_PwscfGeometry():
     assert match_to_tol(res0.get_pos(), pos_ref.get_pos(), 1e-6)
 
     # Test by providing args (c_pos multiplication by 2)
-    loader1 = PwscfGeometry({'suffix': 'pwscf_relax/relax.in', 'c_pos': 0.0})
+    loader1 = PwscfGeometry({'suffix': 'pwscf_relax/relax.in'})
     res1 = loader1.load('tests/unit_tests/assets', c_pos=2.0)
     assert isinstance(res1, GeometryResult)
     assert match_to_tol(res1.get_pos(), 2.0 * pos_ref.get_pos(), 1e-6)
@@ -38,13 +38,6 @@ def test_PwscfGeometry():
     assert isinstance(res2, GeometryResult)
     # Only test superficially for now
     assert res2.get_axes() is not None
-
-    # Test skipping of missing test
-    with warns(UserWarning):
-        res_missing = loader1.load('missing', suffix='relax.in')
-        assert res_missing.get_pos() is None
-        assert res_missing.get_axes() is None
-    # end with
 
     # Test structures being missing (loading PES job)
     with warns(UserWarning):

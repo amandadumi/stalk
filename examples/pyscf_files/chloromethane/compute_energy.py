@@ -11,6 +11,7 @@ from stalk.params.PesResult import PesResult
 
 parser = argparse.ArgumentParser(description='Compute energies from XYZ structures')
 parser.add_argument('filename', nargs='+', help='Structure files')
+parser.add_argument('--xc', default='pbe', help='XC functional')
 
 
 if __name__ == '__main__':
@@ -23,12 +24,12 @@ if __name__ == '__main__':
         efile = fname.replace('structure.xyz', 'energy.dat')
         sfile = fname.replace('structure.xyz', 'sigma.dat')
 
-        geom = XyzGeometry().load(fname.replace('structure.xyz', ''), suffix='structure.xyz')
+        geom = XyzGeometry(suffix='').load(fname)
         structure = structure_relax.copy(pos=geom.get_pos())
 
-        print(f'Computing: {fname} (pbe)')
-        mf = kernel_pyscf(structure=structure)
-        mf.xc = 'pbe'
+        xc = args.xc
+        print(f'Computing: {fname} ({xc})')
+        mf = kernel_pyscf(structure=structure, xc=xc)
         e_scf = mf.kernel()
         energy = PesResult(e_scf)
 

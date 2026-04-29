@@ -1,14 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env $python_exe
 
-from pyscf import dft
 from numpy import savetxt
+$pyscfimport
 
 $system
 
-### generated calculation text ###
-mf = dft.RKS(mol)
-mf.xc = 'pbe'
-e_scf = mf.kernel()
-### end generated calculation text ###
+$calculation
 
 savetxt('energy.dat', [[e_scf, 0.0]])

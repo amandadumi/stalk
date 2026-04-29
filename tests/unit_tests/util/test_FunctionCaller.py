@@ -30,14 +30,16 @@ def test_FunctionCaller():
     # end with
 
     # Test nominal
-    args = {"arg": 5}
-    pf = FunctionCaller(func, args=args)
-    assert pf.args is args
+    args = {"arg1": 5, "arg2": 15}
+    pf = FunctionCaller(func, **args)
+    assert pf.args['arg1'] == args['arg1']
+    assert pf.args['arg2'] == args['arg2']
     assert pf.func is func
 
     # Test copy constructor
-    pf_copy = FunctionCaller(pf)
-    assert pf_copy.args is args
+    pf_copy = FunctionCaller(pf, arg2=6, arg3=7)
+    assert pf_copy.args['arg2'] == 6
+    assert pf_copy.args['arg3'] == 7
     assert pf_copy.func is func
 
 # end def

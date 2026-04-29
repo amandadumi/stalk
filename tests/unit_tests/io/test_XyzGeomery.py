@@ -59,7 +59,7 @@ def test_XyzGeometry(tmp_path):
     writer.write(s, tmp_path)
 
     # To test out, load the file and compare
-    loader = XyzGeometry({'suffix': 'structure.xyz'})
+    loader = XyzGeometry(suffix='structure.xyz')
     res = loader.load(tmp_path)
     for el_ref, el in zip(elem_H2O, res.get_elem()):
         assert el_ref == el

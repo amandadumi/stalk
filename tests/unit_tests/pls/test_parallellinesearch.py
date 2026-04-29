@@ -29,7 +29,6 @@ def test_ParallelLineSearch(tmp_path):
     assert pls.structure is None
     assert pls.hessian is None
     assert len(pls.ls_list) == 0
-    assert len(pls.enabled_ls) == 0
     assert len(pls.Lambdas) == 0
     assert len(pls.noises) == 0
     assert len(pls.windows) == 0

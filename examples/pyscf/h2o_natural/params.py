@@ -95,5 +95,5 @@ pes_dict = {}
 co_dict = {}
 for xc, color in zip(xcs, colors):
     co_dict[xc] = color
-    pes_dict[xc] = PesFunction(pes_pyscf, {'xc': xc})
+    pes_dict[xc] = PesFunction(pes_pyscf, xc=xc)
 # end for

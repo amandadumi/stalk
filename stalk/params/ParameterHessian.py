@@ -19,6 +19,8 @@ class ParameterHessian():
     _hessian = None
     _Lambda = None
     _U = None
+    _enabled = None
+    _disable_limit = None
     require_consistent = True
 
     def __init__(
@@ -26,9 +28,11 @@ class ParameterHessian():
         hessian=None,
         structure=None,
         require_consistent=True,
+        disable_limit=0.0,
     ):
         self.require_consistent = require_consistent
         self.structure = structure
+        self.disable_limit = disable_limit
         # Hessian must be set after structure
         if self.structure is not None:
             self.hessian = hessian
@@ -82,6 +86,36 @@ class ParameterHessian():
         Lambda, U = linalg.eig(self.hessian)
         self._Lambda = Lambda
         self._U = U
+        # List of disabled directions
+        self._enabled = len(self) * [True]
+        # Disable directions softer than the disable limit
+        lmax = self.lambdas.max()
+        for h in range(len(self)):
+            condition = abs(self.lambdas[h]) / lmax
+            if condition < self.disable_limit:
+                self.enabled[h] = False
+                print(f'Disabled direction {h} with Lambda/max(Lambda)={condition:.4} < {self.disable_limit}')
+            # end if
+        # end for
+    # end def
+
+    @property
+    def disable_limit(self):
+        return self._disable_limit
+    # end def
+
+    @disable_limit.setter
+    def disable_limit(self, disable_limit):
+        if isscalar(disable_limit) and disable_limit >= 0.0:
+            self._disable_limit = disable_limit
+        else:
+            raise TypeError(f'Disable limit must be nonnegative, provided {disable_limit}')
+        # end if
+    # end def
+
+    @property
+    def enabled(self):
+        return self._enabled
     # end def
 
     @property
@@ -97,8 +131,18 @@ class ParameterHessian():
     # end def
 
     @property
+    def enabled_directions(self) -> ndarray:
+        return self.U.T[where(self.enabled)]
+    # end def
+
+    @property
     def lambdas(self) -> ndarray:
         return self._Lambda
+    # end def
+
+    @property
+    def enabled_lambdas(self) -> ndarray:
+        return self.lambdas[where(self.enabled)]
     # end def
 
     def reset(self):
@@ -106,6 +150,7 @@ class ParameterHessian():
         self._hessian = None
         self._Lambda = None
         self._U = None
+        self._enabled = None
     # end def
 
     # Only preserved for backward compatibility
@@ -255,12 +300,16 @@ class ParameterHessian():
         if self.hessian is not None:
             string += '\n  hessian:'
             for h in self.hessian:
-                string += ('\n    ' + len(h) * '{:<8f} ').format(*tuple(h))
+                string += ('\n    ' + len(h) * '{:<+1.6f} ').format(*tuple(h))
             # end for
             string += '\n  Conjugate directions:'
             string += '\n    Lambda     Direction'
-            for Lambda, direction in zip(self.lambdas, self.directions):
-                string += ('\n    {:<8f}   ' + len(direction) * '{:<+1.6f} ').format(Lambda, *tuple(direction))
+            for Lambda, direction, enabled in zip(self.lambdas, self.directions, self.enabled):
+                string += '\n    {:<8f}   '.format(Lambda)
+                string += len(direction) * ('{:<+1.6f} ').format(*tuple(direction))
+                if not enabled:
+                    string += ' <- disabled'
+                # end if
             # end for
         else:
             string += '\n  hessian: not set'

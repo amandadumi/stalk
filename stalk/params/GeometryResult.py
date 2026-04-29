@@ -32,4 +32,13 @@ class GeometryResult:
         return self.get_pos(), self.get_axes()
     # end def
 
+    def rescale(self, scale):
+        if self.pos is not None:
+            self.pos /= scale
+        # end if
+        if self.axes is not None:
+            self.axes /= scale
+        # end if
+    # end def
+
 # end class

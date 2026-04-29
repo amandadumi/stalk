@@ -22,7 +22,6 @@ class LineSearch(LineSearchBase):
     _hessian: ParameterHessian = None  # The equilibrium full Hessian
     _sigma = 0.0  # Target errorbar
     _d: int = None  # direction count
-    _enabled = True  # whether enabled or not
 
     def __init__(
         self,
@@ -166,16 +165,6 @@ class LineSearch(LineSearchBase):
         else:
             return 0.0
         # end if
-    # end def
-
-    @property
-    def enabled(self):
-        return self._enabled
-    # end def
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
     # end def
 
     @property

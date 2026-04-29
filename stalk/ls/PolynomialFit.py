@@ -53,7 +53,10 @@ class PolynomialFit(FittingFunction):
             y_mins = polyval(pf, x_mins)
             imin = argmin(abs(x_mins))
         else:
-            warnings.warn('The fit minimum not found inside grid but at the boundary!')
+            if abs(offsets).max() > 1e-4:
+                # Only warn if using nonzero grid
+                warnings.warn('The fit minimum not found inside grid but at the boundary!')
+            # end if
             x_mins = [min(offsets), max(offsets)]
             y_mins = polyval(pf, x_mins)
             imin = argmin(y_mins)  # pick the lowest/highest energy

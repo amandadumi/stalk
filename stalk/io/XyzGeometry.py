@@ -11,36 +11,39 @@ from stalk.params.ParameterStructure import ParameterStructure
 from stalk.io.GeometryWriter import GeometryWriter
 from stalk.io.GeometryLoader import GeometryLoader
 from stalk.params.GeometryResult import GeometryResult
-from stalk.util.util import PL
 
 
 class XyzGeometry(GeometryLoader, GeometryWriter):
 
     def __init__(
         self,
-        args={}
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='structure.xyz',
+        **kwargs
     ):
-        self.args = args
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
-    def _load(self, path, suffix='structure.xyz', c_pos=1.0):
+    def _load(self, filename) -> GeometryResult:
         el, x, y, z = loadtxt(
-            PL.format(path, suffix),
+            filename,
             dtype=str,
             unpack=True,
             skiprows=2
         )
-        pos = array([x, y, z], dtype=float).T * c_pos
+        pos = array([x, y, z], dtype=float).T
         return GeometryResult(pos, axes=None, elem=el)
     # end def
 
-    def __write__(self, structure, path, suffix='structure.xyz', c_pos=1.0):
+    def _write(self, structure: ParameterSet, filename):
         output = []
         if isinstance(structure, ParameterStructure):
-            pos = structure.pos
+            pos = structure.pos.copy()
             elem = structure.elem
         elif isinstance(structure, ParameterSet):
-            pos = structure.params
+            pos = structure.params.copy()
             elem = 'p'
         else:
             raise TypeError(f'Cannot write to XYZ file: {structure}')
@@ -48,7 +51,7 @@ class XyzGeometry(GeometryLoader, GeometryWriter):
 
         header = str(len(elem)) + '\n'
         fmt = '{:< 10f}'
-        for el, pr in zip(elem, pos * c_pos):
+        for el, pr in zip(elem, pos):
             row = [el]
             for p in pr:
                 row.append(fmt.format(p))
@@ -56,7 +59,7 @@ class XyzGeometry(GeometryLoader, GeometryWriter):
             output.append(row)
         # end for
         savetxt(
-            PL.format(path, suffix),
+            filename,
             array(output),
             header=header,
             fmt='%s',

@@ -5,7 +5,7 @@ from pytest import raises
 
 from stalk.io.FilesPes import FilesPes
 from stalk.io.XyzGeometry import XyzGeometry
-from stalk.io.util import load_energy, write_xyz_sigma
+from stalk.io.util import write_xyz_sigma
 from stalk.util.util import match_to_tol
 from tests.unit_tests.assets.h2o import get_structure_H2O
 
@@ -19,9 +19,8 @@ def test_FilesPes(tmp_path):
     # Test default init
     pes = FilesPes()
     assert pes.func is write_xyz_sigma
-    assert pes.loader.func is load_energy
     assert pes.args == {}
-    assert pes.loader.args == {}
+    assert pes.loader.args == {'suffix': 'energy.dat'}
 
     # Test evaluate
     s = get_structure_H2O()

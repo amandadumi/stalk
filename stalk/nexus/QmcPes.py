@@ -10,36 +10,39 @@ from pathlib import Path
 
 from nexus import QmcpackAnalyzer
 
-from stalk.nexus.NexusStructure import NexusStructure
 from stalk.params.PesResult import PesResult
 from stalk.io.PesLoader import PesLoader
-from stalk.util.util import PL
 
 
 class QmcPes(PesLoader):
 
-    def __init__(self, args={}):
-        self._func = None
-        self.args = args
+    def __init__(
+        self,
+        args: dict = {},  # Keep 'args' for backward compatibility
+        suffix='dmc/dmc.in.xml',
+        **kwargs
+    ):
+        my_args = {'suffix': suffix}
+        my_args.update(**args, **kwargs)
+        super().__init__(**my_args)
     # end def
 
     def _load(
         self,
-        structure: NexusStructure,
+        filename,
         qmc_idx=1,
-        suffix='dmc/dmc.in.xml',
         term='LocalEnergy',
         twist_averaging=False,
         twist_weights=None,
         **kwargs  # e.g. equilibration=None
     ) -> PesResult:
-        input_file = Path(PL.format(structure.file_path, suffix))
         # Testing existence here, because Nexus will shut down everything upon failure
-        if input_file.exists():
-            ai = QmcpackAnalyzer(str(input_file), **kwargs)
+        p = Path(filename)
+        if p.exists():
+            ai = QmcpackAnalyzer(str(p), **kwargs)
             ai.analyze()
         else:
-            warnings.warn(f"QmcPes loader could not find {str(input_file)}. Returning NaN.")
+            warnings.warn(f"QmcPes loader could not find {str(p)}. Returning NaN.")
             return PesResult(nan)
         # end if
 
@@ -48,7 +51,7 @@ class QmcPes(PesLoader):
         else:
             if not hasattr(ai, "qmc") or len(ai.qmc) < qmc_idx or not hasattr(ai.qmc[qmc_idx], "scalars"):
                 # Analysis has failed
-                warnings.warn(f"QmcPes loader could not find energy in {str(input_file)}. Returning NaN.")
+                warnings.warn(f"QmcPes loader could not find energy in {str(p)}. Returning NaN.")
                 return PesResult(nan)
             else:
                 return self._analyze_energy_term(ai.qmc[qmc_idx].scalars, term)

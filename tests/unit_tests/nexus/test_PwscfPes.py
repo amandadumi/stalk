@@ -11,8 +11,7 @@ def test_PwscfPes(tmp_path):
 
     # Test with empty args / defaults
     pes = PwscfPes()
-    assert pes.func is None
-    assert len(pes.args) == 0
+    assert len(pes.args) == 1
 
     # default suffix: scf.in
     E_ref = -22.74988263  # See tests/unit_tests/assets/pwscf_pes/scf.out

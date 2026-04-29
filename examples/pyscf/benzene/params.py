@@ -38,7 +38,7 @@ def forward(pos: ndarray):
         (C3, C4),
         (C4, C5),
         (C5, C0)
-    ])
+    ], tol=1e-4)
     # 1) from corresponding H-atoms
     r_CH = mean_distances([
         (C0, H0),
@@ -47,7 +47,7 @@ def forward(pos: ndarray):
         (C3, H3),
         (C4, H4),
         (C5, H5)
-    ])
+    ], tol=1e-4)
     params = array([r_CC, r_CH])
     return params
 # end def
@@ -73,7 +73,7 @@ def backward(params: ndarray):
 # end def
 
 
-def kernel_pyscf(structure: ParameterStructure):
+def kernel_pyscf(structure: ParameterStructure, xc='pbe'):
     atom = []
     for el, pos in zip(structure.elem, structure.pos):
         atom.append([el, tuple(pos)])
@@ -91,7 +91,7 @@ def kernel_pyscf(structure: ParameterStructure):
     mol.build()
 
     mf = dft.RKS(mol)
-    mf.xc = 'pbe'
+    mf.xc = xc
     return mf
 # end def
 

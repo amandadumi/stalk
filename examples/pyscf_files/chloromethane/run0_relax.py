@@ -26,8 +26,7 @@ outfile = 'relax.xyz'
 try:
     geom = XyzGeometry({'suffix': outfile}).load('./')
 except FileNotFoundError:
-    mf = kernel_pyscf(structure=structure)
-    mf.xc = 'pbe'
+    mf = kernel_pyscf(structure=structure, xc='pbe')
     mf.kernel()
     mol_eq = optimize(mf, maxsteps=100, constraints='chloromethane_constraints.txt')
     # Write to external file

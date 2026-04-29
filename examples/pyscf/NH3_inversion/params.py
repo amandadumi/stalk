@@ -34,7 +34,7 @@ def forward(pos: ndarray):
         (N0, H0),
         (N0, H1),
         (N0, H2),
-    ])
+    ], tol=1e-4)
     # Calculate angle between x axis and H -> should be around 90 degrees
     x = [1.0, 0.0, 0.0]
     d0 = H0 - N0
@@ -65,7 +65,13 @@ def backward(params: ndarray):
 # end def
 
 
-def kernel_pyscf(positions, elem):
+def kernel_pyscf(
+    positions,
+    elem,
+    xc,
+    basis,
+    ecp,
+):
     atom = []
     for el, pos in zip(elem, positions):
         atom.append([el, tuple(pos)])
@@ -73,9 +79,9 @@ def kernel_pyscf(positions, elem):
     mol = gto.Mole()
     mol.atom = atom
     mol.verbose = 3
-    mol.basis = 'ccpvdz'
+    mol.basis = basis
     mol.unit = 'A'
-    mol.ecp = 'ccecp'
+    mol.ecp = ecp
     mol.charge = 0
     mol.spin = 0
     mol.symmetry = False
@@ -83,13 +89,26 @@ def kernel_pyscf(positions, elem):
     mol.build()
 
     mf = dft.RKS(mol)
-    mf.xc = 'pbe'
+    mf.xc = xc
     return mf
 # end def
 
 
-def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz'):
-    mf = kernel_pyscf(structure.pos, structure.elem)
+def relax_pyscf(
+    structure: ParameterStructure,
+    outfile='relax.xyz',
+    xc='pbe',
+    basis='ccecpccpvdz',
+    ecp='ccecp',
+    **kwargs
+):
+    mf = kernel_pyscf(
+        structure.pos,
+        structure.elem,
+        xc=xc,
+        basis=basis,
+        ecp=ecp,
+    )
     mf.kernel()
     mol_eq = optimize(mf, maxsteps=100, constraints='nh3_constraints.txt')
     # Write to external file
@@ -97,32 +116,41 @@ def relax_pyscf(structure: ParameterStructure, outfile='relax.xyz'):
 # end def
 
 
-def pes_pyscf(structure: ParameterStructure, **kwargs):
-    print(f'Computing: {structure.label}')
-    mf = kernel_pyscf(structure.pos, structure.elem)
+def pes_pyscf(
+    structure: ParameterStructure,
+    xc='pbe',
+    basis='ccecpccpvdz',
+    ecp='ccecp',
+    **kwargs
+):
+    print(f'Computing: {structure.label} xc={xc} @ {basis}-{ecp}')
+    mf = kernel_pyscf(
+        structure.pos,
+        structure.elem,
+        xc=xc,
+        basis=basis,
+        ecp=ecp,
+    )
     e_scf = mf.kernel()
     return e_scf, 0.0
 # end def
 
 
-def pes_pyscf_lda(structure: ParameterStructure, **kwargs):
-    print(f'Computing with LDA: {structure.label}')
-    mf = kernel_pyscf(structure.pos, structure.elem)
-    mf.xc = 'lda'
-    e_scf = mf.kernel()
-    return e_scf, 0.0
-# end def
-
-
-pes = PesFunction(pes_pyscf)
-pes_lda = PesFunction(pes_pyscf_lda)
+pes_pbe = PesFunction(pes_pyscf, xc='pbe', basis='ccecpccpvdz', ecp='ccecp')
+pes_lda = PesFunction(pes_pyscf, xc='lda', basis='ccecpccpvdz', ecp='ccecp')
 
 
 class PySCF(Calculator):
     implemented_properties = ['energy', 'forces']
+    pes_args = {}
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        pes_args={},
+        **kwargs
+    ):
         Calculator.__init__(self, **kwargs)
+        self.pes_args = pes_args
     # end def
 
     def calculate(
@@ -146,12 +174,12 @@ class PySCF(Calculator):
     # end def
 
     def compute_energy(self, positions, elem):
-        mf = kernel_pyscf(positions, elem)
+        mf = kernel_pyscf(positions, elem, **self.pes_args)
         return mf.kernel()
     # end def
 
     def compute_forces(self, positions, elem):
-        mf = kernel_pyscf(positions, elem)
+        mf = kernel_pyscf(positions, elem, **self.pes_args)
         mf.kernel()
         mf_grad = grad.RKS(mf)
         forces = -mf_grad.kernel()
@@ -161,9 +189,9 @@ class PySCF(Calculator):
 # end class
 
 
-def neb_image(structure: ParameterStructure):
+def neb_image(structure: ParameterStructure, pes_args={}):
     atoms = Atoms(structure.elem, positions=structure.pos)
-    atoms.calc = PySCF()
+    atoms.calc = PySCF(pes_args)
     # Fix N atom
     atoms.set_constraint(FixAtoms(indices=[0]))
     return atoms

@@ -8,7 +8,6 @@ from nexus import Structure
 
 from stalk.util import Bohr
 from stalk import PesLoader
-from stalk import load_energy
 from stalk import mean_distances
 from stalk import XyzGeometry
 from stalk import NexusGeometry
@@ -52,7 +51,7 @@ def forward(pos: ndarray):
         (C3, C4),
         (C4, C5),
         (C5, C0)
-    ])
+    ], tol=1e-4)
     # 1) from corresponding H-atoms
     r_CH = mean_distances([
         (C0, H0),
@@ -61,7 +60,7 @@ def forward(pos: ndarray):
         (C3, H3),
         (C4, H4),
         (C5, H5)
-    ])
+    ], tol=1e-4)
     params = array([r_CC, r_CH])
     return params
 # end def
@@ -88,7 +87,7 @@ def backward(params: ndarray):
 
 
 # return a 1-item list of Nexus jobs: SCF relaxation
-def scf_relax_job(structure: Structure, path, **kwargs):
+def scf_relax_job(structure: Structure, path, xc='pbe', **kwargs):
     system = generate_physical_system(
         structure=structure,
         C=4,
@@ -107,6 +106,10 @@ def scf_relax_job(structure: Structure, path, **kwargs):
             symmetry=False,
             cart=True
         ),
+        calculation=obj(
+            method='RKS',
+            xc=xc,
+        )
     )
     return [relax]
 # end def
@@ -114,12 +117,15 @@ def scf_relax_job(structure: Structure, path, **kwargs):
 
 relax_pyscf = NexusGeometry(
     scf_relax_job,
-    loader=XyzGeometry({'suffix': 'relax.xyz', 'c_pos': 1.0 / Bohr})
+    loader=XyzGeometry(
+        suffix='relax.xyz',  # The PySCF template produces output to 'relax.xyz'
+        scale=Bohr,  # Convert from Angstrom to Bohr
+    )
 )
 
 
 # Let us define an SCF PES job that is consistent with the earlier relaxation
-def scf_pes_job(structure: Structure, path, **kwargs):
+def scf_pes_job(structure: Structure, path, xc='pbe', **kwargs):
     system = generate_physical_system(
         structure=structure,
         C=4,
@@ -138,6 +144,10 @@ def scf_pes_job(structure: Structure, path, **kwargs):
             symmetry=False,
             cart=True
         ),
+        calculation=obj(
+            method='RKS',
+            xc=xc,
+        )
     )
     return [scf]
 # end def
@@ -146,7 +156,7 @@ def scf_pes_job(structure: Structure, path, **kwargs):
 # Hessian based on the structural mappings
 pes_pyscf = NexusPes(
     func=PesFunction(scf_pes_job),
-    loader=PesLoader(load_energy, args={'suffix': 'energy.dat'})
+    loader=PesLoader(suffix='energy.dat')
 )
 
 
@@ -273,5 +283,5 @@ def dmc_pes_job(
 # -the qmc_idx points to the correct QMC series (0: VMC; 1: DMC)
 pes_dmc = NexusPes(
     dmc_pes_job,
-    loader=QmcPes({'suffix': '/dmc/dmc.in.xml', 'qmc_idx': 1})
+    loader=QmcPes(suffix='/dmc/dmc.in.xml', qmc_idx=1)
 )
