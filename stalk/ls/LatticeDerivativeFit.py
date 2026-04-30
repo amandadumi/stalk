@@ -7,6 +7,8 @@ class LatticeDerivativeFit(FittingFunction):
 
     def __init__(self, n):
         self.n = n
+        self. 
+
     # end def
 
     @property

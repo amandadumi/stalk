@@ -13,7 +13,6 @@ try:
     from .PwscfPes import PwscfPes
     from .PwscfPes import PwscfEnthalpy
     from .QmcPes import QmcPes
-    from .QmcPes import QmcEnthalpy
     from .XsfGeometry import XsfGeometry
     nexus_enabled = True
 except ModuleNotFoundError:

@@ -19,6 +19,7 @@ class PwscfPes(PesLoader):
         self,
         args: dict = {},  # Keep 'args' for backward compatibility
         suffix='scf.in',
+
         **kwargs
     ):
         my_args = {'suffix': suffix}
@@ -47,18 +48,17 @@ class PwscfEnthalpy(PesLoader):
     def __init__(self, args={}):
         self._func = None
         self.args = args
+        self.target_pressure = None #expecting this to enter as GPa
+        if 'target_pressure' in self.args:
+            self.target_pressure = self.args['target_pressure']
+            print(f' target_pressure set to {self.target_pressure} kbar')
+
+
     # end def
 
-    def _load(self, structure: ParameterSet, suffix='scf.in', **kwargs):
-        input_file = Path(PL.format(structure.file_path, suffix))
-        # Testing existence here, because Nexus will shut down everything upon failure
-        if input_file.exists():
-            ai = PwscfAnalyzer(str(input_file), **kwargs)
-            ai.analyze()
-        else:
-            warnings.warn(f"PwscfPes loader could not find {str(input_file)}. Returning None.")
-            return PesResult(nan)
-        # end if
+    def _load(self, filename: str, **kwargs) -> PesResult:
+        ai = PwscfAnalyzer(filename, **kwargs)
+        ai.analyze()
         
         if not hasattr(ai, "E") or ai.E == 0.0:
             # Analysis has failed
@@ -68,14 +68,9 @@ class PwscfEnthalpy(PesLoader):
             E = ai.E # In units of Ry
         # end if
 
-        if not hasattr(ai, "pressure") or ai.pressure == 0.0:
-            # Analysis has failed
-            warnings.warn(f"PwscfPes loader could not find pressure in {str(input_file)}. Returning None.")
-            P = nan
-        else:
-            P = ai.pressure # in units of kbar
             #convert units
-            P *= 6.7978e-6 # Ry/bohr3 per Pa
+        if self.target_pressure is not None:
+            P=self.target_pressure * (1/(14710*10)) # ryd/bohr3 per gpa
         # end if
 
         if not hasattr(ai, "volume") or ai.volume == 0.0:

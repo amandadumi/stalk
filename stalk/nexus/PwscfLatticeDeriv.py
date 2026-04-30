@@ -104,6 +104,9 @@ class PwscfEnthalpyLatticeDeriv(PesLoader):
     def __init__(self,args={}):
         self.func = None
         self.args = args
+        self.target_pressure = None #expecting this to enter as GPa
+        if 'target_pressure' in self.args:
+            self.target_pressure = self.args['target_pressure']
 
     def _load(self, structure: ParameterSet, suffix='scf.in', **kwargs):
             input_file = Path(PL.format(structure.file_path, suffix))
@@ -123,7 +126,7 @@ class PwscfEnthalpyLatticeDeriv(PesLoader):
             else:
                 E = ai.E # In units of Ry
             # end if
-
+            """
             if not hasattr(ai, "pressure") or ai.pressure == 0.0:
                 # Analysis has failed
                 warnings.warn(f"PwscfPes loader could not find pressure in {str(input_file)}. Returning None.")
@@ -133,7 +136,11 @@ class PwscfEnthalpyLatticeDeriv(PesLoader):
                 #convert units
                 P *= 6.7978e-6 # Ry/bohr3 per Pa
             # end if
-
+            """
+            if self.target_pressure is not None:
+                P=self.target_pressure * (1/14710) # ryd/bohr3 per gpa
+            else:
+                warnings.warn("target pressure not set")
             if not hasattr(ai, "volume") or ai.volume == 0.0:
                 # Analysis has failed
                 warnings.warn(f"PwscfPes loader could not find volume in {str(input_file)}. Returning None.")
@@ -148,9 +155,14 @@ class PwscfEnthalpyLatticeDeriv(PesLoader):
 
             H = E+(P*V)
             stress = ai.stress
-            L = ai.lattice
+            lattice = ai.lattice
+            lattice_inv = np.linalg.inv(lattice)
             P_identity = np.identity(P)
-            dH = -V * L*(stress-P)
+
+            dHdl = -V *((stress-P)@lattice_inv.T)
+
+
             return PesResult(H, Err)
+
 
     # end class
