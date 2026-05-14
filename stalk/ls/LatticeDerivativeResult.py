@@ -11,7 +11,7 @@ from numpy import polyder, polyval
 from stalk.ls import FittingResult
 
 
-class LinearDerivativeResult(FittingResult):
+class LatticeDerivativeResult(FittingResult):
 
     def get_hessian(self, x):
         pfh = polyder(polyder(self.fit))

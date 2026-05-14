@@ -68,7 +68,7 @@ class PwscfEnthalpy(PesLoader):
             E = ai.E # In units of Ry
         # end if
 
-            #convert units
+        #convert units
         if self.target_pressure is not None:
             P=self.target_pressure * (1/(14710*10)) # ryd/bohr3 per gpa
         # end if
@@ -79,7 +79,6 @@ class PwscfEnthalpy(PesLoader):
             V = nan
         else:
             V = ai.volume # in units of bohr^3
-            # convert units
             
         # end if
         Err = 0.0

@@ -273,8 +273,28 @@ class LineSearch(LineSearchBase):
             add_sigma=add_sigma,
             **kwargs
         )
+        if use_dhdl: # eventually move all of this to subclass like DerivativeLineSearch
+             for structure in self._grid:
+                if hasattr(structure, "dhdl") and structure.dhdl is not None:
+                    dLdz = self._get_dLdz()
+                    structure.value = (structure.dhdl * dLdz).sum()
         self._search_and_store()
     # end def
+
+    def _get_dLdz(self):
+        direction = self.direction
+        if direction is None:
+            raise ValueError("No line-search direction available.")
+
+        # hcp example only
+        da_dz = direction[0]
+        dc_dz = direction[1]
+
+        return array([
+            [da_dz, 0.0, 0.0],
+            [-0.5 * da_dz, (3**0.5) / 2 * da_dz, 0.0],
+            [0.0, 0.0, dc_dz],
+        ])
 
     @property
     def shifted_params(self):

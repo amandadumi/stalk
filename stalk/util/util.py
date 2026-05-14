@@ -8,7 +8,7 @@ __license__ = "BSD-3-Clause"
 from pathlib import Path
 
 from numpy import exp, median, array, isnan
-from numpy import meshgrid, linalg, linspace, dot, eye
+from numpy import meshgrid, linalg, linspace, dot, eye, tensordot
 
 
 Bohr = 0.5291772105638411  # A
@@ -206,3 +206,7 @@ def check_result_file(path, args: dict):
     # end if
     return str(p)
 # end def
+
+
+def contract_dhdl_with_dldz(dhdl,dldz):
+    return tensordot(dhdl,dldz,axes=2)

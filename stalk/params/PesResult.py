@@ -11,6 +11,7 @@ from numpy import isscalar, nan, isnan, random
 class PesResult:
     _value = nan
     _error = 0.0
+    _dhdl = nan
 
     @property
     def value(self):
@@ -39,10 +40,23 @@ class PesResult:
             raise ValueError("Error must be scalar and >= 0")
         # end if
     # end def
+   
+    @property
+    def dhdl(self):
+        return self._dhdl
+    # end def
 
-    def __init__(self, value, error=0.0):
+    @dhdl.setter
+    def dhdl(self, dhdl):
+        self._dhdl = dhdl
+    # end def
+
+
+    def __init__(self, value, error=0.0, dhdl=None):
         self.value = value
         self.error = error
+        if dhdl is not None:
+            self.dhdl = dhdl
     # end def
 
     def rescale(self, scale):

@@ -116,6 +116,10 @@ class PesFunction(FunctionCaller):
         # end if
         structure.value = result.value
         structure.error = result.error
+        # Preserve derivative matrix if present
+        if hasattr(result, "dhdl") and result.dhdl is not None:
+            structure.dhdl = result.dhdl
+        # end if
         self._update_var_eff_map(structure, var_eff_map=var_eff_map)
     # end def
 

@@ -162,7 +162,7 @@ class PwscfEnthalpyLatticeDeriv(PesLoader):
             dHdl = -V *((stress-P)@lattice_inv.T)
 
 
-            return PesResult(H, Err)
+            return PesResult(H, Err, dhdl = dHdl)
 
 
     # end class

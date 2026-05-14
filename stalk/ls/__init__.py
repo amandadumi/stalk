@@ -8,6 +8,8 @@ __license__ = "BSD-3-Clause"
 # from .ErrorSurface import ErrorSurface
 from .FittingFunction import FittingFunction
 from .FittingResult import FittingResult
+from .LatticeDerivativeFit import LatticeDerivativeFit 
+from .LatticeDerivativeResult import LatticeDerivativeResult
 from .LineSearch import LineSearch
 from .LineSearchBase import LineSearchBase
 from .LineSearchGrid import LineSearchGrid
@@ -25,6 +27,8 @@ from .TlsSettings import TlsSettings
 __all__ = [
     'FittingFunction',
     'FittingResult',
+    'LatticeDerivativeFit',
+    'LatticeDerivativeResult',
     'LineSearch',
     'LineSearchBase',
     'LineSearchGrid',

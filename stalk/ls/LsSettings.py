@@ -6,6 +6,7 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 from numpy import isscalar
+from stalk.ls.LatticeDerivativeFit import LatticeDerivativeFit 
 from stalk.ls.MorseFit import MorseFit
 from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.ls.FittingFunction import FittingFunction
@@ -105,6 +106,8 @@ class LsSettings():
             fit_func = MorseFit()
         elif fit_kind == 'spline':
             fit_func = SplineFit()
+        elif fit_kind == 'ldf':
+            fit_func = LatticeDerivativeFit()
         elif hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
             fit_func = PolynomialFit(int(fit_kind[2:]))
         elif callable(fit_func):
