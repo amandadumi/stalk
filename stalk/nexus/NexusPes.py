@@ -6,17 +6,17 @@ __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 import warnings
-from numpy import isnan, isscalar
 from pickle import load
 
-from nexus import run_project, bundle
+from nexus import bundle, run_project
+from numpy import isnan, isscalar
 
 from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
-from stalk.params.PesFunction import PesFunction
-from stalk.params.PesResult import PesResult
 from stalk.params.EffectiveVariance import EffectiveVariance
 from stalk.params.EffectiveVarianceMap import EffectiveVarianceMap
+from stalk.params.PesFunction import PesFunction
+from stalk.params.PesResult import PesResult
 from stalk.util.util import FF, FP, directorize
 
 
@@ -38,10 +38,13 @@ class NexusPes(PesFunction):
         super().__init__(func, args)
         self.disable_failed = disable_failed
         self.bundle_jobs = bundle_jobs
-        if isinstance(loader, PesLoader):
+
+        if loader is not None and hasattr(loader, "load") and callable(loader.load):
             self.loader = loader
-        else:
+        elif load_func is not None:
             self.loader = PesLoader(load_func, load_args)
+        else:
+            raise TypeError("Must provide either a loader with .load() or a callable load_func.")
         # end if
     # end def
 
