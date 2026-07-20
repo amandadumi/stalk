@@ -329,6 +329,10 @@ class ParallelLineSearch:
         # Set the eqm energy
         for ls in self.ls_list:
             eqm = ls.find_point(0.0)
+            if hasattr(ls.structure, "param_grad"):
+                ls.structure.dH_dz = self.hessian.project_gradient(
+                    ls.structure.param_grad
+                )
             if eqm is not None:
                 self.structure.value = eqm.value
                 self.structure.error = eqm.error
@@ -411,11 +415,20 @@ class ParallelLineSearch:
     # end def
 
     def calculate_next_params(
-        self, N=200, Gs=None, fraction=0.025, use_derivatives=False
+        self,
+        N=200,
+        Gs=None,
+        fraction=0.025,
+        use_derivatives=False,
+        grad_mix=0.5,
+        damping=0.1,
     ):
         # deterministic
         params = self.params
         shifts = self.shifts
+        if use_derivatives:
+            shifts = self.calculate_next_shifts_from_gradients()
+
         params_next = self._calculate_params_next(params, shifts)
         # stochastic
         if self.noisy:
@@ -456,9 +469,20 @@ class ParallelLineSearch:
 
     # end def
 
-    def calculate_next_params_from_gradients(self):
-        # If derivative information is available, combine: fitted minimum location local slope at sampled points to improve the step estimate.
-        return
+    def calculate_next_shifts_from_gradients(self, weight=0.5, damping=1.0):
+        shifts_fit = self.shifts
+        shifts_grad = []
+
+        for ls in self.ls_list:
+            grad = getattr(ls.structure, "dH_dz", None)
+            lam = abs(ls.Lambda) if ls.Lambda is not None else 1.0
+            if grad is None:
+                shifts_grad.append(ls.x0)
+            else:
+                shifts_grad.append(-damping * grad / lam)
+
+        shifts_grad = array(shifts_grad)
+        return weight * shifts_fit + (1 - weight) * shifts_grad
 
     @property
     def shifts(self):

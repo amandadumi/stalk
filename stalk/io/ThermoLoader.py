@@ -5,8 +5,8 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import isnan, isscalar
 import numpy as np
+from numpy import isnan, isscalar
 
 from stalk.params.PesResult import PesResult
 from stalk.params.ThermoResult import ThermoResult
@@ -14,16 +14,42 @@ from stalk.util.FunctionCaller import FunctionCaller
 
 
 class ThermoLoader:
-    def __init__(self, loader, args={}, pressure=None, use_enthalpy=True):
+    def __init__(
+        self,
+        loader,
+        args={},
+        backend=None,
+        dhdp_from_dhdl_map=None,
+        pressure=None,
+        use_enthalpy=True,
+    ):
         self.loader = loader
         self.pressure = pressure
         self.use_enthalpy = use_enthalpy
         self.args = args
+        self.backend = backend
+        self.dhdp_from_dhdl = dhdp_from_dhdl_map
+
+        # handle pressure units:
+        if self.backend == "pwscf":
+            self._convert_pressure_pwscf()
+        elif self.backend == "qmcpack":
+            self._convert_pressure_qmcpack()
+        else:
+            raise ValueError("Unknown backend")
 
     # end def
+    def _convert_pressure_pwscf(self):
+        self.pressure *= (1 / 14710.5076) * (
+            1 / 10
+        )  # ryd/bohr3 per gpa; 10 kbar = 100 GPa
+
+    def _convert_pressure_qmcpack(self):
+        self.pressure *= (
+            1 / (14710.5076 * 10)
+        ) / 2  # ryd/bohr3 per kbar and then divided by to for Ha/Bohr3
 
     def load(self, structure, **kwargs):
-        print(structure)
         res = self.loader.load(structure)
         if not isinstance(res, PesResult):
             raise AssertionError("ThermoLoader wrapped loader must return PesResult.")
@@ -42,13 +68,29 @@ class ThermoLoader:
             energy_error=res.error,
             pressure=p,
             volume=v,
-            use_enthalpy=self.use_enthalpy,
         )
 
+        dhdl = None
+        dhdp = None
         if self.use_enthalpy and p is not None and v is not None:
-            thermo.compute_enthalpy(pressure=p, volume=v)
-            dHdL = self.compute_enthalpy_gradient()
-            
+            L = structure.axes
+            thermo._enthalpy = thermo.compute_enthalpy()
+            thermo.value = thermo.compute_enthalpy()
+            if hasattr(res, "stress") and res.stress is not None:
+                dH_dL = thermo.compute_enthalpy_gradient(L, res.stress, p)
+                if self.dhdp_from_dhdl_map is not None:
+                    dhdp = self.dhdp_from_dhdl_map(
+                        dH_dL, L[0, 0], L[2, 2] / L[0, 0]
+                    )  # TODO: this is not general to other cells, only hcp
+            else:
+                print("the stress wasnt parsed")
+        elif self.use_enthalpy and p is None:
+            raise ValueError("use_enthalpy is True, but pressure is not set")
+        elif self.use_enthalpy and v is None:
+            raise ValueError("use_enthalpy is True, but volume is not set")
+
+        thermo.dhdl = dhdl
+        thermo.dhdp = dhdp
 
         return thermo
 
@@ -60,48 +102,6 @@ class ThermoLoader:
         return None
 
     # end def
-
-    def compute_enthalpy_gradient(L, stress, pressure):
-        """
-        Compute the enthalpy gradient with respect to the lattice matrix.
-
-        Parameters
-        ----------
-        L : (3, 3) array_like
-            Lattice matrix with lattice vectors as rows or columns, consistent
-            with the stress/strain convention used in your derivation.
-        stress : (3, 3) array_like
-            Stress tensor sigma_{mu beta}.
-        pressure : float
-            External pressure P.
-
-        Returns
-        -------
-        dH_dL : (3, 3) ndarray
-            Gradient dH/dL_{mu nu}.
-        """
-        L = np.asarray(L, dtype=float)
-        stress = np.asarray(stress, dtype=float)
-
-        if L.shape != (3, 3):
-            raise ValueError(f"L must be 3x3, got shape {L.shape}")
-        if stress.shape != (3, 3):
-            raise ValueError(f"stress must be 3x3, got shape {stress.shape}")
-
-        omega = np.linalg.det(L)
-        Linv = np.linalg.inv(L)
-
-        # delta_{mu beta}
-        I = np.eye(3)
-
-        # A_{mu beta} = sigma_{mu beta} - P delta_{mu beta}
-        A = stress - pressure * I
-
-        # dH/dL_{mu nu} = -Omega * sum_beta A_{mu beta} * (L^{-1})_{nu beta}
-        # This is equivalent to -Omega * A @ Linv.T
-        dH_dL = -omega * A @ Linv.T
-
-        return dH_dL
 
 
 # end class

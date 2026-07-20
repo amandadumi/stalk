@@ -219,11 +219,10 @@ class LineSearch(LineSearchBase):
         return self.hessian.directions[self.d]
 
     @property
-    def z_basis(self):
+    def conjugate_basis(self):
         # expose conjugate coordinate basis for whole system
         return self.hessian.directions
 
-    @property
     def z_basis(self):
         return self.hessian.directions[self.d]
 

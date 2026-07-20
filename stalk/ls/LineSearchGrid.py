@@ -183,10 +183,6 @@ class LineSearchGrid:
     def derivs(self):
         return array([point.dvalue for point in self._grid])
 
-    @property
-    def derivs(self):
-        return array([point.dvalue for point in self._grid])
-
     def set_derivative_error(self, offset, deriv, deriv_err=0.0):
         return
 

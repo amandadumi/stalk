@@ -5,12 +5,13 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import array, isscalar, diag
 from copy import deepcopy
 
-from stalk.util import match_to_tol, get_fraction_error, directorize
-from stalk.util.util import FF
+from numpy import array, diag, isscalar
+
 from stalk.params.ParameterSet import ParameterSet
+from stalk.util import directorize, get_fraction_error, match_to_tol
+from stalk.util.util import FF
 
 
 class ParameterStructure(ParameterSet):
@@ -24,6 +25,11 @@ class ParameterStructure(ParameterSet):
     elem = None  # list of elements
     units = None  # position units
     tol = None  # consistency tolerance
+    energy_param_grad = None
+    energy_conjugate_grad = None
+    enthalpy_param_grad = None
+    enthalpy_conjugate_grad = None
+    dH_dL = None
 
     def __init__(
         self,
@@ -38,8 +44,8 @@ class ParameterStructure(ParameterSet):
         backward_args={},
         value=None,
         error=0.0,
-        label='',
-        units='B',
+        label="",
+        units="B",
         dim=3,
         translate=True,  # attempt to translate pos
         tol=1e-7,
@@ -68,17 +74,20 @@ class ParameterStructure(ParameterSet):
         if elem is not None:
             self.set_elem(elem)
         # end if
+
     # end def
 
     @property
     def consistent(self):
         return self.check_consistency()
+
     # end def
 
     @property
     def periodic(self):
         # By default axes is None, but Nexus may set it to empty list/array
         return self.axes is not None and len(self.axes) > 0
+
     # end def
 
     # Set forward mapping function and keyword arguments
@@ -90,6 +99,7 @@ class ParameterStructure(ParameterSet):
         if new_params is not None:
             self.set_params(new_params)
         # end if
+
     # end def
 
     # Set backward mapping function and keyword arguments
@@ -101,12 +111,15 @@ class ParameterStructure(ParameterSet):
         if new_pos is not None:
             self.set_position(new_pos, new_axes)
         # end if
+
     # end def
 
     # Set a new pos+axes and, if so configured, translate pos through backward mapping.
     def set_position(self, pos, axes=None, translate=True):
         pos = array(pos)
-        assert pos.size % self.dim == 0, f'Position vector inconsistent with {self.dim} dimensions!'
+        assert (
+            pos.size % self.dim == 0
+        ), f"Position vector inconsistent with {self.dim} dimensions!"
         # Set the new pos+axes
         self.pos = array(pos).reshape(-1, self.dim)
         if axes is not None:
@@ -127,6 +140,7 @@ class ParameterStructure(ParameterSet):
         if translate and self.backward_func is not None:
             self.pos, self.axes = self.map_backward()
         # end if
+
     # end def
 
     # Set a new pos+axes and, if so configured, translate pos through backward mapping.
@@ -135,7 +149,9 @@ class ParameterStructure(ParameterSet):
             axes = diag(axes)
         else:
             axes = array(axes)
-            assert axes.size == self.dim**2, f'Axes vector inconsistent with {self.dim} dimensions!'
+            assert (
+                axes.size == self.dim**2
+            ), f"Axes vector inconsistent with {self.dim} dimensions!"
             axes = array(axes).reshape(self.dim, self.dim)
         # end if
         self.axes = axes
@@ -149,10 +165,12 @@ class ParameterStructure(ParameterSet):
             # end if
             self.reset_value()  # setting axes will reset value
         # end if
+
     # end def
 
     def set_elem(self, elem):
         self.elem = array(elem)
+
     # end def
 
     def set_params(self, params, params_err=None, dpos_mode=False):
@@ -167,6 +185,7 @@ class ParameterStructure(ParameterSet):
                 self.pos = pos_new
             # end if
         # end if
+
     # end def
 
     # Perform forward mapping: if mapping function provided, return new params; else, return None
@@ -181,6 +200,7 @@ class ParameterStructure(ParameterSet):
         else:
             return array(self.forward_func(array(pos), **self.forward_args))
         # end if
+
     # end def
 
     # Perform backward mapping: if mapping function provided, return new pos+axes; else, return None
@@ -196,9 +216,12 @@ class ParameterStructure(ParameterSet):
         else:
             return array(res).reshape(-1, 3), None
         # end if
+
     # end def
 
-    def check_consistency(self, params=None, pos=None, axes=None, tol=None, verbose=False):
+    def check_consistency(
+        self, params=None, pos=None, axes=None, tol=None, verbose=False
+    ):
         """Check consistency of present forward-backward mapping.
         If params or pos/axes are supplied, check at the corresponding points. If not, check at the present point.
         """
@@ -219,13 +242,20 @@ class ParameterStructure(ParameterSet):
             params_new = array(self.map_forward(pos, axes))
             pos_new, axes_new = self.map_backward(params)
             if self.periodic:
-                return match_to_tol(params, params_new, tol) and match_to_tol(pos, pos_new, tol) and match_to_tol(axes, axes_new, tol)
+                return (
+                    match_to_tol(params, params_new, tol)
+                    and match_to_tol(pos, pos_new, tol)
+                    and match_to_tol(axes, axes_new, tol)
+                )
             else:
-                return match_to_tol(params, params_new, tol) and match_to_tol(pos, pos_new, tol)
+                return match_to_tol(params, params_new, tol) and match_to_tol(
+                    pos, pos_new, tol
+                )
             # end if
         else:
             return False
         # end if
+
     # end def
 
     def _check_pos_consistency(self, pos, axes, tol=None):
@@ -233,14 +263,16 @@ class ParameterStructure(ParameterSet):
         if self.periodic:
             params = self.map_forward(pos, axes)
             pos_new, axes_new = self.map_backward(params)
-            consistent = match_to_tol(
-                pos, pos_new, tol) and match_to_tol(axes, axes_new, tol)
+            consistent = match_to_tol(pos, pos_new, tol) and match_to_tol(
+                axes, axes_new, tol
+            )
         else:
             params = self.map_forward(pos, axes)
             pos_new, axes_new = self.map_backward(params)
             consistent = match_to_tol(pos, pos_new, tol)
         # end if
         return consistent
+
     # end def
 
     def _check_params_consistency(self, params, tol=None):
@@ -248,10 +280,11 @@ class ParameterStructure(ParameterSet):
         pos, axes = self.map_backward(params)
         params_new = self.map_forward(pos, axes)
         return match_to_tol(params, params_new, tol)
+
     # end def
 
     def shift_pos(self, dpos, translate=True):
-        assert self.pos is not None, 'position has not been set'
+        assert self.pos is not None, "position has not been set"
         if isscalar(dpos):
             new_pos = self.pos + dpos
         else:
@@ -260,6 +293,7 @@ class ParameterStructure(ParameterSet):
             new_pos = (self.pos.flatten() + dpos.flatten()).reshape(-1, self.dim)
         # end if
         self.set_position(new_pos, translate=translate)
+
     # end def
 
     def shift_params(self, dparams, dpos_mode=False):
@@ -274,6 +308,7 @@ class ParameterStructure(ParameterSet):
                 self.pos = pos_new
             # end if
         # end if
+
     # end def
 
     def copy(
@@ -303,15 +338,17 @@ class ParameterStructure(ParameterSet):
             structure.label = label
         # end if
         return structure
+
     # end def
 
     def pos_difference(self, pos_ref):
         dpos = pos_ref.reshape(-1, 3) - self.pos
         return dpos
+
     # end def
 
     def jacobian(self, dp=0.001):
-        assert self.consistent, 'The mapping must be consistent'
+        assert self.consistent, "The mapping must be consistent"
         jacobian = []
         for p in range(len(self.params)):
             params_this = self.params.copy()
@@ -321,10 +358,11 @@ class ParameterStructure(ParameterSet):
             jacobian.append(dpos.flatten() / dp)
         # end for
         return array(jacobian).T
+
     # end def
 
     def remap_forward(self, forward, N=None, fraction=0.159, **kwargs):
-        assert self.consistent, 'The mapping must be consistent'
+        assert self.consistent, "The mapping must be consistent"
         pos, axes = self.map_backward()
         if self.periodic:
             params = forward(pos, axes, **kwargs)
@@ -335,23 +373,29 @@ class ParameterStructure(ParameterSet):
             return params
         elif sum(self.params_err) > 0:  # resample errorbars
             if self.periodic:
-                psdata = [forward(*self.map_backward(p))
-                          for p in self.get_params_distribution(N=N)]
+                psdata = [
+                    forward(*self.map_backward(p))
+                    for p in self.get_params_distribution(N=N)
+                ]
             else:
-                psdata = [forward(self.map_backward(p)[0])
-                          for p in self.get_params_distribution(N=N)]
+                psdata = [
+                    forward(self.map_backward(p)[0])
+                    for p in self.get_params_distribution(N=N)
+                ]
             # end if
-            params_err = array([get_fraction_error(ps, fraction=fraction)[
-                               1] for ps in array(psdata).T])
+            params_err = array(
+                [get_fraction_error(ps, fraction=fraction)[1] for ps in array(psdata).T]
+            )
             return params, params_err
         else:  # errors are zero
             return params, 0 * params
         # end if
+
     # end def
 
     def load(
         self,
-        path='relax',
+        path="relax",
         xyz_file=None,
         xsf_file=None,
         load_func=None,
@@ -366,7 +410,7 @@ class ParameterStructure(ParameterSet):
         if load_func is not None:
             pos, axes = load_func(path, **load_args)
         else:
-            print('Not loaded')
+            print("Not loaded")
         # end if
         pos *= c_pos
         self.set_position(pos)
@@ -382,43 +426,48 @@ class ParameterStructure(ParameterSet):
         pos_diff = self.pos - pos
         pos_diff -= pos_diff.mean(axis=0)
         if verbose:
-            print('Position difference')
+            print("Position difference")
             print(pos_diff.reshape(-1, 3))
         # end if
+
     # end def
 
     def __str__(self):
         string = ParameterSet.__str__(self)
         if self.consistent:
-            string += '\n  consistent: yes'
+            string += "\n  consistent: yes"
         else:
-            string += '\n  consistent: no'
+            string += "\n  consistent: no"
         # end if
         # pos
         if self.pos is None:
-            string += '\n  pos: not set'
+            string += "\n  pos: not set"
         else:
-            string += '\n  pos ({:d} atoms)'.format(len(self.pos))
+            string += "\n  pos ({:d} atoms)".format(len(self.pos))
             for elem, pos in zip(self.elem, self.pos):
-                string += ('\n    {:2s} ' + FF + FF + FF).format(
-                    elem, pos[0], pos[1], pos[2])
+                string += ("\n    {:2s} " + FF + FF + FF).format(
+                    elem, pos[0], pos[1], pos[2]
+                )
             # end for
         # end if
         if self.periodic:
-            string += '\n  periodic: yes'
+            string += "\n  periodic: yes"
             if self.axes is None:
-                string += '\n  axes: not set'
+                string += "\n  axes: not set"
             else:
-                string += '\n  axes:'
+                string += "\n  axes:"
                 for axes in self.axes:
-                    string += '\n    ' + (FF + FF + FF).format(
-                        axes[0], axes[1], axes[2])
+                    string += "\n    " + (FF + FF + FF).format(
+                        axes[0], axes[1], axes[2]
+                    )
                 # end for
             # end if
         else:
-            string += '\n  periodic: no'
+            string += "\n  periodic: no"
         # end if
         return string
+
     # end def
+
 
 # end class

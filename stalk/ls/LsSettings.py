@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-'''Line-search settings'''
+"""Line-search settings"""
 
 __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
 from numpy import isscalar
+
+from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.MorseFit import MorseFit
 from stalk.ls.PolynomialFit import PolynomialFit
-from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.SplineFit import SplineFit
 
 
-class LsSettings():
+class LsSettings:
 
     _fit_func: FittingFunction
     _fraction: float
@@ -22,6 +23,7 @@ class LsSettings():
     @property
     def fraction(self):
         return self._fraction
+
     # end def
 
     @fraction.setter
@@ -31,11 +33,13 @@ class LsSettings():
         else:
             raise ValueError("Must provide 0 < fraction < 0.5.")
         # end if
+
     # end def
 
     @property
     def N(self):
         return self._N
+
     # end def
 
     @N.setter
@@ -45,11 +49,13 @@ class LsSettings():
         else:
             raise ValueError("Must provide N > 1")
         # end if
+
     # end def
 
     @property
     def sgn(self):
         return self._sgn
+
     # end def
 
     @sgn.setter
@@ -57,13 +63,15 @@ class LsSettings():
         if isscalar(sgn) and abs(sgn) == 1:
             self._sgn = int(sgn)
         else:
-            raise ValueError('Must provide sgn as 1 or -1')
+            raise ValueError("Must provide sgn as 1 or -1")
         # end if
+
     # end def
 
     @property
     def fit_func(self):
         return self._fit_func
+
     # end def
 
     def __init__(
@@ -74,6 +82,7 @@ class LsSettings():
         fit_kind=None,
         fit_func=None,
         fit_args={},
+        derivative=False,
     ):
         self.N = N
         self.sgn = sgn
@@ -83,29 +92,28 @@ class LsSettings():
             fit_kind=fit_kind,
             fit_args=fit_args,
         )
+
     # end def
 
-    def copy(
-        self,
-        **ls_overrides
-    ):
+    def copy(self, **ls_overrides):
         ls_args = {
-            'fraction': self.fraction,
-            'sgn': self.sgn,
-            'fit_func': self.fit_func,
-            'N': self.N
+            "fraction": self.fraction,
+            "sgn": self.sgn,
+            "fit_func": self.fit_func,
+            "N": self.N,
         }
         ls_args.update(**ls_overrides)
         return LsSettings(**ls_args)
+
     # end def
 
     def _set_fit_func(self, fit_func, fit_args, fit_kind):
         # Fit kind (str) takes precedence
-        if fit_kind == 'morse':
+        if fit_kind == "morse":
             fit_func = MorseFit()
-        elif fit_kind == 'spline':
+        elif fit_kind == "spline":
             fit_func = SplineFit()
-        elif hasattr(fit_kind, "__iter__") and 'pf' in fit_kind:
+        elif hasattr(fit_kind, "__iter__") and "pf" in fit_kind:
             fit_func = PolynomialFit(int(fit_kind[2:]))
         elif callable(fit_func):
             # Next, check if fit_func is provided as a function
@@ -114,26 +122,25 @@ class LsSettings():
             # Fitting function is good as is
             pass
         else:
-            raise TypeError('Fit kind {} not recognized'.format(fit_kind))
+            raise TypeError("Fit kind {} not recognized".format(fit_kind))
         # end fi
         self._fit_func = fit_func
+
+        if derivative and not isinstance(fit_func, DerivativeFit):
+            fit_func = DerivativeFit(fit_func)
+
     # end def
 
     def __str__(self):
-        string = 'Fit: {}, N: {}, fraction: {}, sgn: {}'.format(
-            self.fit_func.kind,
-            self.N,
-            self.fraction,
-            self.sgn
+        string = "Fit: {}, N: {}, fraction: {}, sgn: {}".format(
+            self.fit_func.kind, self.N, self.fraction, self.sgn
         )
         return string
+
     # end def
 
     # Return true if the settings of self and other are consistent
-    def __eq__(
-        self,
-        other
-    ):
+    def __eq__(self, other):
         if not isinstance(other, LsSettings):
             return False
         # end if
@@ -142,6 +149,8 @@ class LsSettings():
         result &= self.fraction == other.fraction
         result &= self.sgn == other.sgn
         return result
+
     # end def
+
 
 # end class

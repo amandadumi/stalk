@@ -5,7 +5,7 @@ __author__ = "Juha Tiihonen"
 __email__ = "tiihonen@iki.fi"
 __license__ = "BSD-3-Clause"
 
-from numpy import isnan, isscalar, nan, random, ndarray
+import numpy as np
 
 from stalk.params.PesResult import PesResult
 
@@ -14,13 +14,17 @@ class ThermoResult(PesResult):
     energy: float
     energy_err: float
     enthalpy: float
-    enthalpy_err: float
+    enthalpy_error: float
     pressure: float | None
     volume: float | None
-    dH_dz: ndarray | None
-    dH_dz_err: ndarray | None
-    dE_dz: ndarray | None
-    dE_dz_err: ndarray | None
+    stress: float | None
+    lattice: float | None
+    dH_dL: np.ndarray | None
+    dH_dL_err: np.ndarray | None
+    dH_dz: np.ndarray | None
+    dH_dz_err: np.ndarray | None
+    dE_dz: np.ndarray | None
+    dE_dz_err: np.ndarray | None
 
     def __init__(
         self,
@@ -45,24 +49,38 @@ class ThermoResult(PesResult):
         self._energy_error = self.error
         self._pressure = pressure
         self._volume = volume
-        self._enthalpy = enthalpy if enthalpy is not None else nan
+        self._enthalpy = enthalpy if enthalpy is not None else np.nan
         self._enthalpy_error = enthalpy_error
-        self._dH_dz = None if dH_dz is None else array(dH_dz, dtype=float)
-        self._dH_dz_err = None if dH_dz_err is None else array(dH_dz_err, dtype=float)
-        self._dH_dL = None if dH_dL is None else array(dH_dL, dtype=float)
-        self._dH_dL_err = None if dH_dL_err is None else array(dH_dL_err, dtype=float)
-        self._dE_dz = None if dE_dz is None else array(dE_dz, dtype=float)
-        self._dE_dz_err = None if dE_dz_err is None else array(dE_dz_err, dtype=float)
+        self._dH_dz = None if dH_dz is None else np.array(dH_dz, dtype=float)
+        self._dH_dz_err = (
+            None if dH_dz_err is None else np.array(dH_dz_err, dtype=float)
+        )
+        self._dH_dL = None if dH_dL is None else np.array(dH_dL, dtype=float)
+        self._dH_dL_err = (
+            None if dH_dL_err is None else np.array(dH_dL_err, dtype=float)
+        )
+        self._dE_dz = None if dE_dz is None else np.array(dE_dz, dtype=float)
+        self._dE_dz_err = (
+            None if dE_dz_err is None else np.array(dE_dz_err, dtype=float)
+        )
 
         if use_enthalpy:
-            self.value = self.enthalpy
-            self.error = self.enthalpy_error
+            self.value = self._enthalpy
+            self.error = self._enthalpy_error
 
     # end def
 
     @property
     def energy(self):
         return self._energy
+
+    @property
+    def enthalpy(self):
+        return self._enthalpy
+
+    @property
+    def enthalpy_error(self):
+        return self._enthalpy_error
 
     # end def
 
@@ -81,26 +99,6 @@ class ThermoResult(PesResult):
     @property
     def volume(self):
         return self._volume
-
-    # end def
-
-    @property
-    def enthalpy(self):
-        if not isnan(self._enthalpy):
-            return self._enthalpy
-        if self.pressure is not None and self.volume is not None:
-            return self.energy + self.pressure * self.volume
-        return nan
-
-    # end def
-
-    @property
-    def enthalpy_error(self):
-        return (
-            self._enthalpy_error
-            if self._enthalpy_error is not None
-            else self.energy_error
-        )
 
     # end def
 
@@ -128,36 +126,39 @@ class ThermoResult(PesResult):
 
     # end def
 
-    def compute_enthalpy(self, pressure=None, volume=None):
-        if pressure is not None:
-            self._pressure = pressure
-        if volume is not None:
-            self._volume = volume
-        if self.pressure is None or self.volume is None:
-            raise ValueError("Need both pressure and volume to compute enthalpy.")
-        self._enthalpy = self.energy + self.pressure * self.volume
-        self._enthalpy_error = self.energy_error
-        return self._enthalpy
+    def use_quantity(self, quantity):
+        if quantity == "energy":
+            self.value = self.energy
+            self.error = self.energy_error
+        elif quantity == "enthalpy":
+            if np.isnan(self.enthalpy):
+                self.enthalpy = self.compute_enthalpy()
+            self.value = self.enthalpy
+            self.error = self.enthalpy_error
+        else:
+            raise ValueError(f"Unknown quantity: {quantity}")
 
-    # end def
+    def compute_enthalpy(self):
+        self._enthalpy = self._energy + (self._pressure * self._volume)
+        return self.enthalpy
 
-    def compute_enthalpy_gradient(L, stress=None, pressure=None):
+    def compute_enthalpy_gradient(self, L, stress, pressure):
         """
         Compute the enthalpy gradient with respect to the lattice matrix.
 
         Parameters
         ----------
-        L : (3, 3) array_like
+        L : (3, 3) np.array_like
             Lattice matrix with lattice vectors as rows or columns, consistent
             with the stress/strain convention used in your derivation.
-        stress : (3, 3) array_like
+        stress : (3, 3) np.array_like
             Stress tensor sigma_{mu beta}.
         pressure : float
             External pressure P.
 
         Returns
         -------
-        dH_dL : (3, 3) ndarray
+        dH_dL : (3, 3)np.ndarray
             Gradient dH/dL_{mu nu}.
         """
         L = np.asarray(L, dtype=float)
@@ -180,28 +181,39 @@ class ThermoResult(PesResult):
         # dH/dL_{mu nu} = -Omega * sum_beta A_{mu beta} * (L^{-1})_{nu beta}
         # This is equivalent to -Omega * A @ Linv.T
         dH_dL = -omega * A @ Linv.T
+
         return dH_dL
 
+    # end class
 
-    def compute_enthalpy_gradient_flat(L, stress, pressure):
-        return compute_enthalpy_gradient(L, stress, pressure).reshape(-1)
-
-
-    def set_directional_derivative(
-        self, dH_dz, dH_dz_err=None, dE_dz=None, dE_dz_err=None
-    ):
-        self._dH_dz = None if dH_dz is None else array(dH_dz, dtype=float)
-        self._dH_dz_err = None if dH_dz_err is None else array(dH_dz_err, dtype=float)
-        self._dE_dz = None if dE_dz is None else array(dE_dz, dtype=float)
-        self._dE_dz_err = None if dE_dz_err is None else array(dE_dz_err, dtype=float)
+    def set_directional_derivative(self, dH_dz, dH_dz_err=None):
+        self._dH_dz = None if dH_dz is None else np.array(dH_dz, dtype=float)
+        self._dH_dz_err = (
+            None if dH_dz_err is None else np.array(dH_dz_err, dtype=float)
+        )
 
     # end def
+
+    def set_lattice_derivative(self, dH_dL, dH_dL_err=None):
+        self._dH_dL = np.array(dH_dL, dtype=float)
+        self._dH_dL_err = (
+            None if dH_dL_err is None else np.array(dH_dL_err, dtype=float)
+        )
+
+    def set_parameter_derivative(self, dH_dp, dH_dp_err=None):
+        self._dH_dp = None if dH_dp is None else np.array(dH_dp, dtype=float)
+        self._dH_dp_err = (
+            None if dH_dp_err is None else np.array(dH_dp_err, dtype=float)
+        )
+
+    def set_parameter_derivative(self, dH_dp, dH_dp_err=None):
+        return
 
     def rescale(self, scale):
         super().rescale(scale)
         self._energy = self.value
         self._energy_error = self.error
-        if not isnan(self._enthalpy):
+        if not np.isnan(self._enthalpy):
             self._enthalpy /= scale
             self._enthalpy_error /= scale
         # end if
@@ -212,7 +224,7 @@ class ThermoResult(PesResult):
         super().add_sigma(sigma)
         self._energy = self.value
         self._energy_error = self.error
-        if not isnan(self._enthalpy):
+        if not np.isnan(self._enthalpy):
             self._enthalpy_error = (self._enthalpy_error**2 + sigma**2) ** 0.5
         # end if
 
