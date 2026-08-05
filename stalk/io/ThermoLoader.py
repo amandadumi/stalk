@@ -29,10 +29,11 @@ class ThermoLoader:
         self.backend = backend
         self.pressure = pressure
         self.dhdp_from_dhdl = dhdp_from_dhdl_map
-
+        
         if quantity is None:
             quantity = "enthalpy" if use_enthalpy else "energy"
         self.quantity = quantity 
+        print(f'quantity in thermoloader line 36 is {quantity}')
 
         # handle pressure units:
         if self.backend == "pwscf":
@@ -58,18 +59,25 @@ class ThermoLoader:
         load_args.update(kwargs)
         
         res = self.loader.load(structure)
+        if res is None:
+            warnings.warn(
+            f"Wrapped loader returned None for {getattr(structure, 'label', structure)}. "
+            "Returning ThermoResult(nan)."
+            )
+            res = PesResult(nan, 0.0)
 
         if not isinstance(res, PesResult):
             raise AssertionError("ThermoLoader wrapped loader must return PesResult.")
 
         quantity = quantity if quantity is not None else self.quantity
+        print(f'In thermo loader quantity is {quantity}')
 
         # Determine pressure and volume
         p = load_args.pop("pressure", None)
         if p is None:
             p = self.pressure
 
-        v = args.pop("volume", None)
+        v = load_args.pop("volume", None)
         if v is None:
             v = self._get_volume(structure)
 
@@ -86,6 +94,7 @@ class ThermoLoader:
         if quantity == "enthalpy":
             L = structure.axes
             thermo._enthalpy, thermo.value = thermo.compute_enthalpy()
+            thermo.use_quantity("enthalpy")
             if hasattr(res, "stress") and res.stress is not None:
                 dH_dL = thermo.compute_enthalpy_gradient(L, res.stress, p)
             thermo.set_lattice_derivative(dhdl)

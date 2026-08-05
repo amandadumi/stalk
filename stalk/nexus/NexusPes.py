@@ -9,7 +9,7 @@ import warnings
 from pickle import load
 
 from nexus import bundle, run_project
-from numpy import isnan, isscalar
+from numpy import isnan, isscalar,nan
 
 from stalk.io.PesLoader import PesLoader
 from stalk.nexus.NexusStructure import NexusStructure
@@ -194,6 +194,8 @@ class NexusPes(PesFunction):
         var_eff_map=None,
         quantity=None,
     ):
+        print(f"Loading structure {structure.label} from {structure.file_path}")
+
         quantity = self.resolve_quantity(quantity, pes=self)
         if add_sigma:
             result = self.loader.load(
@@ -203,6 +205,15 @@ class NexusPes(PesFunction):
         else:
             result = self.loader.load(structure, quantity=quantity)
         # end if
+        print(f"Result for {structure.label}: {result}")
+
+        # Robust failure handling
+        if result is None:
+            warnings.warn(
+                f"Loader returned None for structure {structure.label}. "
+                "Treating as failed calculation and assigning NaN."
+            )
+            result = PesResult(nan, 0.0)
 
         if hasattr(result, "use_quantity"):
             result.use_quantity(quantity)

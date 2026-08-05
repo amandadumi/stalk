@@ -99,11 +99,11 @@ class ParallelLineSearch(QuantityMixin):
                 self.evaluate(add_sigma=add_sigma, interactive=interactive)
             # end if
         # end if
-    self.quantity = quantity
-    self.use_derivatives = use_derivatives
-    self.grad_mix = grad_mix
-    self.damping = damping
-    # end def
+        self.quantity = quantity
+        self.use_derivatives = use_derivatives
+        self.grad_mix = grad_mix
+        self.damping = damping
+        # end def
 
     @property
     def pes(self):
