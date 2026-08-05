@@ -16,7 +16,7 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.util.util import FF, SL
-from stalk.util.QuantityMixin import QuantityMixin
+from stalk.params.QuantityMixin import QuantityMixin
 
 
 class LineSearch(LineSearchBase, QuantityMixin):

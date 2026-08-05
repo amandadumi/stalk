@@ -16,7 +16,7 @@ from stalk.params import ParameterHessian, ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.util import get_fraction_error
 from stalk.util.util import directorize
-from stalk.util.QuantityMixin import QuantityMixin
+from stalk.params.QuantityMixin import QuantityMixin
 
 
 class ParallelLineSearch(QuantityMixin):
