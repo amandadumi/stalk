@@ -11,6 +11,7 @@ from stalk.ls.FittingFunction import FittingFunction
 from stalk.ls.MorseFit import MorseFit
 from stalk.ls.PolynomialFit import PolynomialFit
 from stalk.ls.SplineFit import SplineFit
+from stalk.ls.DerivativeFit import DerivativeFit
 
 
 class LsSettings:
@@ -91,6 +92,7 @@ class LsSettings:
             fit_func=fit_func,
             fit_kind=fit_kind,
             fit_args=fit_args,
+            derivative=derivative
         )
 
     # end def
@@ -107,7 +109,7 @@ class LsSettings:
 
     # end def
 
-    def _set_fit_func(self, fit_func, fit_args, fit_kind):
+    def _set_fit_func(self, fit_func, fit_args, fit_kind,derivative=False):
         # Fit kind (str) takes precedence
         if fit_kind == "morse":
             fit_func = MorseFit()
@@ -124,10 +126,12 @@ class LsSettings:
         else:
             raise TypeError("Fit kind {} not recognized".format(fit_kind))
         # end fi
-        self._fit_func = fit_func
-
         if derivative and not isinstance(fit_func, DerivativeFit):
             fit_func = DerivativeFit(fit_func)
+        #end fi 
+        self._fit_func = fit_func
+
+
 
     # end def
 

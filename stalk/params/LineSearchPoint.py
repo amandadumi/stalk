@@ -20,7 +20,7 @@ class LineSearchPoint:
     _derivative = None
     _derivative_error = None
 
-    def __init__(self, offset, value=None, error=0.0):
+    def __init__(self, offset, value=None, error=0.0, derivative=None, derivative_error=None):
         self.offset = offset
         self.value = value
         self.error = error
@@ -104,21 +104,21 @@ class LineSearchPoint:
 
     @property
     def derivative(self):
-        return self.derivative
+        return self._derivative
 
     @derivative.setter
     def derivative(self, derivative):
         if isscalar(derivative):
-            self.derivative = derivative
+            self._derivative = derivative
 
     @property
     def derivative_error(self):
-        return self.derivative_error
+        return self._derivative_error
 
     @derivative_error.setter
     def derivative_error(self, derivative_error):
         if isscalar(derivative_error):
-            self.derivative_error = derivative_error
+            self._derivative_error = derivative_error
 
     def has_deritvative(self) -> bool:
         if self.derivative is not None:

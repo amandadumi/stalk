@@ -22,13 +22,17 @@ class ThermoLoader:
         dhdp_from_dhdl_map=None,
         pressure=None,
         use_enthalpy=True,
+        quantity=None,
     ):
         self.loader = loader
-        self.pressure = pressure
-        self.use_enthalpy = use_enthalpy
         self.args = args
         self.backend = backend
+        self.pressure = pressure
         self.dhdp_from_dhdl = dhdp_from_dhdl_map
+
+        if quantity is None:
+            quantity = "enthalpy" if use_enthalpy else "energy"
+        self.quantity = quantity 
 
         # handle pressure units:
         if self.backend == "pwscf":
@@ -42,23 +46,30 @@ class ThermoLoader:
     def _convert_pressure_pwscf(self):
         self.pressure *= (1 / 14710.5076) * (
             1 / 10
-        )  # ryd/bohr3 per gpa; 10 kbar = 100 GPa
+        )  # ryd/bohr3 per gpa; 10 kbar = 1 GPa
 
     def _convert_pressure_qmcpack(self):
         self.pressure *= (
             1 / (14710.5076 * 10)
         ) / 2  # ryd/bohr3 per kbar and then divided by to for Ha/Bohr3
 
-    def load(self, structure, **kwargs):
+    def load(self, structure, quantity= None, **kwargs):
+        load_args = self.args.copy()
+        load_args.update(kwargs)
+        
         res = self.loader.load(structure)
+
         if not isinstance(res, PesResult):
             raise AssertionError("ThermoLoader wrapped loader must return PesResult.")
+
+        quantity = quantity if quantity is not None else self.quantity
+
         # Determine pressure and volume
-        p = self.args.pop("pressure", None)
+        p = load_args.pop("pressure", None)
         if p is None:
             p = self.pressure
 
-        v = self.args.pop("volume", None)
+        v = args.pop("volume", None)
         if v is None:
             v = self._get_volume(structure)
 
@@ -72,27 +83,27 @@ class ThermoLoader:
 
         dhdl = None
         dhdp = None
-        if self.use_enthalpy and p is not None and v is not None:
+        if quantity == "enthalpy":
             L = structure.axes
-            thermo._enthalpy = thermo.compute_enthalpy()
-            thermo.value = thermo.compute_enthalpy()
+            thermo._enthalpy, thermo.value = thermo.compute_enthalpy()
             if hasattr(res, "stress") and res.stress is not None:
                 dH_dL = thermo.compute_enthalpy_gradient(L, res.stress, p)
-                if self.dhdp_from_dhdl_map is not None:
-                    dhdp = self.dhdp_from_dhdl_map(
-                        dH_dL, L[0, 0], L[2, 2] / L[0, 0]
-                    )  # TODO: this is not general to other cells, only hcp
+            thermo.set_lattice_derivative(dhdl)
+
+            if self.dhdp_from_dhdl_map is not None:
+                dhdp = self.dhdp_from_dhdl_map(
+                    dH_dL, L[0, 0], L[2, 2] / L[0, 0]
+                )  # TODO: this is not general to other cells, only hcp
+            elif self.use_enthalpy and p is None:
+                raise ValueError("use_enthalpy is True, but pressure is not set")
+            elif self.use_enthalpy and v is None:
+                raise ValueError("use_enthalpy is True, but volume is not set")
             else:
                 print("the stress wasnt parsed")
-        elif self.use_enthalpy and p is None:
-            raise ValueError("use_enthalpy is True, but pressure is not set")
-        elif self.use_enthalpy and v is None:
-            raise ValueError("use_enthalpy is True, but volume is not set")
+            thermo.dhdp = dhdp
+            thermo.set_parameter_derivative(dH_dL)
 
-        thermo.dhdl = dhdl
-        thermo.dhdp = dhdp
-
-        return thermo
+            return thermo
 
     def _get_volume(self, structure):
         if hasattr(structure, "volume") and isscalar(structure.volume):

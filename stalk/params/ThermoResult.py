@@ -132,15 +132,18 @@ class ThermoResult(PesResult):
             self.error = self.energy_error
         elif quantity == "enthalpy":
             if np.isnan(self.enthalpy):
-                self.enthalpy = self.compute_enthalpy()
+                self.compute_enthalpy()
             self.value = self.enthalpy
             self.error = self.enthalpy_error
         else:
             raise ValueError(f"Unknown quantity: {quantity}")
 
     def compute_enthalpy(self):
+        if self._pressure is None:
+           raise ValueError("Cannot compute enthalpy without pressure.")
+        if self._volume is None:
+	        raise ValueError("Cannot compute enthalpy without volume.")
         self._enthalpy = self._energy + (self._pressure * self._volume)
-        return self.enthalpy
 
     def compute_enthalpy_gradient(self, L, stress, pressure):
         """
@@ -206,8 +209,6 @@ class ThermoResult(PesResult):
             None if dH_dp_err is None else np.array(dH_dp_err, dtype=float)
         )
 
-    def set_parameter_derivative(self, dH_dp, dH_dp_err=None):
-        return
 
     def rescale(self, scale):
         super().rescale(scale)

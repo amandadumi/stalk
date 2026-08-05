@@ -94,8 +94,10 @@ class NexusPes(PesFunction):
         dep_jobs=[],
         warn_limit=2.0,
         var_eff_map=None,
+        quantity=None,
         **kwargs
     ):
+        quantity = self.resolve_quantity(quantity)
         if sigmas is None:
             sigmas = len(structures) * [0.0]
         # end if
@@ -147,6 +149,7 @@ class NexusPes(PesFunction):
                 add_sigma=add_sigma,
                 warn_limit=warn_limit,
                 var_eff_map=var_eff_map,
+                quantity=quantity,
             )
         # end for
     # end def
@@ -189,12 +192,21 @@ class NexusPes(PesFunction):
         add_sigma=False,
         warn_limit=2.0,
         var_eff_map=None,
+        quantity=None,
     ):
+        quantity = self.resolve_quantity(quantity, pes=self)
         if add_sigma:
-            result = self.loader.load(structure, sigma=structure.sigma)
+            result = self.loader.load(
+                structure, 
+                sigma=structure.sigma,
+                quantity=quantity)
         else:
-            result = self.loader.load(structure)
+            result = self.loader.load(structure, quantity=quantity)
         # end if
+
+        if hasattr(result, "use_quantity"):
+            result.use_quantity(quantity)
+
         self._warn_energy(structure, result, warn_limit=warn_limit)
         # Treat failure
         if isnan(result.value) and self.disable_failed:
@@ -202,6 +214,9 @@ class NexusPes(PesFunction):
         # end if
         structure.value = result.value
         structure.error = result.error
+        # Optional: store thermo result metadata if useful
+        structure.result = result
+
         # Update var_eff_map hook
         self._update_var_eff_map(structure, var_eff_map)
     # end def

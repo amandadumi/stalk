@@ -1,8 +1,13 @@
-from stalk.params import PesFunction
+from stalk.params.PesFunction import PesFunction
 from stalk.params.ThermoResult import ThermoResult
 
 
+
 class ThermoFunction(PesFunction):
+    def __init__(self, func, args={}, quantity="enthalpy"):
+        super().__init__(func, args, quantity=quantity)
+        self.quantity = quantity
+
 
     def _evaluate_structure(
         self,
@@ -49,12 +54,14 @@ class ThermoFunction(PesFunction):
         structure,
         sigma=0.0,
         add_sigma=False,
-        quantity="energy",
+        quantity=None,
         pressure=None,
         volume=None,
         var_eff_map=None,
         **kwargs
     ):
+        quantity = self.resolve_quantity(quantity, fallback="enthalpy")
+
         result = self._evaluate_structure(
             structure,
             sigma=sigma,
@@ -79,20 +86,20 @@ class ThermoFunction(PesFunction):
         result=None,
         sigma=0.0,
         add_sigma=False,
-        quantity="energy",
+        quantity=None,
         var_eff_map=None,
     ):
         if result is None:
             return
+        
+        quantity = self.resolve_quantity(quantity, fallback="enthalpy")
 
         if add_sigma:
             result.add_sigma(sigma)
-
-        if quantity == "enthalpy":
-            result.compute_enthalpy()
-            result.use_quantity("enthalpy")
-        else:
-            result.use_quantity("energy")
+        if hasattr(result, "use_quantity"):
+            if quantity == "enthalpy":
+                result.compute_enthalpy()
+            result.use_quantity(quantity)
 
         structure.value = result.value
         structure.error = result.error

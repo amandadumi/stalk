@@ -16,9 +16,10 @@ from stalk.params.ParameterHessian import ParameterHessian
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.util.util import FF, SL
+from stalk.util.QuantityMixin import QuantityMixin
 
 
-class LineSearch(LineSearchBase):
+class LineSearch(LineSearchBase, QuantityMixin):
     _structure: ParameterSet = None  # The equilibrium structure
     _hessian: ParameterHessian = None  # The equilibrium full Hessian
     _sigma = 0.0  # Target errorbar
@@ -41,11 +42,15 @@ class LineSearch(LineSearchBase):
         path="",
         dep_jobs=None,
         interactive=False,
+        quantity = None,
+        use_derivatives=False,
         **ls_args,
         # values=None, errors=None, fraction=0.025, sgn=1
         # fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None
     ):
         LineSearchBase.__init__(self, offsets=None, **ls_args)
+        self.quantity = quantity
+        self.use_derivative = use_derivatives
         self.sigma = sigma
         if d is not None:
             self.d = d
@@ -211,7 +216,20 @@ class LineSearch(LineSearchBase):
 
     @quantity.setter
     def quantity(self, quantity):
-        self._quantity = quantity
+        if quantity is None:
+            self._quantity = None
+        elif quantity in ("energy", "enthalpy"):
+            self._quantity = quantity
+        else:
+            raise ValueError("quantity must be None, 'energy', or 'enthalpy'")
+
+    @property
+    def use_derivatives(self):
+        return self._use_derivative
+
+    @use_derivatives.setter
+    def use_derivatives(self, use_derivatives):
+        self._use_derivative = bool(use_derivatives)
 
     @property
     def conjugate_basis(self):
@@ -317,11 +335,23 @@ class LineSearch(LineSearchBase):
         self,
         pes: PesFunction = None,
         add_sigma=False,
+        quantity = None,
         **kwargs,  # path='', interactive=False, dep_jobs=None
     ):
-        """Evaluate the PES on the line-search grid using an evaluation function."""
+        """Evaluate the PES on the line-search grid using an evaluation function.""" 
+        quantity = quantity if quantity is not None else self.quantity
+
+        if quantity is None and hasattr(pes, "quantity") and pes.quantity is not None:
+            quantity=pes.quantity
+        if quantity is None:
+            quantity = "energy"
+
         pes.evaluate_all(
-            self._grid, sigmas=len(self) * [self.sigma], add_sigma=add_sigma, **kwargs
+            self._grid, 
+            sigmas=len(self) * [self.sigma], 
+            add_sigma=add_sigma, 
+            quantity=quantity,
+            **kwargs
         )
         self._search_and_store()
 

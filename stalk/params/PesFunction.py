@@ -11,20 +11,24 @@ from stalk.params.EffectiveVariance import EffectiveVariance
 from stalk.params.EffectiveVarianceMap import EffectiveVarianceMap
 from stalk.params.ParameterSet import ParameterSet
 from stalk.params.PesResult import PesResult
+from stalk.params.QuantityMixin import QuantityMixin
 from stalk.util.FunctionCaller import FunctionCaller
 
 
-class PesFunction(FunctionCaller):
+class PesFunction(FunctionCaller, QuantityMixin):
 
     def evaluate(
         self,
         structure: ParameterSet,
         sigma=0.0,
         add_sigma=False,
+        quantity=None,
         var_eff_map=None,
         interactive=False,  # catch interactive
         **kwargs  # path, dep_jobs
     ):
+        quantity = self.resolve_quantity(quantity)
+
         result = self._evaluate_structure(
             structure,
             sigma=sigma,
@@ -37,6 +41,7 @@ class PesFunction(FunctionCaller):
             result=result,
             sigma=sigma,
             add_sigma=add_sigma,
+            qauntity = quantity,
             var_eff_map=var_eff_map,
         )
     # end def
@@ -46,9 +51,12 @@ class PesFunction(FunctionCaller):
         structures: list[ParameterSet],
         sigmas=None,
         add_sigma=False,
+        quantity = None,
         interactive=False,  # catch interactive
         **kwargs  # path, dep_jobs, var_eff_map
     ):
+        quantity = self.resolve_quantity(quantity)
+
         if sigmas is None:
             sigmas = len(structures) * [0.0]
         # end if
@@ -105,6 +113,7 @@ class PesFunction(FunctionCaller):
         result: PesResult = None,
         add_sigma=False,
         sigma=0.0,
+        quantity=None,
         var_eff_map: EffectiveVarianceMap = None
     ):
         if result is None:
@@ -114,8 +123,13 @@ class PesFunction(FunctionCaller):
         if add_sigma:
             result.add_sigma(sigma)
         # end if
+
+        if hasattr(result, "use_quantity") and result.use_quantity:
+            result.use_quantity(quantity or "energy")
+
         structure.value = result.value
         structure.error = result.error
+
         self._update_var_eff_map(structure, var_eff_map=var_eff_map)
     # end def
 

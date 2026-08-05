@@ -16,9 +16,10 @@ from stalk.params import ParameterHessian, ParameterSet
 from stalk.params.PesFunction import PesFunction
 from stalk.util import get_fraction_error
 from stalk.util.util import directorize
+from stalk.util.QuantityMixin import QuantityMixin
 
 
-class ParallelLineSearch:
+class ParallelLineSearch(QuantityMixin):
     ls_type = LineSearch
     _ls_list: list[LineSearch] = []  # list of line-search objects
     _hessian = None  # hessian object
@@ -66,6 +67,10 @@ class ParallelLineSearch:
         pes_args={},
         interactive=False,
         load=None,  # eliminate loading arg
+        quantity=None,
+        use_derivatives=False,
+        grad_mix=0.5,
+        damping=0.1,
         # LineSearch args
         **ls_args,
         # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
@@ -94,7 +99,10 @@ class ParallelLineSearch:
                 self.evaluate(add_sigma=add_sigma, interactive=interactive)
             # end if
         # end if
-
+    self.quantity = quantity
+    self.use_derivatives = use_derivatives
+    self.grad_mix = grad_mix
+    self.damping = damping
     # end def
 
     @property
@@ -296,6 +304,8 @@ class ParallelLineSearch:
                 d=d,
                 sigma=noise,
                 W=window,
+                quantity=self.quantity,
+                use_derivatives=self.use_derivatives,
                 **ls_args,
             )
             ls_list.append(ls)
@@ -312,11 +322,27 @@ class ParallelLineSearch:
         interactive=False,
         dep_jobs=[],
         var_eff_map=None,
+        quantity=None,
+        use_derivatives=None,
+        grad_mix=None,
+        damping=None,
     ):
         if not self.shifted:
             raise AssertionError("Must have shifted structures first!")
         # end if
+
+        quantity = self.resolve_quantity(quantity)
+
+        if use_derivatives is None:
+            use_derivatives = self.use_derivatives
+        if grad_mix is None:
+            grad_mix = self.grad_mix
+        if damping is None:
+            damping = self.damping
+
+
         structures, sigmas = self._collect_enabled()
+        
         self.pes.evaluate_all(
             structures,
             sigmas,
@@ -325,6 +351,7 @@ class ParallelLineSearch:
             interactive=interactive,
             dep_jobs=dep_jobs,
             var_eff_map=var_eff_map,
+            quantity=self.quantity,
         )
         # Set the eqm energy
         for ls in self.ls_list:
@@ -427,7 +454,8 @@ class ParallelLineSearch:
         params = self.params
         shifts = self.shifts
         if use_derivatives:
-            shifts = self.calculate_next_shifts_from_gradients()
+            grad_shifts = self.calculate_next_shifts_from_gradients(damping=damping)
+            shifts = grad_mix * shifts + (1.0 - grad_mix) * grad_shifts
 
         params_next = self._calculate_params_next(params, shifts)
         # stochastic
@@ -469,20 +497,29 @@ class ParallelLineSearch:
 
     # end def
 
-    def calculate_next_shifts_from_gradients(self, weight=0.5, damping=1.0):
-        shifts_fit = self.shifts
-        shifts_grad = []
+    def calculate_next_shifts_from_gradients(self, damping=1.0):
+        shifts = []
 
         for ls in self.ls_list:
+            if not ls.enabled:
+                shifts.append(0.0)
+                continue
+            
             grad = getattr(ls.structure, "dH_dz", None)
-            lam = abs(ls.Lambda) if ls.Lambda is not None else 1.0
-            if grad is None:
-                shifts_grad.append(ls.x0)
-            else:
-                shifts_grad.append(-damping * grad / lam)
 
-        shifts_grad = array(shifts_grad)
-        return weight * shifts_fit + (1 - weight) * shifts_grad
+            if grad is None:
+                shifts.append(ls.x0 if ls.x0 is not None else 0.0)
+                continue
+
+            # If dH_dz is a vector, select this direction.
+            if hasattr(grad, "__len__"):
+                grad_i = grad[ls.d]
+            else:
+                grad_i = grad
+
+        lam = abs(ls.Lambda) if ls.Lambda is not None else 1.0
+        shifts.append(-damping * grad / lam)
+        return array(shifts)
 
     @property
     def shifts(self):
