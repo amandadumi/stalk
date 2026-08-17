@@ -26,7 +26,7 @@ class LineSearch(LineSearchBase, QuantityMixin):
     _d: int = None  # direction count
     _enabled = True  # whether enabled or not
     _quantity = "energy"
-    _use_derivative = False
+    _use_derivatives = False
 
     def __init__(
         self,
@@ -50,7 +50,7 @@ class LineSearch(LineSearchBase, QuantityMixin):
     ):
         LineSearchBase.__init__(self, offsets=None, **ls_args)
         self.quantity = quantity
-        self.use_derivative = use_derivatives
+        self.use_derivatives = use_derivatives
         self.sigma = sigma
         if d is not None:
             self.d = d
@@ -225,11 +225,11 @@ class LineSearch(LineSearchBase, QuantityMixin):
 
     @property
     def use_derivatives(self):
-        return self._use_derivative
+        return self._use_derivatives
 
     @use_derivatives.setter
     def use_derivatives(self, use_derivatives):
-        self._use_derivative = bool(use_derivatives)
+        self._use_derivatives = bool(use_derivatives)
 
     @property
     def conjugate_basis(self):

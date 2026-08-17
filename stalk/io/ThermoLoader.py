@@ -28,6 +28,7 @@ class ThermoLoader:
         self.args = args
         self.backend = backend
         self.pressure = pressure
+        self.use_enthalpy=use_enthalpy,
         self.dhdp_from_dhdl = dhdp_from_dhdl_map
         
         if quantity is None:
@@ -91,16 +92,20 @@ class ThermoLoader:
 
         dhdl = None
         dhdp = None
+        if quantity == "energy":
+            thermo.use_quantity("energy")
+            return thermo
         if quantity == "enthalpy":
             L = structure.axes
-            thermo._enthalpy, thermo.value = thermo.compute_enthalpy()
+            thermo.value = thermo.enthalpy
+            thermo._enthalpy = thermo.enthalpy
             thermo.use_quantity("enthalpy")
             if hasattr(res, "stress") and res.stress is not None:
                 dH_dL = thermo.compute_enthalpy_gradient(L, res.stress, p)
             thermo.set_lattice_derivative(dhdl)
 
-            if self.dhdp_from_dhdl_map is not None:
-                dhdp = self.dhdp_from_dhdl_map(
+            if self.dhdp_from_dhdl is not None:
+                dhdp = self.dhdp_from_dhdl(
                     dH_dL, L[0, 0], L[2, 2] / L[0, 0]
                 )  # TODO: this is not general to other cells, only hcp
             elif self.use_enthalpy and p is None:

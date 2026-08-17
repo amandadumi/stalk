@@ -124,6 +124,14 @@ class ThermoResult(PesResult):
     def dE_dz_err(self):
         return self._dE_dz_err
 
+    @property
+    def dH_dp(self):
+        return getattr(self, "_dH_dp", None)
+
+    @property
+    def dH_dp_err(self):
+        return getattr(self, "_dH_dp_err", None)
+
     # end def
 
     def use_quantity(self, quantity):
@@ -144,6 +152,7 @@ class ThermoResult(PesResult):
         if self._volume is None:
 	        raise ValueError("Cannot compute enthalpy without volume.")
         self._enthalpy = self._energy + (self._pressure * self._volume)
+        print(f" the enthalpy in thermoresult is {self._enthalpy}")
 
     def compute_enthalpy_gradient(self, L, stress, pressure):
         """

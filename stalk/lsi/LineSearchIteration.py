@@ -52,6 +52,7 @@ class LineSearchIteration():
                     surrogate=surrogate,
                     structure=structure,
                     pes=pes,
+                    **pls_args,
                 )
             # end if
             # When present, manually provided mappings, parameters and positions
@@ -161,18 +162,21 @@ class LineSearchIteration():
         surrogate: ParallelLineSearch,
         structure=None,
         pes=None,
+        **pls_args,
     ):
         if isinstance(surrogate, TargetParallelLineSearch):
             pls = surrogate.copy(
                 path=self._get_pls_path(0),
                 structure=structure,
-                pes=pes
+                pes=pes,
+                **pls_args,
             )
         elif isinstance(surrogate, ParallelLineSearch):
             pls = surrogate.copy(
                 path=self._get_pls_path(0),
                 structure=structure,
                 pes=pes
+                **pls_args,
             )
         else:
             raise AssertionError('Surrogate parameter must be a ParallelLineSearch object')

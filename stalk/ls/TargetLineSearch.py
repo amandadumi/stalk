@@ -25,7 +25,6 @@ class TargetLineSearch(TargetLineSearchBase, LineSearch):
     _sigma_opt = None  # sigma to meet epsilon
     _error_surface: ErrorSurface = None  # Error surface
     target_quantity = "energy"
-    use_derivative = True
 
     def __init__(
         self,

@@ -217,6 +217,9 @@ class NexusPes(PesFunction):
 
         if hasattr(result, "use_quantity"):
             result.use_quantity(quantity)
+        
+        if hasattr(result, "dH_dp") and result.dH_dp is not None:
+            structure.param_gradient = result.dH_dp
 
         self._warn_energy(structure, result, warn_limit=warn_limit)
         # Treat failure

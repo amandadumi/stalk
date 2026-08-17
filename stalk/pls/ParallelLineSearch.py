@@ -9,7 +9,8 @@ from os import makedirs, path
 from textwrap import indent
 
 from dill import dumps, loads
-from numpy import array, ndarray
+from numpy import array, ndarray, array
+import warnings
 
 from stalk.ls import LineSearch
 from stalk.params import ParameterHessian, ParameterSet
@@ -75,6 +76,10 @@ class ParallelLineSearch(QuantityMixin):
         **ls_args,
         # M=7, fit_kind='pf3', fit_func=None, fit_args={}, N=200, Gs=None, fraction=0.025
     ):
+        self.quantity = quantity
+        self.use_derivatives = use_derivatives
+        self.grad_mix = grad_mix
+        self.damping = damping
         if load is not None and self.pes is not None:
             # Proxies of successful loading from disk
             return
@@ -99,10 +104,6 @@ class ParallelLineSearch(QuantityMixin):
                 self.evaluate(add_sigma=add_sigma, interactive=interactive)
             # end if
         # end if
-        self.quantity = quantity
-        self.use_derivatives = use_derivatives
-        self.grad_mix = grad_mix
-        self.damping = damping
         # end def
 
     @property
@@ -353,25 +354,72 @@ class ParallelLineSearch(QuantityMixin):
             var_eff_map=var_eff_map,
             quantity=self.quantity,
         )
+
+        # Set the eqm energy and, if available, project the parameter gradient.
+        eqm_ref = None
+
         # Set the eqm energy
         for ls in self.ls_list:
             eqm = ls.find_point(0.0)
-            if hasattr(ls.structure, "param_grad"):
-                ls.structure.dH_dz = self.hessian.project_gradient(
-                    ls.structure.param_grad
-                )
             if eqm is not None:
+                eqm_ref = eqm
                 self.structure.value = eqm.value
                 self.structure.error = eqm.error
                 break
             # end if
-        # end for
-        self._solve_ls()
-        # Calculate next params
-        params_next, params_next_err = self.calculate_next_params()  # **kwargs
-        self._structure_next = self.structure.copy(
-            params=params_next, params_err=params_next_err
-        )
+
+        # Clear derivative data by default.
+        self.structure.dH_dz = None
+        for ls in self.ls_list:
+            ls.structure.dH_dz = None
+            
+# Only use derivative information if explicitly requested.
+        if use_derivatives:
+            grad_p = None         
+            
+             # Prefer the gradient from the evaluated eqm point, if available.
+            if eqm_ref is not None:
+                grad_p = getattr(eqm_ref, "param_gradient", None)
+
+            # Fall back to the main structure, if needed.
+            if grad_p is None:
+                grad_p = getattr(self.structure, "param_gradient", None)
+
+            if grad_p is not None:
+                grad_p = array(grad_p, dtype=float)
+
+                if grad_p.ndim == 1 and grad_p.size == self.D:
+                    dH_dz = self.hessian.project_gradient(grad_p)
+
+                    self.structure.param_gradient = grad_p
+                    self.structure.dH_dz = dH_dz
+
+                    for ls in self.ls_list:
+                        ls.structure.param_gradient = grad_p
+                        ls.structure.dH_dz = dH_dz
+                else:
+                    warnings.warn(
+                        f"Ignoring param_gradient with shape {grad_p.shape}; "
+                        f"expected ({self.D},). Falling back to non-derivative line search."
+                    )
+            else:
+                warnings.warn(
+                    "use_derivatives=True, but no param_gradient was found. "
+                    "Falling back to non-derivative line search."
+                )
+
+            
+            
+            
+            self._solve_ls()
+            # Calculate next params
+            params_next, params_next_err = self.calculate_next_params(
+                    use_derivatives=use_derivatives, 
+                    grad_mix=grad_mix, 
+                    damping=damping)  # **kwargs
+            self._structure_next = self.structure.copy(
+                params=params_next, params_err=params_next_err
+            )
 
     # end def
 
@@ -517,8 +565,8 @@ class ParallelLineSearch(QuantityMixin):
             else:
                 grad_i = grad
 
-        lam = abs(ls.Lambda) if ls.Lambda is not None else 1.0
-        shifts.append(-damping * grad / lam)
+            lam = abs(ls.Lambda) if ls.Lambda is not None else 1.0
+            shifts.append(-damping * grad / lam)
         return array(shifts)
 
     @property
@@ -537,13 +585,23 @@ class ParallelLineSearch(QuantityMixin):
     # end def
 
     def copy(
-        self, path, structure=None, hessian=None, windows=None, noises=None, pes=None
-    ):
+        self, path, structure=None, hessian=None, windows=None, noises=None, pes=None, quantity=None, use_derivatives=None, grad_mix=None,damping=None):
         structure = structure if structure is not None else self.structure
         hessian = hessian if hessian is not None else self.hessian
         windows = windows if windows is not None else self.windows
         noises = noises if noises is not None else self.noises
         pes = pes if pes is not None else self.pes
+
+
+        quantity = quantity if quantity is not None else self.quantity
+        use_derivatives = (
+            use_derivatives
+            if use_derivatives is not None
+            else self.use_derivatives
+        )
+        grad_mix = grad_mix if grad_mix is not None else self.grad_mix
+        damping = damping if damping is not None else self.damping
+
         copy_pls = ParallelLineSearch(
             path=path,
             structure=structure,
@@ -552,7 +610,12 @@ class ParallelLineSearch(QuantityMixin):
             noises=noises,
             no_eval=True,
             pes=pes,
+            quantity=quantity,
+            use_derivatives=use_derivatives,
+            grad_mix=grad_mix,
+            damping=damping,
         )
+
         for ls, ls_new in zip(self.ls_list, copy_pls.ls_list):
             ls_new._settings = ls._settings
         # end for

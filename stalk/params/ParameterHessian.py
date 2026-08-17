@@ -310,8 +310,20 @@ class ParameterHessian:
 
     def project_gradient(self, grad_p):
         """Project parameter-space gradient onto eigen-directions."""
+        grad_p = array(grad_p, dtype=float)
+
+        if grad_p.ndim != 1:
+            raise ValueError(
+                f"grad_p must be a 1D array with length {len(self)}, got shape {grad_p.shape}"
+            )
+
+        if grad_p.size != len(self):
+            raise ValueError(
+                f"grad_p length must match Hessian dimension {len(self)}, got {grad_p.size}"
+            )
 
         return self.directions @ grad_p
+
 
     def project_gradient_with_error(self, grad_p, grad_p_err=None):
         return
