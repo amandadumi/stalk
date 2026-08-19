@@ -31,7 +31,8 @@ class QmcPes(PesLoader):
         term='LocalEnergy',
         twist_averaging=False,
         twist_weights=None,
-        stress_label_format=None,
+        stress_hf_label_format=None,
+        stress_pulay_label_format=None,
         stress_index_base=0,
         stress_scale=1.0,
         stress_sign=1.0,
@@ -61,7 +62,8 @@ class QmcPes(PesLoader):
                     qmc_idx, 
                     term, 
                     twist_weights,
-                    stress_label_format=stress_label_format,
+                    stress_hf_label_format=stress_hf_label_format,
+                    stress_pulay_label_format=stress_pulay_label_format,
                     stress_index_base=stress_index_base,
                     stress_scale=stress_scale,
                     stress_sign=stress_sign,
@@ -86,7 +88,8 @@ class QmcPes(PesLoader):
 
         stress = self._extract_stress_from_scalars(
             qmc.scalars,
-            label_format=stress_label_format,
+            hf_label_format=stress_hf_label_format,
+            pulay_label_format=stress_pulay_label_format,
             index_base=stress_index_base,
             scale=stress_scale,
             sign=stress_sign,
@@ -124,7 +127,8 @@ class QmcPes(PesLoader):
             qmc_idx, 
             label, 
             twist_weights,
-            stress_label_format=None,
+            stress_hf_label_format=None,
+            stress_pulay_label_format=None,
             stress_index_base=1,
             stress_scale=1.0,
             stress_sign=1.0,
@@ -165,10 +169,10 @@ class QmcPes(PesLoader):
                 continue
 
             if debug_scalars and itwist == 0:
-                print("[QmcPes] Available scalar terms for first twist:")
-                print(list(qmc.scalars.keys()))
                 print("[QmcPes] qmc object attributes for first twist:")
                 print(qmc.__dict__.keys())
+                print("[QmcPes] Available scalar terms for first twist:")
+                print(list(qmc.scalars.keys()))
 
             res = self._analyze_energy_term(qmc.scalars, label)
             
@@ -178,7 +182,8 @@ class QmcPes(PesLoader):
 
             stress_this = self._extract_stress_from_scalars(
                 qmc.scalars,
-                label_format=stress_label_format,
+                hf_label_format=stress_hf_label_format,
+                pulay_label_format=stress_pulay_label_format,
                 index_base=stress_index_base,
                 scale=stress_scale,
                 sign=stress_sign,
@@ -256,37 +261,41 @@ class QmcPes(PesLoader):
         stress : np.ndarray or None
             3x3 stress tensor, or None if unavailable.
         """
-        if label_format is None:
+        if hf_label_format is None:
+            return None
+        if pulay_label_format is None:
             return None
 
         stress = np.zeros((3, 3), dtype=float)
 
         for i in range(3):
-            for j in range(3):
-                hf_label = hf_label_format.format(i + index_base, j + index_base)
-                pulay_label = pulay_label_format.format(i + index_base, j + index_base)
+            #for j in range(3):
+            j = i    
+            hf_label = hf_label_format.format(i + index_base, j + index_base)
+            pulay_label = pulay_label_format.format(i + index_base, j + index_base)
+            print(hf_label)
+            print(pulay_label)
+            if hf_label not in scalars:
+                warnings.warn(
+                    f"QmcPes could not find stress scalar '{hf_label}'. "
+                    "Stress will not be attached."
+                )
+                return None
+            
+            if pulay_label not in scalars:
+                warnings.warn(
+                    f"QmcPes could not find stress scalar '{pulay_label}'. "
+                    "Stress will not be attached."
+                )
+                return None
 
-                if hf_label not in scalars:
-                    warnings.warn(
-                        f"QmcPes could not find stress scalar '{label}'. "
-                        "Stress will not be attached."
-                    )
-                    return None
-                
-                if pulay_label not in scalars:
-                    warnings.warn(
-                        f"QmcPes could not find stress scalar '{label}'. "
-                        "Stress will not be attached."
-                    )
-                    return None
-
-                stress[i, j] = scalars[hf_label].mean + scalars[pulay_label].mean
+            stress[i, j] = scalars[hf_label].mean + scalars[pulay_label].mean
 
         stress *= sign * scale
 
         if symmetrize:
             stress = 0.5 * (stress + stress.T)
-
+        print(stress)
         return stress
 
 
