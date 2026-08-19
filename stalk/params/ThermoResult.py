@@ -150,7 +150,7 @@ class ThermoResult(PesResult):
         if self._pressure is None:
            raise ValueError("Cannot compute enthalpy without pressure.")
         if self._volume is None:
-	        raise ValueError("Cannot compute enthalpy without volume.")
+            raise ValueError("Cannot compute enthalpy without volume.")
         self._enthalpy = self._energy + (self._pressure * self._volume)
         print(f" the enthalpy in thermoresult is {self._enthalpy}")
 

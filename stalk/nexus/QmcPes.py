@@ -27,8 +27,11 @@ class QmcPes(PesLoader):
         self,
         structure: NexusStructure,
         qmc_idx=1,
+        dmc_idx=None,
+        vmc_idx=None,
         suffix='dmc/dmc.in.xml',
         term='LocalEnergy',
+        estimator="single",
         twist_averaging=False,
         twist_weights=None,
         stress_hf_label_format=None,
@@ -41,6 +44,7 @@ class QmcPes(PesLoader):
         **kwargs  # e.g. equilibration=None
     ) -> PesResult:
         input_file = Path(PL.format(structure.file_path, suffix))
+
         # Testing existence here, because Nexus will shut down everything upon failure
         if input_file.exists():
             ai = QmcpackAnalyzer(str(input_file), **kwargs)
@@ -50,18 +54,15 @@ class QmcPes(PesLoader):
             return PesResult(np.nan)
         # end if
 
-        print("[QmcPes] Available scalar terms:")
-        print(list(ai.qmc[qmc_idx].scalars.keys()))
-
-        print("[QmcPes] qmc object attributes:")
-        print(ai.qmc[qmc_idx].__dict__.keys())
-
         if twist_averaging and self._check_bundled(ai):
             res =  self._perform_twist_averaging(
                     ai, 
-                    qmc_idx, 
-                    term, 
-                    twist_weights,
+                    qmc_idx=qmc_idx,
+                    vmc_idx=vmc_idx,
+                    dmc_idx=dmc_idx,
+                    label=term, 
+                    estimator=estimator,
+                    twist_weights=twist_weights,
                     stress_hf_label_format=stress_hf_label_format,
                     stress_pulay_label_format=stress_pulay_label_format,
                     stress_index_base=stress_index_base,
@@ -71,36 +72,115 @@ class QmcPes(PesLoader):
                     debug_scalars=debug_scalars,
                     )
             return res
+        return self._analyze_estimator_from_analyzer(
+                        ai,
+                        estimator=estimator,
+                        qmc_idx=qmc_idx,
+                        dmc_idx=dmc_idx,
+                        vmc_idx=vmc_idx,
+                        term=term,
+                        stress_hf_label_format=stress_hf_label_format,
+                        stress_pulay_label_format=stress_pulay_label_format,
+                        stress_index_base=stress_index_base,
+                        stress_scale=stress_scale,
+                        stress_sign=stress_sign,
+                        symmetrize_stress=symmetrize_stress,
+                    )
             
 
-        # Non-twist case.
-        qmc = self._get_qmc_block(ai, qmc_idx, input_file=input_file)
-        if qmc is None:
-            return PesResult(np.nan)
 
-        if debug_scalars:
-            print("[QmcPes] Available scalar terms:")
-            print(list(qmc.scalars.keys()))
-            print("[QmcPes] qmc object attributes:")
-            print(qmc.__dict__.keys())
+    def _analyze_estimator_from_analyzer(
+        self,
+        analyzer,
+        estimator="single",
+        qmc_idx=1,
+        dmc_idx=None,
+        vmc_idx=None,
+        term="LocalEnergy",
+        stress_hf_label_format=None,
+        stress_pulay_label_format=None,
+        stress_index_base=0,
+        stress_scale=1.0,
+        stress_sign=1.0,
+        symmetrize_stress=True,
+    ):
+        estimator = estimator.lower()
 
-        res = self._analyze_energy_term(qmc.scalars, term)
+        if estimator in ("single", "raw"):
+            qmc = self._get_qmc_block(analyzer, qmc_idx)
+            if qmc is None:
+                return PesResult(np.nan)
 
-        stress = self._extract_stress_from_scalars(
-            qmc.scalars,
-            hf_label_format=stress_hf_label_format,
-            pulay_label_format=stress_pulay_label_format,
-            index_base=stress_index_base,
-            scale=stress_scale,
-            sign=stress_sign,
-            symmetrize=symmetrize_stress,
-        )
+            res = self._analyze_energy_term(qmc.scalars, term)
 
-        if stress is not None:
-            res.stress = stress
+            stress = self._extract_stress_from_scalars(
+                qmc.scalars,
+                stress_hf_label_format=stress_hf_label_format,
+                stress_pulay_label_format=stress_pulay_label_format,
+                index_base=stress_index_base,
+                scale=stress_scale,
+                sign=stress_sign,
+                symmetrize=symmetrize_stress,
+            )
 
-        return res
-    # end def
+            if stress is not None:
+                res.stress = stress
+
+            return res
+
+        if estimator in ("extrapolated", "2dmc-vmc", "2*dmc-vmc"):
+            if dmc_idx is None:
+                dmc_idx = qmc_idx
+            if vmc_idx is None:
+                raise ValueError(
+                    "vmc_idx must be provided for estimator='extrapolated'."
+                )
+
+            qmc_dmc = self._get_qmc_block(analyzer, dmc_idx)
+            qmc_vmc = self._get_qmc_block(analyzer, vmc_idx)
+
+            if qmc_dmc is None or qmc_vmc is None:
+                return PesResult(np.nan)
+
+            dmc = self._analyze_energy_term(qmc_dmc.scalars, term)
+            vmc = self._analyze_energy_term(qmc_vmc.scalars, term)
+
+            value = 2.0 * dmc.value - vmc.value
+            error = ((2.0 * dmc.error) ** 2 + vmc.error**2) ** 0.5
+
+            res = PesResult(value, error)
+
+            stress_dmc = self._extract_stress_from_scalars(
+                qmc_dmc.scalars,
+                hf_label_format=stress_hf_label_format,
+                pulay_label_format=stress_pulay_label_format,
+                index_base=stress_index_base,
+                scale=stress_scale,
+                sign=stress_sign,
+                symmetrize=symmetrize_stress,
+            )
+
+            stress_vmc = self._extract_stress_from_scalars(
+                qmc_vmc.scalars,
+                hf_label_format=stress_hf_label_format,
+                pulay_label_format=stress_pulay_label_format,
+                index_base=stress_index_base,
+                scale=stress_scale,
+                sign=stress_sign,
+                symmetrize=symmetrize_stress,
+            )
+
+            if stress_dmc is not None and stress_vmc is not None:
+                res.stress = 2.0 * stress_dmc - stress_vmc
+            elif stress_dmc is not None or stress_vmc is not None:
+                warnings.warn(
+                    "Only one of DMC/VMC stress tensors was available for the "
+                    "extrapolated estimator. Stress will not be attached."
+                )
+
+            return res
+
+        raise ValueError(f"Unknown QMC estimator mode: {estimator}")
 
     def _check_bundled(self, ai: QmcpackAnalyzer):
         if not hasattr(ai, "bundled_analyzers") or ai.bundled_analyzers is None:
@@ -120,16 +200,17 @@ class QmcPes(PesLoader):
    
 
 
-
-
     def _perform_twist_averaging(self, 
             ai: QmcpackAnalyzer, 
             qmc_idx, 
-            label, 
-            twist_weights,
+            label='LocalEnergy', 
+            estimator="single",
+            twist_weights=None,
+            vmc_idx = None,
+            dmc_idx = None,
             stress_hf_label_format=None,
             stress_pulay_label_format=None,
-            stress_index_base=1,
+            stress_index_base=0,
             stress_scale=1.0,
             stress_sign=1.0,
             symmetrize_stress=True,
@@ -159,60 +240,50 @@ class QmcPes(PesLoader):
 
         weighted_stress = None
         stress_weight = 0.0
-        missing_stress = 0
 
         #for analyzer, w in zip(ai.bundled_analyzers, twist_weights):
         for itwist, (analyzer, weight) in enumerate(zip(analyzers, twist_weights)):
-            qmc = self._get_qmc_block(analyzer, qmc_idx)
-            if qmc is None:
-                warnings.warn(f"Skipping twist {itwist}: qmc block unavailable.")
+            res_this = self._analyze_estimator_from_analyzer(
+                analyzer,
+                estimator=estimator,
+                qmc_idx=qmc_idx,
+                dmc_idx=dmc_idx,
+                vmc_idx=vmc_idx,
+                term=label,
+                stress_hf_label_format=stress_hf_label_format,
+                stress_pulay_label_format=stress_pulay_label_format,
+                stress_index_base=stress_index_base,
+                stress_scale=stress_scale,
+                stress_sign=stress_sign,
+                symmetrize_stress=symmetrize_stress,
+            )
+            if np.isnan(res_this.value):
+                warnings.warn(f"Skipping twist {itwist}: estimator returned NaN.")
                 continue
 
-            if debug_scalars and itwist == 0:
-                print("[QmcPes] qmc object attributes for first twist:")
-                print(qmc.__dict__.keys())
-                print("[QmcPes] Available scalar terms for first twist:")
-                print(list(qmc.scalars.keys()))
+            weighted_energy += weight * res_this.value
+            weighted_error2 += (weight * res_this.error)**2
+            total_weight += weight
 
-            res = self._analyze_energy_term(qmc.scalars, label)
-            
-            weighted_energy += w * res.value
-            weighted_error2 += w * res.error**2
-            total_weight += w
-
-            stress_this = self._extract_stress_from_scalars(
-                qmc.scalars,
-                hf_label_format=stress_hf_label_format,
-                pulay_label_format=stress_pulay_label_format,
-                index_base=stress_index_base,
-                scale=stress_scale,
-                sign=stress_sign,
-                symmetrize=symmetrize_stress,
-            )
-
-            if stress_this is None:
-                missing_stress += 1
-            else:
+            stress_this = getattr(res_this, "stress", None)
+            if stress_this is not None:
                 if weighted_stress is None:
                     weighted_stress = np.zeros((3, 3), dtype=float)
+
                 weighted_stress += weight * stress_this
                 stress_weight += weight
+
         if total_weight <= 0.0:
             warnings.warn("No valid twist data found. Returning NaN.")
             return PesResult(np.nan)
         # end for
-        energy_weighted_sum /= total_weight
-        weighted_error = weighted_error2**0.5 / total_weightA
+        weighted_energy_mean = weighted_energy/total_weight
+        weighted_error = weighted_error2**0.5 / total_weight
 
-        result = PesResult(energy, error)
+        result = PesResult(weighted_energy_mean, weighted_error)
         if weighted_stress is not None and stress_weight > 0.0:
             result.stress = weighted_stress / stress_weight
 
-            if missing_stress > 0:
-                warnings.warn(
-                    f"Stress was parsed for only {n_twists - missing_stress} of "
-                    f"{n_twists} twists. Averaging available stress components only."
-                )
 
         return result
     # end def
@@ -227,6 +298,7 @@ class QmcPes(PesLoader):
         scale=1.0,
         sign=1.0,
         symmetrize=True,
+        tensor_layout='upper',
     ):
         """
         Extract a 3x3 stress tensor from QMCPACK scalar labels.
@@ -261,35 +333,51 @@ class QmcPes(PesLoader):
         stress : np.ndarray or None
             3x3 stress tensor, or None if unavailable.
         """
-        if hf_label_format is None:
-            return None
-        if pulay_label_format is None:
+        if hf_label_format is None and pulay_label_format is None:
             return None
 
         stress = np.zeros((3, 3), dtype=float)
 
-        for i in range(3):
-            #for j in range(3):
-            j = i    
-            hf_label = hf_label_format.format(i + index_base, j + index_base)
-            pulay_label = pulay_label_format.format(i + index_base, j + index_base)
-            print(hf_label)
-            print(pulay_label)
-            if hf_label not in scalars:
-                warnings.warn(
-                    f"QmcPes could not find stress scalar '{hf_label}'. "
-                    "Stress will not be attached."
-                )
-                return None
-            
-            if pulay_label not in scalars:
-                warnings.warn(
-                    f"QmcPes could not find stress scalar '{pulay_label}'. "
-                    "Stress will not be attached."
-                )
-                return None
+        if tensor_layout == "full":
+            pairs = [(i, j) for i in range(3) for j in range(3)]
+        elif tensor_layout == "upper":
+            pairs = [(i, j) for i in range(3) for j in range(i, 3)]
+        elif tensor_layout == "lower":
+            pairs = [(i, j) for i in range(3) for j in range(0, i + 1)]
+        elif tensor_layout == "diagonal":
+            pairs = [(i, i) for i in range(3)]
+        else:
+            raise ValueError(
+                "tensor_layout must be one of 'full', 'upper', 'lower', or 'diagonal', "
+                f"got {tensor_layout}"
+            )
 
-            stress[i, j] = scalars[hf_label].mean + scalars[pulay_label].mean
+
+
+        for i,j in pairs:
+            value = 0.0
+            if hf_label_format is not None:
+                hf_label = hf_label_format.format(i + index_base, j + index_base)
+                if hf_label not in scalars:
+                    warnings.warn(
+                        f"QmcPes could not find stress scalar '{hf_label}'. "
+                        "Stress will not be attached."
+                    )
+                    return None
+                value += scalars[hf_label].mean 
+
+            if pulay_label_format is not None:
+                pulay_label = pulay_label_format.format(i + index_base, j + index_base)
+                if pulay_label not in scalars:
+                    warnings.warn(
+                        f"QmcPes could not find stress scalar '{pulay_label}'. "
+                        "Stress will not be attached."
+                    )
+                value+=scalars[pulay_label].mean
+
+            stress[i, j] = value 
+            if tensor_layout in ("upper", "lower") and i != j:
+                stress[j, i] = value
 
         stress *= sign * scale
 
