@@ -411,15 +411,15 @@ class ParallelLineSearch(QuantityMixin):
             
             
             
-            self._solve_ls()
-            # Calculate next params
-            params_next, params_next_err = self.calculate_next_params(
-                    use_derivatives=use_derivatives, 
-                    grad_mix=grad_mix, 
-                    damping=damping)  # **kwargs
-            self._structure_next = self.structure.copy(
-                params=params_next, params_err=params_next_err
-            )
+        self._solve_ls()
+        # Calculate next params
+        params_next, params_next_err = self.calculate_next_params(
+                use_derivatives=use_derivatives, 
+                grad_mix=grad_mix, 
+                damping=damping)  # **kwargs
+        self._structure_next = self.structure.copy(
+            params=params_next, params_err=params_next_err
+        )
 
     # end def
 
@@ -640,6 +640,13 @@ class ParallelLineSearch(QuantityMixin):
         if not self.evaluated:
             self.evaluate(add_sigma=add_sigma, interactive=interactive, **kwargs)
         # end if
+
+        if self.structure_next is None:
+            raise AssertionError(
+                "structure_next was not set after evaluate(). "
+                "Check ParallelLineSearch.evaluate() control flow."
+            )
+
         path = path if path is not None else self.path + "_next/"
         # Write to disk
         if write:
