@@ -175,7 +175,7 @@ class LineSearchIteration():
             pls = surrogate.copy(
                 path=self._get_pls_path(0),
                 structure=structure,
-                pes=pes
+                pes=pes,
                 **pls_args,
             )
         else:
